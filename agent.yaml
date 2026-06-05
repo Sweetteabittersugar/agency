@@ -147,3 +147,9 @@ agents:
     model: haiku
     tools: [Read, Write, Edit, Bash, Grep, Glob]
     routing: ["发布", "版本", "CHANGELOG", "tag", "release", "回滚", "semver"]
+
+  lead:
+    file: agents/lead.md
+    model: sonnet
+    tools: [Read, Write, Bash, Grep, Glob]
+    routing: ["委派", "领导", "异步", "后台执行", "大任务", "lead"]

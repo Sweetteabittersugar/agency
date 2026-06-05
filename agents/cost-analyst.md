@@ -35,7 +35,7 @@ model: haiku
 - 设置或调整预算上限
 
 ### 不该用的时候
-- 修改 cost-tracker.py / cost-analyzer.py 本身（那是开发任务，走 @reasonix）
+- 修改 cost-tracker.py / cost-analyzer.py 本身（那是开发任务，走 @coder）
 - 纯功能开发或 bug 修复
 
 ## 分析维度
@@ -46,7 +46,7 @@ model: haiku
 | Haiku | 轻量搜索、简单问答、测试运行 | 低 |
 | Sonnet | 常规开发、代码审查、中复杂度 | 中 |
 | Opus | 复杂推理、架构设计、小说创作 | 高 |
-| DeepSeek | 大批量代码生成、reasonix 主力 | 极低 |
+| DeepSeek | 大批量代码生成、主力开发 | 极低 |
 
 ### 优化策略
 1. 高频低复杂度任务 → Haiku（成本降至 1/10）

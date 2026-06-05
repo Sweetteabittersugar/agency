@@ -262,5 +262,16 @@
     "output_type": "release_notes",
     "isolation": "none",
     "parallel_safe": true
+  },
+  "lead": {
+    "name": "lead",
+    "description": "任务领导者：大任务拆解、异步委派给子Agent、进度追踪、结果汇总",
+    "system_prompt_file": "agents/lead.md",
+    "allowed_tools": "Read,Write,Bash,Grep,Glob",
+    "model": "sonnet",
+    "collaborates_with": ["coder", "code-reviewer", "explorer", "test-runner", "planner"],
+    "output_type": "orchestration_report",
+    "isolation": "none",
+    "parallel_safe": false
   }
 }

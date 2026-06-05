@@ -24,7 +24,7 @@ description: "成本追踪。当用户提到费用、成本、用量、账单、
 每日费用趋势图，识别费用峰值日期。
 
 ### 按 Agent
-按 Agent（reasonix、explorer、test 等）统计费用，发现异常 Agent。
+按 Agent（coder、explorer、test-runner 等）统计费用，发现异常 Agent。
 
 ### 按项目
 如果多个项目共用同一 API key，可按项目标签拆分费用。
@@ -35,7 +35,7 @@ description: "成本追踪。当用户提到费用、成本、用量、账单、
 | 条件 | 阈值 | 说明 |
 |------|------|------|
 | 单日总费用 | > $5.00 | 当日费用偏高 |
-| reasonix 单次平均 token | 超昨日 2 倍 | 任务可能携带过多上下文 |
+| coder 单次平均 token | 超昨日 2 倍 | 任务可能携带过多上下文 |
 | 主会话入向 token | > 50,000 | 上下文逐步膨胀 |
 
 ### 红色告警（需处理）
@@ -49,10 +49,10 @@ description: "成本追踪。当用户提到费用、成本、用量、账单、
 
 cost-analyzer.py 每日 22:00 自动生成优化建议：
 
-1. **切换模型** — 主会话长任务委托给 reasonix agent，减少 main_claude 上下文膨胀
+1. **切换模型** — 长任务委托给轻量 agent，减少主上下文膨胀
 2. **降级任务** — explorer/test 强制使用 haiku，确认 dispatch 未错误覆盖 model 参数
 3. **压缩上下文** — 主会话入向 > 80K 时降低压缩阈值或手动 /compact
-4. **拆分大任务** — reasonix 单次超 50K tokens 时拆分复杂任务为多步骤
+4. **拆分大任务** — 单次超 50K tokens 时拆分复杂任务为多步骤
 
 ## 与脚本的配合
 
@@ -71,7 +71,7 @@ python maestro/cost-analyzer.py             # 分析今日数据
 python maestro/cost-analyzer.py 2026-06-04  # 分析指定日期
 ```
 
-输出：通道分布 + reasonix 异常 + 模型误用 + 主会话 token + 综合建议
+输出：通道分布 + coder 异常 + 模型误用 + 主会话 token + 综合建议
 
 ## 模型性价比参考表
 

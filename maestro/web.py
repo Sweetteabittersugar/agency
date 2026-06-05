@@ -31,6 +31,7 @@ if env_file.exists():
             os.environ[k.strip()] = v.strip().strip('"').strip("'")
 
 from main import route_task, route_with_fallback, route_with_cache, semantic_match, load_agent, estimate_cost, ROUTING, get_agent_stats, record_agent_result
+from async_runner import create_task as async_create_task, get_task as async_get_task, list_tasks as async_list_tasks, cancel_task as async_cancel_task
 
 PORT = 8800
 
@@ -593,6 +594,44 @@ body{
 }
 .shortcuts-modal .shortcut-desc{color:var(--text2);}
 
+/* Async Tasks Tab */
+.async-input-row{display:flex;gap:10px;margin-bottom:16px;}
+.async-input-row input{
+  flex:1;padding:10px 14px;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);color:var(--text);font-size:14px;outline:none;font-family:var(--font);
+}
+.async-input-row input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-glow);}
+.async-input-row select{
+  padding:10px 14px;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);color:var(--text);font-size:14px;outline:none;cursor:pointer;
+  min-width:140px;
+}
+.task-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;}
+.task-table th{
+  text-align:left;padding:8px 12px;border-bottom:2px solid var(--border);
+  color:var(--muted);font-weight:600;font-size:11px;
+}
+.task-table td{padding:8px 12px;border-bottom:1px solid var(--border);}
+.task-table tr:hover td{background:rgba(255,255,255,.02);}
+.task-status{
+  display:inline-block;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:600;
+}
+.task-status.pending{background:rgba(240,160,96,.12);color:var(--orange);}
+.task-status.running{background:rgba(108,92,231,.14);color:#a78bfa;}
+.task-status.done{background:rgba(0,184,148,.12);color:var(--green);}
+.task-status.failed{background:rgba(255,107,107,.12);color:var(--red);}
+.task-status.cancelled{background:rgba(255,255,255,.06);color:var(--muted);}
+.task-result-preview{max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);}
+.task-actions{display:flex;gap:6px;}
+.task-action-btn{
+  padding:3px 10px;font-size:11px;border-radius:4px;border:1px solid var(--border);
+  background:transparent;color:var(--text2);cursor:pointer;transition:var(--transition);font-family:var(--font);
+}
+.task-action-btn:hover{color:var(--text);border-color:rgba(255,255,255,.15);}
+.task-action-btn.danger{color:var(--red);border-color:rgba(255,107,107,.2);}
+.task-action-btn.danger:hover{background:rgba(255,107,107,.1);}
+.async-detail-modal .modal-body{font:13px/1.7 var(--mono);white-space:pre-wrap;word-break:break-word;}
+
 /* Pipeline Tab */
 .pipeline-list{display:flex;flex-direction:column;gap:12px;}
 .pipeline-card{
@@ -736,6 +775,7 @@ body{
       <button class="dev-tab" data-tab="settings">Settings</button>
       <button class="dev-tab" data-tab="logs">Logs</button>
       <button class="dev-tab" data-tab="pipeline">流水线</button>
+      <button class="dev-tab" data-tab="async">后台任务</button>
     </nav>
 
     <!-- Agents -->
@@ -876,6 +916,40 @@ body{
     <div class="dev-panel" id="panel-pipeline">
       <div class="pipeline-list" id="pipeline-list"></div>
       <div class="pipeline-progress" id="pipeline-progress" style="display:none;"></div>
+    </div>
+
+    <!-- Async Tasks -->
+    <div class="dev-panel" id="panel-async">
+      <div class="async-input-row">
+        <input id="async-task-input" placeholder="输入后台任务描述，按 Enter 创建...">
+        <select id="async-agent-select">
+          <option value="">自动路由</option>
+          <option value="coder">coder</option>
+          <option value="code-reviewer">code-reviewer</option>
+          <option value="explorer">explorer</option>
+          <option value="test-runner">test-runner</option>
+          <option value="planner">planner</option>
+          <option value="security-reviewer">security-reviewer</option>
+          <option value="general-worker">general-worker</option>
+          <option value="orchestrator">orchestrator</option>
+          <option value="lead">lead</option>
+        </select>
+        <button class="btn-sm primary" id="async-create-btn">创建任务</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:5px;margin-bottom:12px;font-size:11px;color:var(--muted);">
+        <span>筛选：</span>
+        <button class="task-action-btn async-filter active" data-filter="all">全部</button>
+        <button class="task-action-btn async-filter" data-filter="running">运行中</button>
+        <button class="task-action-btn async-filter" data-filter="done">已完成</button>
+        <button class="task-action-btn async-filter" data-filter="failed">失败</button>
+        <span style="margin-left:auto;cursor:pointer;" id="async-refresh-btn" title="刷新">&#8635; 刷新</span>
+      </div>
+      <div style="max-height:calc(100vh - 280px);overflow-y:auto;">
+        <table class="task-table">
+          <thead><tr><th>ID</th><th>任务</th><th>Agent</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead>
+          <tbody id="async-tbody"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">暂无后台任务</td></tr></tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
@@ -1350,6 +1424,7 @@ $$('.dev-tab').forEach(function(btn) {
     if (tab === 'cost') loadCostRecent();
     if (tab === 'logs') loadLogs();
     if (tab === 'pipeline') renderPipelines();
+    if (tab === 'async') loadAsyncTasks();
   });
 });
 
@@ -2400,6 +2475,180 @@ function runPipeline(pipeline) {
 }
 
 // ===================================================================
+// Async Tasks
+// ===================================================================
+var asyncFilter = 'all';
+var asyncTasks = [];
+var asyncPollInterval = null;
+
+$('#async-create-btn').addEventListener('click', createAsyncTask);
+$('#async-task-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); createAsyncTask(); }
+});
+
+$$('.async-filter').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    $$('.async-filter').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    asyncFilter = btn.dataset.filter;
+    renderAsyncTasks();
+  });
+});
+
+$('#async-refresh-btn').addEventListener('click', loadAsyncTasks);
+
+async function createAsyncTask() {
+  var task = $('#async-task-input').value.trim();
+  if (!task) { toast('请输入任务描述', 'error'); return; }
+  var agent = $('#async-agent-select').value || '';
+
+  $('#async-create-btn').disabled = true;
+  $('#async-create-btn').textContent = '创建中...';
+
+  try {
+    var resp = await fetch('/api/async-task', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task: task, agent: agent })
+    });
+    var data = await resp.json();
+    if (data.task_id) {
+      toast('后台任务已创建: ' + data.task_id, 'success');
+      $('#async-task-input').value = '';
+      loadAsyncTasks();
+      // Start polling
+      if (!asyncPollInterval) startAsyncPolling();
+    } else {
+      toast('创建失败: ' + (data.error || '?'), 'error');
+    }
+  } catch(e) {
+    toast('请求失败: ' + (e.message || String(e)), 'error');
+  } finally {
+    $('#async-create-btn').disabled = false;
+    $('#async-create-btn').textContent = '创建任务';
+  }
+}
+
+async function loadAsyncTasks() {
+  try {
+    var resp = await fetch('/api/async-tasks');
+    var data = await resp.json();
+    asyncTasks = data.tasks || [];
+    // Check if any task is still running
+    var hasRunning = asyncTasks.some(function(t) { return t.status === 'running' || t.status === 'pending'; });
+    if (hasRunning && !asyncPollInterval) startAsyncPolling();
+    if (!hasRunning && asyncPollInterval) stopAsyncPolling();
+    renderAsyncTasks();
+  } catch(e) {
+    console.error('加载后台任务失败:', e);
+  }
+}
+
+function startAsyncPolling() {
+  stopAsyncPolling();
+  asyncPollInterval = setInterval(loadAsyncTasks, 3000);
+}
+
+function stopAsyncPolling() {
+  if (asyncPollInterval) { clearInterval(asyncPollInterval); asyncPollInterval = null; }
+}
+
+function renderAsyncTasks() {
+  var tbody = $('#async-tbody');
+  var filtered = asyncTasks;
+  if (asyncFilter !== 'all') {
+    filtered = asyncTasks.filter(function(t) { return t.status === asyncFilter; });
+  }
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">暂无后台任务</td></tr>';
+    return;
+  }
+  var statusLabels = { pending: '等待中', running: '执行中', done: '已完成', failed: '失败', cancelled: '已取消' };
+  tbody.innerHTML = filtered.map(function(t) {
+    var resultPreview = t.result ? escHtml((t.result || '').substring(0, 60)) : (t.error ? escHtml(('错误: ' + t.error).substring(0, 60)) : '—');
+    var canCancel = t.status === 'pending' || t.status === 'running';
+    var canView = t.status === 'done' || t.status === 'failed';
+    return '<tr>'
+      + '<td style="font-family:var(--mono);font-size:11px;">' + escHtml(t.id) + '</td>'
+      + '<td title="' + escHtml(t.task) + '">' + escHtml(t.task.substring(0, 40)) + '</td>'
+      + '<td><span style="color:#a78bfa;">' + escHtml(t.agent) + '</span></td>'
+      + '<td><span class="task-status ' + t.status + '">' + (statusLabels[t.status] || t.status) + '</span></td>'
+      + '<td style="color:var(--muted);font-size:11px;">' + (t.created_at ? t.created_at.substring(11, 19) : '?') + '</td>'
+      + '<td><div class="task-actions">'
+        + (canView ? '<button class="task-action-btn" onclick="viewAsyncResult(\'' + t.id + '\')">查看</button>' : '')
+        + (canCancel ? '<button class="task-action-btn danger" onclick="cancelAsyncTask(\'' + t.id + '\')">取消</button>' : '')
+        + '<button class="task-action-btn danger" onclick="deleteAsyncTask(\'' + t.id + '\')" style="font-size:10px;">&times;</button>'
+      + '</div></td>'
+    + '</tr>';
+  }).join('');
+}
+
+async function viewAsyncResult(taskId) {
+  try {
+    var resp = await fetch('/api/async-task?task_id=' + encodeURIComponent(taskId));
+    var data = await resp.json();
+    if (data.error) { toast(data.error, 'error'); return; }
+    var task = data.task;
+    // Show result in modal
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = '<div class="modal-box async-detail-modal">'
+      + '<div class="modal-header">'
+        + '<h3>任务结果: ' + escHtml(taskId) + '</h3>'
+        + '<button class="modal-close" onclick="this.closest(\'.modal-overlay\').remove()">&times;</button>'
+      + '</div>'
+      + '<div class="modal-body" style="max-height:70vh;">'
+        + '<div style="margin-bottom:12px;">'
+          + '<span class="task-status ' + task.status + '">' + task.status + '</span>'
+          + ' <span style="color:var(--muted);">Agent: ' + escHtml(task.agent) + '</span>'
+        + '</div>'
+        + '<div style="color:var(--muted);margin-bottom:8px;">任务: ' + escHtml(task.task) + '</div>'
+        + '<div style="white-space:pre-wrap;word-break:break-word;color:var(--text);">' + (task.result ? renderMD(task.result) : (task.error ? '<span class="error-text">' + escHtml(task.error) + '</span>' : '无结果')) + '</div>'
+      + '</div>'
+      + '<div class="modal-footer">'
+        + '<button class="btn-sm" style="background:transparent;color:var(--text);border:1px solid var(--border);" onclick="this.closest(\'.modal-overlay\').remove()">关闭</button>'
+      + '</div>'
+    + '</div>';
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+  } catch(e) {
+    toast('查看失败: ' + (e.message || String(e)), 'error');
+  }
+}
+
+async function cancelAsyncTask(taskId) {
+  if (!confirm('确定取消任务 ' + taskId + ' ？')) return;
+  try {
+    var resp = await fetch('/api/async-cancel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task_id: taskId })
+    });
+    var data = await resp.json();
+    if (data.ok) { toast('已取消', 'info'); loadAsyncTasks(); }
+    else { toast('取消失败: ' + (data.error || '?'), 'error'); }
+  } catch(e) {
+    toast('请求失败: ' + (e.message || String(e)), 'error');
+  }
+}
+
+async function deleteAsyncTask(taskId) {
+  if (!confirm('确定删除任务 ' + taskId + ' ？')) return;
+  try {
+    var resp = await fetch('/api/async-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task_id: taskId })
+    });
+    var data = await resp.json();
+    if (data.ok) { loadAsyncTasks(); }
+    else { toast('删除失败', 'error'); }
+  } catch(e) {
+    toast('请求失败: ' + (e.message || String(e)), 'error');
+  }
+}
+
+// ===================================================================
 // Init
 // ===================================================================
 loadVersion(); renderHistory(); taskInput.focus();
@@ -2553,6 +2802,22 @@ class Handler(BaseHTTPRequestHandler):
         elif parsed.path == "/api/agent-stats":
             self.send_json(get_agent_stats())
 
+        elif parsed.path == "/api/async-task":
+            qs = parse_qs(parsed.query)
+            task_id = qs.get("task_id", [""])[0]
+            if not task_id:
+                self.send_json({"error": "task_id required"})
+                return
+            task = async_get_task(task_id)
+            if task:
+                self.send_json({"task": {k: v for k, v in task.items() if k != "system_prompt"}})
+            else:
+                self.send_json({"error": f"Task {task_id} not found"})
+
+        elif parsed.path == "/api/async-tasks":
+            tasks = async_list_tasks()
+            self.send_json({"tasks": [{k: v for k, v in t.items() if k != "system_prompt"} for t in tasks]})
+
         else:
             self.send_response(404)
             self.end_headers()
@@ -2670,6 +2935,29 @@ class Handler(BaseHTTPRequestHandler):
             task = body.get("task", "")
             agent = body.get("agent", "coder")
             req_model = body.get("model", "")
+
+            # === 安全护栏 ===
+            from safety import check_input, check_rate_limit
+
+            # 输入安全检查：检查最后一条 user 消息
+            user_text = ""
+            if messages:
+                for msg in reversed(messages):
+                    if msg.get("role") == "user":
+                        user_text = msg.get("content", "")
+                        break
+            else:
+                user_text = task
+
+            is_safe, reason = check_input(user_text)
+            if not is_safe:
+                self.send_json({"error": f"安全拦截: {reason}"})
+                return
+
+            # 速率限制
+            if not check_rate_limit():
+                self.send_json({"error": "请求过于频繁，请稍候"})
+                return
 
             base_url, api_key, headers = get_provider_config()
             if not base_url:
@@ -2946,6 +3234,42 @@ model: sonnet
                     self.wfile.flush()
                 except Exception:
                     pass
+
+        elif parsed.path == "/api/async-task":
+            """创建后台异步任务"""
+            task_text = body.get("task", "")
+            agent_name = body.get("agent", "")
+            if not task_text:
+                self.send_json({"error": "task is required"})
+                return
+            task_id = async_create_task(task_text, agent_name if agent_name else None)
+            self.send_json({"task_id": task_id, "status": "pending"})
+
+        elif parsed.path == "/api/async-cancel":
+            """取消后台任务"""
+            task_id = body.get("task_id", "")
+            if not task_id:
+                self.send_json({"ok": False, "error": "task_id required"})
+                return
+            ok = async_cancel_task(task_id)
+            self.send_json({"ok": ok})
+
+        elif parsed.path == "/api/async-delete":
+            """删除后台任务记录"""
+            task_id = body.get("task_id", "")
+            if not task_id:
+                self.send_json({"ok": False, "error": "task_id required"})
+                return
+            # Remove from in-memory store
+            from async_runner import _tasks, _tasks_lock
+            with _tasks_lock:
+                if task_id in _tasks:
+                    del _tasks[task_id]
+            # Remove from disk
+            task_file = PROJECT_ROOT / "maestro" / "async_tasks" / f"{task_id}.json"
+            if task_file.exists():
+                task_file.unlink()
+            self.send_json({"ok": True})
 
         elif parsed.path == "/api/agent-create":
             """保存新 Agent 定义，同时更新 agent.yaml 和 agents.json"""

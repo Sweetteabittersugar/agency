@@ -185,6 +185,10 @@ ROUTING = {
         "semver", "发版", "版本号", "发布管理", "发布检查",
         "release note", "发布说明",
     ],
+    "lead": [
+        "委派", "领导", "异步", "后台执行", "大任务", "lead",
+        "异步任务", "后台任务", "委派任务", "领导任务",
+    ],
 }
 
 
@@ -359,6 +363,20 @@ def load_agent(name):
 # ── DeepSeek API ───────────────────────────────
 def chat(system_prompt, user_message, model=DEFAULT_MODEL):
     """流式调用 LLM API（多提供者支持）"""
+    # === 安全护栏 ===
+    from safety import check_input, check_output, sanitize_output, check_rate_limit
+
+    # 输入安全检查
+    is_safe, reason = check_input(user_message)
+    if not is_safe:
+        print(f"\n[安全拦截] {reason}")
+        return len(system_prompt) // 4 + len(user_message) // 4, 0, 0
+
+    # 速率限制
+    if not check_rate_limit():
+        print("\n[速率限制] 请求过于频繁，请稍候")
+        return len(system_prompt) // 4 + len(user_message) // 4, 0, 0
+
     base_url, api_key, headers = get_provider_config()
     if not base_url:
         print("=" * 50)
@@ -416,6 +434,7 @@ def chat(system_prompt, user_message, model=DEFAULT_MODEL):
         return in_tokens, 0, 0
 
     print()
+    collected_chunks = []
     for line in resp.iter_lines():
         if not line:
             continue
@@ -429,11 +448,19 @@ def chat(system_prompt, user_message, model=DEFAULT_MODEL):
                 delta = chunk.get("choices", [{}])[0].get("delta", {})
                 content = delta.get("content", "")
                 if content:
+                    collected_chunks.append(content)
                     print(content, end="", flush=True)
                     out_chars += len(content)
             except json.JSONDecodeError:
                 pass
     print()
+
+    # === 输出安全检查 ===
+    output = "".join(collected_chunks)
+    output = sanitize_output(output)
+    is_safe, issues = check_output(output)
+    if not is_safe:
+        print(f"\n[安全提示] 检测到 {len(issues)} 个潜在问题")
 
     elapsed = time.time() - start_time
     out_tokens = out_chars // 2
