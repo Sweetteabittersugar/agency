@@ -72,19 +72,29 @@ cd agency-kit
 
 ## 核心模块
 
-### Agents（9 个专业子代理）
+### Agents（19 个专业子代理）
 
-| Agent | 职责 | 触发方式 |
-|-------|------|----------|
-| `coder` | 直接写代码，不转派不反问 | 代码实现任务 |
-| `code-reviewer` | 四维度代码审查（正确性/简洁性/可维护性/安全性） | 代码写完后 |
-| `explorer` | 代码库搜索与结构分析 | 查找/定位/分析 |
-| `test-runner` | 测试执行与结果分析 | 测试/验证 |
-| `general-worker` | 通用杂务（整理/配置/转换） | 非专业任务 |
-| `webnovel-writer` | 小说创作（世界观/大纲/章节） | 写作任务 |
-| `planner` | 实现规划与架构设计 | 复杂功能 |
-| `security-reviewer` | 安全漏洞深度检测 | 敏感代码审查 |
-| `cost-analyst` | API 费用分析与优化建议 | 成本审查 |
+| 类别 | Agent | 职责 |
+|------|-------|------|
+| **开发** | `coder` | 直接写代码、重构、修复 |
+| | `build-error-resolver` | 编译/构建错误增量修复 |
+| | `refactor-cleaner` | 死代码、重复代码安全删除 |
+| **审查** | `code-reviewer` | 四维度通用代码审查 |
+| | `python-reviewer` | Python/Django/FastAPI 专项 |
+| | `go-reviewer` | Go 并发安全/接口设计 |
+| | `typescript-reviewer` | TS/React/Node.js 专项 |
+| | `security-reviewer` | 安全漏洞深度检测 |
+| | `database-reviewer` | SQL 性能/Schema 审查 |
+| **测试** | `test-runner` | 测试执行与失败分析 |
+| | `tdd-guide` | TDD 五步循环向导 |
+| | `e2e-runner` | Playwright 端到端测试 |
+| **规划** | `planner` | 需求分析/架构设计/任务拆分 |
+| | `cost-analyst` | API 费用多维分析 |
+| | `performance-optimizer` | 性能瓶颈分析与优化 |
+| **其他** | `explorer` | 代码库搜索与结构分析 |
+| | `doc-updater` | 文档自动同步 |
+| | `general-worker` | 通用杂务处理 |
+| | `webnovel-writer` | 小说世界观/章节创作 |
 
 ### Maestro — 多智能体调度引擎（独有）
 

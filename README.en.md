@@ -19,8 +19,8 @@ cd agency-kit && ./install.sh
 ```
 Your Claude Code
     │
-    ├── agents/   ← 9 specialized sub-agents (auto-routed)
-    ├── skills/   ← 6 workflow skills (design/cost/compress/docs)
+    ├── agents/   ← 19 specialized sub-agents (auto-routed)
+    ├── skills/   ← 7 workflow skills (design/debug/release/translate/cost/compress)
     ├── commands/ ← 4 quick commands (status/cost/track/compress)
     ├── hooks/    ← 4 automation hooks (start/stop/compress)
     ├── rules/    ← 8+ engineering standards (multi-language)
@@ -61,19 +61,29 @@ Verify in Claude Code:
 
 ## Core Modules
 
-### Agents (9 specialized sub-agents)
+### Agents (19 specialized sub-agents)
 
-| Agent | Role | Trigger |
-|-------|------|---------|
-| `coder` | Write code directly | Code tasks |
-| `code-reviewer` | 4-dimension code review | After writing code |
-| `explorer` | Codebase search & analysis | Find/locate/analyze |
-| `test-runner` | Test execution & results | Testing/verification |
-| `general-worker` | General tasks | Non-specialist work |
-| `webnovel-writer` | Novel writing | Writing tasks |
-| `planner` | Implementation planning | Complex features |
-| `security-reviewer` | Security audits | Sensitive code review |
-| `cost-analyst` | API cost analysis | Cost review |
+| Category | Agent | Role |
+|----------|-------|------|
+| **Dev** | `coder` | Write, fix, refactor code |
+| | `build-error-resolver` | Fix build/compile errors |
+| | `refactor-cleaner` | Remove dead/duplicate code |
+| **Review** | `code-reviewer` | General 4-dimension review |
+| | `python-reviewer` | Python/Django/FastAPI |
+| | `go-reviewer` | Go concurrency/interface |
+| | `typescript-reviewer` | TS/React/Node.js |
+| | `security-reviewer` | Security vulnerability audit |
+| | `database-reviewer` | SQL perf/schema review |
+| **Test** | `test-runner` | Test execution & analysis |
+| | `tdd-guide` | TDD workflow guide |
+| | `e2e-runner` | Playwright E2E testing |
+| **Plan** | `planner` | Architecture & task planning |
+| | `cost-analyst` | API cost analysis |
+| | `performance-optimizer` | Bottleneck profiling |
+| **Other** | `explorer` | Codebase search & analysis |
+| | `doc-updater` | Auto-sync documentation |
+| | `general-worker` | General tasks |
+| | `webnovel-writer` | Novel writing |
 
 ### Maestro — Multi-Agent Orchestration Engine (Unique)
 
@@ -96,16 +106,17 @@ Your Task → Routing Matrix → Auto-select Agent → Sandbox → Result Gatewa
 | `transcript-parser.py` | Conversation parser |
 | `cleanup-agents.py` | Idle process cleanup |
 
-### Skills (6 workflow skills)
+### Skills (7 workflow skills)
 
 | Skill | Trigger | Function |
 |-------|---------|----------|
 | `design` | `/design` | 4-phase requirement clarification |
+| `debug` | "debug" | Systematic debugging workflow |
 | `cost` | `@cost` | API cost tracking & reports |
 | `compress` | `/compress` | Context compression |
-| `docx` | Document tasks | Word document creation |
-| `pdf` | PDF tasks | PDF generation |
-| `xlsx` | Spreadsheet tasks | Excel creation |
+| `init` | "new project" | Project scaffolding |
+| `release` | "release" | Version & changelog management |
+| `translate` | "translate" | Technical doc translation |
 
 ### Rules (8+ engineering standards)
 
