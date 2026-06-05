@@ -27,7 +27,8 @@ if env_file.exists():
             if k.strip() not in os.environ:
                 os.environ[k.strip()] = v.strip().strip('"').strip("'")
 
-from main import route_task, load_agent, get_provider_config, get_actual_model
+from main import route_task, load_agent
+from models import get_provider_config
 
 TASKS_DIR = PROJECT_ROOT / "maestro" / "async_tasks"
 TASKS_DIR.mkdir(exist_ok=True)
@@ -46,7 +47,7 @@ def create_task(task_text, agent_name=None, parent_id=None):
         agent_name, score, conf = route_task(task_text)
 
     system_prompt, model = load_agent(agent_name)
-    actual_model = get_actual_model(model)
+    actual_model = model  # load_agent 已通过 resolve_model 解析
 
     task = {
         "id": task_id,

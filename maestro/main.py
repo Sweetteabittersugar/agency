@@ -40,48 +40,10 @@ def load_env():
 
 load_env()
 
-DEFAULT_MODEL = os.environ.get("DEFAULT_MODEL", "deepseek-chat")
+sys.path.insert(0, str(PROJECT_ROOT / "maestro"))
+from models import get_provider_config, resolve_model, get_default_model
 
-MODEL_MAP = {
-    "haiku": os.environ.get("LIGHT_MODEL", "deepseek-chat"),
-    "sonnet": os.environ.get("STANDARD_MODEL", "deepseek-chat"),
-    "opus": os.environ.get("HEAVY_MODEL", "deepseek-reasoner"),
-}
-
-
-def get_provider_config():
-    """解析 API 配置，返回 (base_url, api_key, headers)"""
-    base_url = ""
-    api_key = ""
-
-    # DeepSeek
-    if os.environ.get("DEEPSEEK_API_KEY"):
-        base_url = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
-        api_key = os.environ["DEEPSEEK_API_KEY"]
-    # OpenAI 兼容
-    elif os.environ.get("OPENAI_API_KEY"):
-        base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
-        api_key = os.environ["OPENAI_API_KEY"]
-    # Ollama
-    elif os.environ.get("OLLAMA_BASE_URL"):
-        base_url = os.environ["OLLAMA_BASE_URL"]
-        api_key = "ollama"
-    else:
-        return None, None, None
-
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
-    if api_key == "ollama":
-        headers = {"Content-Type": "application/json"}
-
-    return base_url.rstrip("/"), api_key, headers
-
-
-def get_actual_model(agent_model_name):
-    """将 agent frontmatter 中的模型名映射到实际模型"""
-    return MODEL_MAP.get(agent_model_name, DEFAULT_MODEL)
+DEFAULT_MODEL = get_default_model()
 
 # ── 路由矩阵 ───────────────────────────────────
 ROUTING = {
@@ -352,7 +314,7 @@ def load_agent(name):
             try:
                 fm = yaml.safe_load(parts[1])
                 if fm:
-                    model = get_actual_model(fm.get("model", ""))
+                    model = resolve_model(fm.get("model", ""))
             except Exception:
                 pass
             return parts[2].strip(), model
@@ -475,17 +437,7 @@ def chat(system_prompt, user_message, model=DEFAULT_MODEL):
 
 
 # ── 成本估算 ───────────────────────────────────
-PRICING = {
-    "deepseek-chat":    (0.27, 1.10),    # $/1M tokens (input, output)
-    "deepseek-reasoner": (0.55, 2.19),
-}
-
-def estimate_cost(model, in_tokens, out_tokens):
-    """估算费用"""
-    if model in PRICING:
-        in_price, out_price = PRICING[model]
-        return (in_tokens / 1_000_000) * in_price + (out_tokens / 1_000_000) * out_price
-    return 0.0
+from models import estimate_cost, PRICING  # noqa: E402
 
 
 def record_cost(in_tokens, out_tokens, cost, model, elapsed):

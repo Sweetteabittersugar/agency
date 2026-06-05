@@ -30,53 +30,11 @@ if env_file.exists():
             k, v = line.split("=", 1)
             os.environ[k.strip()] = v.strip().strip('"').strip("'")
 
-from main import route_task, route_with_fallback, route_with_cache, semantic_match, load_agent, estimate_cost, ROUTING, get_agent_stats, record_agent_result
+from main import route_task, route_with_fallback, route_with_cache, semantic_match, load_agent, ROUTING, get_agent_stats, record_agent_result
 from async_runner import create_task as async_create_task, get_task as async_get_task, list_tasks as async_list_tasks, cancel_task as async_cancel_task
+from models import get_provider_config, resolve_model, estimate_cost, PRICING, PROVIDER_PRESETS, get_default_model
 
 PORT = 8800
-
-
-# --- 提供者解析 ---
-def get_provider_config():
-    """解析 API 配置，返回 (base_url, api_key, headers)"""
-    base_url = ""
-    api_key = ""
-
-    # DeepSeek
-    if os.environ.get("DEEPSEEK_API_KEY"):
-        base_url = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
-        api_key = os.environ["DEEPSEEK_API_KEY"]
-    # OpenAI 兼容
-    elif os.environ.get("OPENAI_API_KEY"):
-        base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
-        api_key = os.environ["OPENAI_API_KEY"]
-    # Ollama
-    elif os.environ.get("OLLAMA_BASE_URL"):
-        base_url = os.environ["OLLAMA_BASE_URL"]
-        api_key = "ollama"
-    else:
-        return None, None, None
-
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
-    if api_key == "ollama":
-        headers = {"Content-Type": "application/json"}
-
-    return base_url.rstrip("/"), api_key, headers
-
-
-MODEL_MAP = {
-    "haiku": os.environ.get("LIGHT_MODEL", "deepseek-chat"),
-    "sonnet": os.environ.get("STANDARD_MODEL", "deepseek-chat"),
-    "opus": os.environ.get("HEAVY_MODEL", "deepseek-reasoner"),
-}
-
-
-def get_actual_model(agent_model_name):
-    """将 agent frontmatter 中的模型名映射到实际模型"""
-    return MODEL_MAP.get(agent_model_name, os.environ.get("DEFAULT_MODEL", "deepseek-chat"))
 
 
 # =====================================================================
@@ -821,21 +779,26 @@ body{
       <div class="settings-group">
         <h3>API 提供者</h3>
         <div class="setting-row">
-          <div><div class="sr-label">提供者</div><div class="sr-desc">选择 API 服务（需在 .env 中配置对应 Key）</div></div>
+          <div><div class="sr-label">提供者</div><div class="sr-desc">选择 API 服务（在 .env 中设置 PROVIDER 和对应 Key）</div></div>
           <select class="model-select" id="settings-provider">
             <option value="deepseek">DeepSeek</option>
-            <option value="openai">OpenAI 兼容</option>
+            <option value="openai">OpenAI</option>
+            <option value="anthropic">Anthropic (Claude)</option>
+            <option value="gemini">Google Gemini</option>
+            <option value="qwen">阿里通义千问</option>
+            <option value="zhipu">智谱 GLM</option>
+            <option value="moonshot">Moonshot</option>
             <option value="ollama">Ollama 本地</option>
             <option value="custom">自定义</option>
           </select>
         </div>
-        <div class="setting-row">
-          <div><div class="sr-label">API Key</div><div class="sr-desc">运行时使用（.env 优先）</div></div>
-          <input type="password" id="settings-apikey" style="padding:6px 12px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;width:240px;" placeholder="sk-...">
+        <div class="setting-row" id="apikey-row">
+          <div><div class="sr-label" id="apikey-label">API Key</div><div class="sr-desc">在 .env 中配置（运行时读取）</div></div>
+          <input type="text" id="settings-apikey" style="padding:6px 12px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;width:260px;" placeholder="从 .env 读取..." readonly>
         </div>
         <div class="setting-row">
-          <div><div class="sr-label">Base URL</div><div class="sr-desc">API 端点地址</div></div>
-          <input type="text" id="settings-baseurl" style="padding:6px 12px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;width:280px;" placeholder="https://api.deepseek.com">
+          <div><div class="sr-label">Base URL</div><div class="sr-desc" id="baseurl-desc">API 端点地址</div></div>
+          <input type="text" id="settings-baseurl" style="padding:6px 12px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;width:320px;" placeholder="从 .env 读取..." readonly>
         </div>
         <div class="setting-row">
           <div><div class="sr-label">状态</div><div class="sr-desc">当前 API 配置检测</div></div>
@@ -843,18 +806,21 @@ body{
         </div>
       </div>
       <div class="settings-group">
-        <h3>模型映射</h3>
+        <h3>模型映射 <span style="font-weight:400;font-size:11px;color:var(--muted);">（能力级别 → 实际模型名）</span></h3>
         <div class="setting-row">
-          <div><div class="sr-label">Light（轻量级）</div><div class="sr-desc">Haiku 级 Agent（explorer 等）</div></div>
-          <input type="text" id="settings-light-model" style="padding:6px 12px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;width:200px;" placeholder="deepseek-chat">
+          <div><div class="sr-label">Opus / 重量级</div><div class="sr-desc" id="heavy-desc">复杂推理、深度创作 · 当前: <span id="heavy-resolved">-</span></div></div>
+          <input type="text" id="settings-heavy-model" style="padding:6px 12px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;width:200px;" placeholder="预设">
         </div>
         <div class="setting-row">
-          <div><div class="sr-label">Standard（标准）</div><div class="sr-desc">Sonnet 级 Agent（coder 等）</div></div>
-          <input type="text" id="settings-standard-model" style="padding:6px 12px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;width:200px;" placeholder="deepseek-chat">
+          <div><div class="sr-label">Sonnet / 标准级</div><div class="sr-desc" id="sonnet-desc">代码编写、审查、规划 · 当前: <span id="sonnet-resolved">-</span></div></div>
+          <input type="text" id="settings-standard-model" style="padding:6px 12px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;width:200px;" placeholder="预设">
         </div>
         <div class="setting-row">
-          <div><div class="sr-label">Heavy（重量级）</div><div class="sr-desc">Opus 级 Agent（planner 等）</div></div>
-          <input type="text" id="settings-heavy-model" style="padding:6px 12px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;width:200px;" placeholder="deepseek-reasoner">
+          <div><div class="sr-label">Haiku / 轻量级</div><div class="sr-desc" id="light-desc">简单搜索、费用分析 · 当前: <span id="light-resolved">-</span></div></div>
+          <input type="text" id="settings-light-model" style="padding:6px 12px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;width:200px;" placeholder="预设">
+        </div>
+        <div class="setting-row" style="color:var(--muted);font-size:11px;padding:10px 16px;background:transparent;border:none;">
+          <span style="color:var(--orange);">&#9888;</span> 自动降级规则：没配的档次自动用下一级，最后一档未配则用 DEFAULT_MODEL。在 .env 中以 HEAVY_MODEL / STANDARD_MODEL / LIGHT_MODEL 覆盖。
         </div>
       </div>
       <div class="settings-group">
@@ -868,16 +834,14 @@ body{
           <input type="number" id="settings-max-tokens" value="8192" min="256" max="65536" step="256" style="padding:6px 12px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;width:120px;">
         </div>
         <div class="setting-row">
-          <div><div class="sr-label">默认模型</div><div class="sr-desc">未指定时的默认选择</div></div>
-          <select class="model-select" id="default-model">
-            <option value="deepseek-chat">deepseek-chat</option>
-            <option value="deepseek-reasoner">deepseek-reasoner</option>
-          </select>
+          <div><div class="sr-label">DEFAULT_MODEL</div><div class="sr-desc">终极降级（所有档次都未配时使用）</div></div>
+          <input type="text" id="settings-default-model" style="padding:6px 12px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;width:200px;" placeholder="从 .env 读取...">
         </div>
       </div>
       <div class="settings-group">
-        <button class="btn-sm primary" id="btn-save-settings" style="margin-right:8px;">保存设置</button>
-        <button class="btn-sm" id="btn-reload-config" style="background:transparent;color:var(--text);border:1px solid var(--border);">重新加载 .env</button>
+        <button class="btn-sm primary" id="btn-save-settings" style="margin-right:8px;">保存设置（本地）</button>
+        <button class="btn-sm" id="btn-reload-config" style="background:transparent;color:var(--text);border:1px solid var(--border);">重新加载</button>
+        <span style="font-size:11px;color:var(--muted);margin-left:8px;">提供者和模型在 .env 中配置后重启生效</span>
       </div>
       <div class="settings-group">
         <h3>Agent 成功率</h3>
@@ -893,11 +857,6 @@ body{
         <div class="setting-row">
           <div><div class="sr-label">版本</div><div class="sr-desc">Agency 当前版本</div></div>
           <span style="color:#c4b5fd;font-weight:600;" id="settings-ver">v0.1.0</span>
-        </div>
-      </div>
-      <div class="settings-group">
-        <div class="setting-row" style="color:var(--muted);font-size:12px;justify-content:flex-start;">
-          提供者和模型映射需在 .env 中配置后重启生效；其他设置保存在浏览器本地
         </div>
       </div>
     </div>
@@ -1579,7 +1538,7 @@ async function sendTask() {
     // 2) 构建 messages（多轮会话）
     var actualModel = model;
     var appSettings = loadAppSettings();
-    if (appSettings.defaultModel && appSettings.defaultModel !== 'deepseek-chat') {
+    if (appSettings.defaultModel) {
       actualModel = appSettings.defaultModel;
     }
 
@@ -1743,7 +1702,7 @@ async function sendTaskDirect(task, agent) {
       signal: abortCtrl.signal
     });
     var routeData = await routeResp.json();
-    model = routeData.model || 'deepseek-chat';
+    model = routeData.model || 'deepseek-v4-pro';
     currentAgent = agent;
     currentModel = model;
 
@@ -1853,7 +1812,7 @@ function renderAgents(agents) {
     grid.innerHTML = '<span style="color:var(--muted);">无 Agent 数据</span>';
     return;
   }
-  var ml = { 'haiku':'Haiku','sonnet':'Sonnet','opus':'Opus','deepseek-chat':'DS-Chat','deepseek-reasoner':'DS-R1' };
+  var ml = { 'haiku':'Haiku','sonnet':'Sonnet','opus':'Opus' };
 
   grid.innerHTML = agents.map(function(a) {
     var kws = (a.keywords || []).slice(0,5).map(function(k) { return '<span class="ac-tag">' + escHtml(k) + '</span>'; }).join('');
@@ -2218,25 +2177,37 @@ async function loadSettings() {
     var resp = await fetch('/api/settings'); var data = await resp.json();
     var badge = $('#key-status');
     if (data.has_key) { badge.textContent = '已配置 (' + (data.provider_type || '?') + ')'; badge.className = 'status-dot ok'; }
-    else { badge.textContent = '未配置'; badge.className = 'status-dot bad'; }
+    else { badge.textContent = '未配置 (' + (data.provider_type || '?') + ')'; badge.className = 'status-dot bad'; }
 
     // 填充表单
     var prov = $('#settings-provider');
-    if (data.provider_type === 'deepseek') prov.value = 'deepseek';
-    else if (data.provider_type === 'openai') prov.value = 'openai';
-    else if (data.provider_type === 'ollama') prov.value = 'ollama';
-    else prov.value = 'custom';
+    prov.value = data.provider_type || 'deepseek';
 
     $('#settings-baseurl').value = data.base_url || '';
-    $('#settings-light-model').value = (data.model_mapping && data.model_mapping.light) || 'deepseek-chat';
-    $('#settings-standard-model').value = (data.model_mapping && data.model_mapping.standard) || 'deepseek-chat';
-    $('#settings-heavy-model').value = (data.model_mapping && data.model_mapping.heavy) || 'deepseek-reasoner';
+
+    // 模型映射 - 使用服务端解析结果
+    var rm = data.resolved_models || {};
+    $('#settings-light-model').placeholder = (data.presets && data.presets.light) || '';
+    $('#settings-standard-model').placeholder = (data.presets && data.presets.standard) || '';
+    $('#settings-heavy-model').placeholder = (data.presets && data.presets.heavy) || '';
+    $('#light-resolved').textContent = rm.haiku || '-';
+    $('#sonnet-resolved').textContent = rm.sonnet || '-';
+    $('#heavy-resolved').textContent = rm.opus || '-';
+
+    // 环境变量覆盖值
+    var overrides = data.model_env_overrides || {};
+    if (overrides.heavy) $('#settings-heavy-model').value = overrides.heavy;
+    if (overrides.standard) $('#settings-standard-model').value = overrides.standard;
+    if (overrides.light) $('#settings-light-model').value = overrides.light;
+
+    // DEFAULT_MODEL
+    $('#settings-default-model').value = data.default_model || '';
+
+    // 根据提供者更新 API Key 标签
+    updateProviderKeyLabel(data.provider_type);
   } catch(_) { $('#key-status').textContent = '检查失败'; $('#key-status').className = 'status-dot bad'; }
 
   var s = loadAppSettings();
-  var sel = $('#default-model');
-  sel.value = s.defaultModel || 'deepseek-chat';
-  sel.addEventListener('change', function() { saveAppSettings({ defaultModel: sel.value }); toast('默认模型已更新', 'info'); });
 
   // Temperature
   var tempSlider = $('#settings-temperature');
@@ -2249,17 +2220,20 @@ async function loadSettings() {
   // Max Tokens
   $('#settings-max-tokens').value = s.maxTokens || 8192;
 
-  // API Key (from localStorage, .env is source of truth)
-  var ak = $('#settings-apikey');
-  ak.value = s.apiKey || '';
-
-  // Base URL
-  $('#settings-baseurl').value = s.baseUrl || $('#settings-baseurl').value;
-
-  // Model mapping fields
-
   // Agent Stats
   loadAgentStats();
+}
+
+function updateProviderKeyLabel(provider) {
+  var keyNames = {
+    'deepseek': 'DEEPSEEK_API_KEY', 'openai': 'OPENAI_API_KEY',
+    'anthropic': 'ANTHROPIC_API_KEY', 'gemini': 'GEMINI_API_KEY',
+    'qwen': 'QWEN_API_KEY', 'zhipu': 'ZHIPU_API_KEY',
+    'moonshot': 'MOONSHOT_API_KEY', 'ollama': 'OLLAMA_BASE_URL',
+    'custom': 'CUSTOM_API_KEY / BASE_URL'
+  };
+  var label = keyNames[provider] || 'API_KEY';
+  $('#apikey-label').textContent = label;
 }
 
 async function loadAgentStats() {
@@ -2283,14 +2257,6 @@ async function loadAgentStats() {
     $('#agent-stats-tbody').innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:16px;">加载失败</td></tr>';
   }
 }
-  $('#settings-light-model').value = s.lightModel || $('#settings-light-model').value;
-  $('#settings-standard-model').value = s.standardModel || $('#settings-standard-model').value;
-  $('#settings-heavy-model').value = s.heavyModel || $('#settings-heavy-model').value;
-
-  // Provider
-  $('#settings-provider').value = s.provider || $('#settings-provider').value;
-}
-
 // Save Settings button
 $('#btn-save-settings').addEventListener('click', function() {
   var settings = {
@@ -2302,10 +2268,10 @@ $('#btn-save-settings').addEventListener('click', function() {
     heavyModel: $('#settings-heavy-model').value,
     temperature: parseFloat($('#settings-temperature').value),
     maxTokens: parseInt($('#settings-max-tokens').value) || 8192,
-    defaultModel: $('#default-model').value,
+    defaultModel: $('#settings-default-model').value,
   };
   saveAppSettings(settings);
-  toast('设置已保存（模型映射和提供者需在 .env 中配置后重启生效）', 'success');
+  toast('设置已保存到浏览器本地（提供者和模型需在 .env 配置后重启生效）', 'success');
 });
 
 // Reload .env button
@@ -2757,29 +2723,58 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json({"error": str(e)})
 
         elif parsed.path == "/api/settings":
-            provider_type = ""
+            # 检测当前 provider
+            provider = os.environ.get("PROVIDER", "deepseek").lower()
+            provider_type = provider if provider in PROVIDER_PRESETS else "custom"
+
+            # 检测 key 状态
             has_key = False
-            if os.environ.get("DEEPSEEK_API_KEY"):
-                provider_type = "deepseek"
-                has_key = True
-            elif os.environ.get("OPENAI_API_KEY"):
-                provider_type = "openai"
-                has_key = True
-            elif os.environ.get("OLLAMA_BASE_URL"):
-                provider_type = "ollama"
+            key_env_map = {
+                "deepseek": "DEEPSEEK_API_KEY",
+                "openai": "OPENAI_API_KEY",
+                "anthropic": "ANTHROPIC_API_KEY",
+                "gemini": "GEMINI_API_KEY",
+                "qwen": "QWEN_API_KEY",
+                "zhipu": "ZHIPU_API_KEY",
+                "moonshot": "MOONSHOT_API_KEY",
+                "ollama": "OLLAMA_BASE_URL",
+            }
+            key_env = key_env_map.get(provider_type)
+            if key_env and os.environ.get(key_env):
                 has_key = True
 
             base_url, _, _ = get_provider_config()
+
+            # 解析各档次当前模型
+            resolver = {}
+            for tier in ("opus", "sonnet", "haiku"):
+                resolver[tier] = resolve_model(tier)
+
+            # 获取 provider 预设作 placeholder
+            preset = PROVIDER_PRESETS.get(provider_type, {})
+            presets = {
+                "heavy": preset.get("heavy", ""),
+                "standard": preset.get("standard", ""),
+                "light": preset.get("light", ""),
+            }
+
             self.send_json({
+                "providers": list(PROVIDER_PRESETS.keys()),
                 "provider_type": provider_type,
                 "base_url": base_url or "",
                 "has_key": has_key,
-                "model_mapping": {
-                    "light": os.environ.get("LIGHT_MODEL", "deepseek-chat"),
-                    "standard": os.environ.get("STANDARD_MODEL", "deepseek-chat"),
-                    "heavy": os.environ.get("HEAVY_MODEL", "deepseek-reasoner"),
+                "resolved_models": {
+                    "opus": resolver.get("opus", ""),
+                    "sonnet": resolver.get("sonnet", ""),
+                    "haiku": resolver.get("haiku", ""),
                 },
-                "default_model": os.environ.get("DEFAULT_MODEL", "deepseek-chat"),
+                "presets": presets,
+                "model_env_overrides": {
+                    "heavy": os.environ.get("HEAVY_MODEL", "") or os.environ.get(f"{provider_type.upper()}_HEAVY_MODEL", ""),
+                    "standard": os.environ.get("STANDARD_MODEL", "") or os.environ.get(f"{provider_type.upper()}_STANDARD_MODEL", ""),
+                    "light": os.environ.get("LIGHT_MODEL", "") or os.environ.get(f"{provider_type.upper()}_LIGHT_MODEL", ""),
+                },
+                "default_model": os.environ.get("DEFAULT_MODEL", get_default_model()),
                 "temperature": 0.7,
                 "max_tokens": 8192,
             })
@@ -2966,7 +2961,7 @@ class Handler(BaseHTTPRequestHandler):
 
             if messages:
                 # 多轮会话模式：前端直接传完整的 messages 数组
-                model = req_model or os.environ.get("DEFAULT_MODEL", "deepseek-chat")
+                model = req_model or get_default_model()
             else:
                 # 兼容旧版：后端构建 messages
                 system_prompt, model = load_agent(agent)
@@ -3183,7 +3178,7 @@ model: sonnet
                 self.send_json({"error": "未配置 API Key"})
                 return
 
-            model = os.environ.get("DEFAULT_MODEL", "deepseek-chat")
+            model = get_default_model()
 
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
