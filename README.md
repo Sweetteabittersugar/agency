@@ -12,6 +12,10 @@ echo "DEEPSEEK_API_KEY=sk-xxxx" > .env
 python maestro/main.py "你的任务"
 # 系统自动选 Agent、调 API、返回结果、记录成本
 
+# Web 测试界面（浏览器里跑）
+python maestro/web.py
+# → http://localhost:8800 → 输入任务 → 流式返回 → 显示 Agent/模型/耗时/费用
+
 # 方式一：一行安装（推荐）
 git clone https://github.com/Sweetteabittersugar/agency.git && cd agency && ./install.sh
 

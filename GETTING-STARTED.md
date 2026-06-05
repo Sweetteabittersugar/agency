@@ -16,6 +16,10 @@ echo "DEEPSEEK_API_KEY=sk-xxxx" > .env
 python maestro/main.py "写一个快排函数"
 python maestro/main.py "分析这个目录结构"
 python maestro/main.py --list-routes  # 看路由表
+
+# Web 测试界面（浏览器里跑）
+python maestro/web.py
+# → http://localhost:8800 → 输入任务 → 流式返回 → 显示 Agent/模型/耗时/费用
 ```
 
 - 不需要 Claude Code
