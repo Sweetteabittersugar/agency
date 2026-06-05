@@ -27,7 +27,7 @@ function copyDir(src, dest) {
   }
 }
 
-console.log('[everythingclaudecode] Installing config files...');
+console.log('[agency-kit] Installing config files...');
 
 for (const dir of DIRS) {
   const src = path.join(PKG_ROOT, dir);
@@ -46,11 +46,11 @@ if (fs.existsSync(maestroSrc)) {
   console.log('  ✓ maestro');
 }
 
-console.log('[everythingclaudecode] Done!');
+console.log('[agency-kit] Done!');
 console.log('');
 
 // ── 安装后验证 ──────────────────────────────────────────
-console.log('[everythingclaudecode] Validating installation...');
+console.log('[agency-kit] Validating installation...');
 
 let passed = 0;
 let failed = 0;
@@ -84,9 +84,9 @@ const hookShFiles = fs.existsSync(hooksDir)
   : [];
 check(hookShFiles.length > 0, `hooks/ 有 .sh 文件 (实际: ${hookShFiles.length})`);
 
-console.log(`[everythingclaudecode] Validation: ${passed} passed, ${failed} failed`);
+console.log(`[agency-kit] Validation: ${passed} passed, ${failed} failed`);
 if (failed > 0) {
-  console.warn('[everythingclaudecode] WARNING: Some checks failed. Review the installation.');
+  console.warn('[agency-kit] WARNING: Some checks failed. Review the installation.');
 }
 
 console.log('');

@@ -5,8 +5,8 @@
 ### 方式一：Git 克隆（推荐）
 
 ```bash
-git clone https://github.com/Sweetteabittersugar/everythingclaudecode.git
-cd everythingclaudecode
+git clone https://github.com/Sweetteabittersugar/agency-kit.git
+cd agency-kit
 ./install.sh
 ```
 
@@ -17,7 +17,7 @@ cd everythingclaudecode
 ### 方式二：npm
 
 ```bash
-npm install -g everythingclaudecode
+npm install -g agency-kit
 ```
 
 ## 验证

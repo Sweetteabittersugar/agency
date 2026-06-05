@@ -2,7 +2,7 @@
 
 ## 为什么赞助
 
-everythingclaudecode 是一个完全开源的项目，所有代码、Agent、Skill、Rule 都免费使用。你的赞助帮助我们：
+agency-kit 是一个完全开源的项目，所有代码、Agent、Skill、Rule 都免费使用。你的赞助帮助我们：
 
 - 持续的日常生产验证（保持 Agent 和 Rule 的质量）
 - API 成本覆盖（测试多模型调度）

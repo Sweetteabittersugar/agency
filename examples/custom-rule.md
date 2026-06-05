@@ -1,6 +1,6 @@
 # 自定义 Rule 示例
 
-展示如何为 everythingclaudecode 创建和注册自定义工程规范。
+展示如何为 agency-kit 创建和注册自定义工程规范。
 
 ## 1. 创建 Rule 文件
 

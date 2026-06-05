@@ -53,7 +53,7 @@
 ## 范围
 
 本安全策略涵盖：
-- `everythingclaudecode` 仓库中的所有代码和配置
+- `agency-kit` 仓库中的所有代码和配置
 - Maestro 调度引擎（`maestro/` 目录下的 Python 脚本）
 - 安装脚本（`install.sh`、`install.ps1`）
 - Agent 和 Skill 定义文件

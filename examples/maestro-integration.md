@@ -1,6 +1,6 @@
 # Maestro 集成示例
 
-展示如何将 everythingclaudecode 的 Maestro 调度引擎集成到你现有的 Claude Code 项目中。
+展示如何将 agency-kit 的 Maestro 调度引擎集成到你现有的 Claude Code 项目中。
 
 ## 最小集成
 
@@ -21,10 +21,10 @@ your-project/
 ### 1. 复制核心脚本
 
 ```bash
-# 从 everythingclaudecode 复制
-cp everythingclaudecode/maestro/dispatch.py your-project/maestro/
-cp everythingclaudecode/maestro/gateway.py your-project/maestro/
-cp everythingclaudecode/maestro/sandbox.py your-project/maestro/  # 可选：隔离执行
+# 从 agency-kit 复制
+cp agency-kit/maestro/dispatch.py your-project/maestro/
+cp agency-kit/maestro/gateway.py your-project/maestro/
+cp agency-kit/maestro/sandbox.py your-project/maestro/  # 可选：隔离执行
 ```
 
 ### 2. 创建最小 Agent
@@ -94,7 +94,7 @@ python maestro/gateway.py <task_id>
 复制所有 Maestro 脚本以获得完整功能：
 
 ```bash
-cp -r everythingclaudecode/maestro/ your-project/maestro/
+cp -r agency-kit/maestro/ your-project/maestro/
 ```
 
 ### 完整文件清单

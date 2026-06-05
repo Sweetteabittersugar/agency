@@ -1,4 +1,4 @@
-# everythingclaudecode
+# agency-kit
 
 > Claude Code 中文原生配置平台 —— Agent 调度、成本追踪、创作工作流，全部日常生产验证。
 
@@ -7,10 +7,10 @@
 
 ```bash
 # 方式一：一行安装（推荐）
-git clone https://github.com/Sweetteabittersugar/everythingclaudecode.git && cd everythingclaudecode && ./install.sh
+git clone https://github.com/Sweetteabittersugar/agency-kit.git && cd agency-kit && ./install.sh
 
 # 方式二：npm
-npm install -g everythingclaudecode
+npm install -g agency-kit
 
 # 方式三：只要一个 Agent（30 秒，无需安装脚本）
 cp agents/coder.md ~/.claude/agents/
@@ -19,7 +19,7 @@ cp agents/coder.md ~/.claude/agents/
 
 ## 这是什么
 
-**everythingclaudecode** 是一套 Claude Code 配置增强系统。它不是另一个 AI 工具——它是让你现有的 Claude Code 获得以下能力的**插件层**：
+**agency-kit** 是一套 Claude Code 配置增强系统。它不是另一个 AI 工具——它是让你现有的 Claude Code 获得以下能力的**插件层**：
 
 ```
 你的 Claude Code
@@ -34,7 +34,7 @@ cp agents/coder.md ~/.claude/agents/
 
 ## 为什么选它
 
-| | 只用 Claude Code | 用 ECC | **用 everythingclaudecode** |
+| | 只用 Claude Code | 用 ECC | **用 agency-kit** |
 |---|---|---|---|
 | 语言 | 英文 | 英文 | **中文原生** |
 | Agent 调度 | 手动 | 手动 | **自动路由矩阵（19个Agent）** |
@@ -49,8 +49,8 @@ cp agents/coder.md ~/.claude/agents/
 
 ```bash
 # 克隆仓库
-git clone https://github.com/Sweetteabittersugar/everythingclaudecode.git
-cd everythingclaudecode
+git clone https://github.com/Sweetteabittersugar/agency-kit.git
+cd agency-kit
 
 # 安装（自动链接到 Claude Code）
 ./install.sh        # macOS / Linux / Git Bash
@@ -88,7 +88,7 @@ cd everythingclaudecode
 
 ### Maestro — 多智能体调度引擎（独有）
 
-这是 everythingclaudecode 的核心差异化能力：
+这是 agency-kit 的核心差异化能力：
 
 ```
 你的任务 → 路由矩阵 → 自动选择 Agent → 沙箱执行 → 结果网关 → 你看到摘要
@@ -148,7 +148,7 @@ rules/
 ## 目录结构
 
 ```
-everythingclaudecode/
+agency-kit/
 ├── README.md               # 本文件
 ├── README.en.md             # English README
 ├── AGENTS.md                # Agent 路由矩阵与使用指南

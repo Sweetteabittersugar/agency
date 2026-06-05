@@ -1,10 +1,10 @@
 # CLAUDE.md
 
-> everythingclaudecode 自动加载入口。Claude Code 启动时读取此文件。
+> agency-kit 自动加载入口。Claude Code 启动时读取此文件。
 
 ## 这是什么
 
-你已安装 **everythingclaudecode** — 一套 Claude Code 中文原生配置增强系统。
+你已安装 **agency-kit** — 一套 Claude Code 中文原生配置增强系统。
 
 它为你提供：
 - **9 个专业子代理**（`agents/`）— 自动路由，无需手动分派

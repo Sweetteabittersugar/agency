@@ -1,6 +1,6 @@
 # 贡献指南
 
-> 感谢你对 everythingclaudecode 的关注！这份指南会帮你了解如何参与贡献。
+> 感谢你对 agency-kit 的关注！这份指南会帮你了解如何参与贡献。
 
 ## 参与方式
 
@@ -18,8 +18,8 @@
 **前提条件**：Python 3.10+、Git、Claude Code（已安装并配置）、Git Bash（Windows）或 bash（macOS/Linux）
 
 ```bash
-git clone https://github.com/Sweetteabittersugar/everythingclaudecode.git
-cd everythingclaudecode
+git clone https://github.com/Sweetteabittersugar/agency-kit.git
+cd agency-kit
 ./install.sh        # macOS / Linux / Git Bash（或 .\install.ps1 for Windows）
 python -m pytest tests/ -v   # 验证安装
 ```

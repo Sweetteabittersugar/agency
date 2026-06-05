@@ -1,10 +1,10 @@
-# everythingclaudecode for Gemini CLI
+# agency-kit for Gemini CLI
 
-Gemini CLI 适配层。将 everythingclaudecode 的 agents、rules、skills 映射到 Gemini CLI 的能力体系。
+Gemini CLI 适配层。将 agency-kit 的 agents、rules、skills 映射到 Gemini CLI 的能力体系。
 
 ## 概述
 
-Gemini CLI 使用不同的 Agent 和 skill 机制。everythingclaudecode 的大部分规范和自动化工作流可以通过适配在 Gemini CLI 中复用。
+Gemini CLI 使用不同的 Agent 和 skill 机制。agency-kit 的大部分规范和自动化工作流可以通过适配在 Gemini CLI 中复用。
 
 ## Agent 映射
 
@@ -45,7 +45,7 @@ Gemini CLI 使用 `agents` 配置定义子代理。以下是将 ECC Agent 映射
 
 ## Rule 映射
 
-everythingclaudecode 的规则文件可以复制到 Gemini CLI 的配置中：
+agency-kit 的规则文件可以复制到 Gemini CLI 的配置中：
 
 ```
 ~/.gemini/
@@ -102,7 +102,7 @@ Gemini CLI 使用 `commands` 和 `skills` 两个概念。ECC 的 skill 可移植
 ```markdown
 # /cost — 查看 API 费用
 
-调用 everythingclaudecode 的费用追踪脚本。
+调用 agency-kit 的费用追踪脚本。
 
 用法：
 - /cost          今日汇总
@@ -139,19 +139,19 @@ Gemini CLI 有自己的任务系统，Maestro 调度引擎的适配策略：
 
 ```bash
 # 1. 复制规则文件
-cp -r everythingclaudecode/rules/common ~/.gemini/rules/
-cp -r everythingclaudecode/rules/python ~/.gemini/rules/     # 按需
-cp -r everythingclaudecode/rules/typescript ~/.gemini/rules/ # 按需
-cp -r everythingclaudecode/rules/golang ~/.gemini/rules/     # 按需
+cp -r agency-kit/rules/common ~/.gemini/rules/
+cp -r agency-kit/rules/python ~/.gemini/rules/     # 按需
+cp -r agency-kit/rules/typescript ~/.gemini/rules/ # 按需
+cp -r agency-kit/rules/golang ~/.gemini/rules/     # 按需
 
 # 2. 配置 gemini.json（Agent 定义）
 # 参考上方 Agent 映射章节
 
 # 3. 复制费用追踪脚本
 mkdir -p your-project/maestro
-cp everythingclaudecode/maestro/cost-tracker.py your-project/maestro/
-cp everythingclaudecode/maestro/cost-analyzer.py your-project/maestro/
-cp everythingclaudecode/maestro/cost-writer.py your-project/maestro/
+cp agency-kit/maestro/cost-tracker.py your-project/maestro/
+cp agency-kit/maestro/cost-analyzer.py your-project/maestro/
+cp agency-kit/maestro/cost-writer.py your-project/maestro/
 
 # 4. 创建自定义命令
 mkdir -p ~/.gemini/commands

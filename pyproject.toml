@@ -1,5 +1,5 @@
 [project]
-name = "everythingclaudecode"
+name = "agency-kit"
 version = "0.1.0"
 description = "Chinese-native Claude Code configuration platform"
 requires-python = ">=3.10"

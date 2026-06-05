@@ -2,7 +2,7 @@
 
 ## Rules 是什么
 
-Rules 是始终生效的工程规范。Claude Code 在每次对话中自动加载 `rules/` 下的所有 `.md` 文件。everythingclaudecode 预设了 29 个规范文件，覆盖：
+Rules 是始终生效的工程规范。Claude Code 在每次对话中自动加载 `rules/` 下的所有 `.md` 文件。agency-kit 预设了 29 个规范文件，覆盖：
 
 - **通用规范**（`rules/common/`）：代码风格、安全、测试、Git、Agent 编排等
 - **语言规范**（`rules/python/`、`rules/golang/`、`rules/typescript/`）：各语言特定的编码标准

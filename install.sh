@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install.sh — everythingclaudecode 安装脚本
+# install.sh — agency-kit 安装脚本
 # 将 agents/skills/commands/hooks/rules 链接到用户 Claude Code 配置目录
 
 set -euo pipefail
@@ -27,7 +27,7 @@ CLAUDE_HOME="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 PROJECT_CLAUDE="${CLAUDE_PROJECT_DIR:-$(pwd)}/.claude"
 
 echo -e "${CYAN}╔══════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║   everythingclaudecode 安装程序      ║${NC}"
+echo -e "${CYAN}║   agency-kit 安装程序      ║${NC}"
 echo -e "${CYAN}╚══════════════════════════════════════╝${NC}"
 echo ""
 echo -e "Agent 层 ${GREEN}不需要任何密钥${NC} — 装上就能用。"

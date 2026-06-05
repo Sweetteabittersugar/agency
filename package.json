@@ -1,5 +1,5 @@
 {
-  "name": "everythingclaudecode",
+  "name": "agency-kit",
   "version": "0.1.0",
   "description": "中文原生 Claude Code 配置平台 — Agent 调度、成本追踪、创作工作流，日常生产验证",
   "publishConfig": {
@@ -28,11 +28,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Sweetteabittersugar/everythingclaudecode.git"
+    "url": "git+https://github.com/Sweetteabittersugar/agency-kit.git"
   },
-  "homepage": "https://github.com/Sweetteabittersugar/everythingclaudecode#readme",
+  "homepage": "https://github.com/Sweetteabittersugar/agency-kit#readme",
   "bugs": {
-    "url": "https://github.com/Sweetteabittersugar/everythingclaudecode/issues"
+    "url": "https://github.com/Sweetteabittersugar/agency-kit/issues"
   },
   "files": [
     "agents/",

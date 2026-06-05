@@ -2,7 +2,7 @@
 
 ## 什么是 Hooks
 
-Hooks 是 Claude Code 在特定时机自动执行的脚本。everythingclaudecode 提供 4 个 hook：
+Hooks 是 Claude Code 在特定时机自动执行的脚本。agency-kit 提供 4 个 hook：
 
 | Hook | 触发时机 | 功能 |
 |------|----------|------|

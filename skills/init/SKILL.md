@@ -15,7 +15,7 @@ description: "项目初始化。当用户说新建项目、初始化、创建项
 ### 1. 收集需求
 - 项目类型（Web/CLI/库/脚本）
 - 技术栈（Python/Go/TS 等）
-- 是否需要 everythingclaudecode 集成
+- 是否需要 agency-kit 集成
 
 ### 2. 创建骨架
 - 目录结构

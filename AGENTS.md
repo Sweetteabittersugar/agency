@@ -1,6 +1,6 @@
 # AGENTS.md — Agent 路由矩阵与使用指南
 
-> everythingclaudecode 的核心编排层。收到任务 → 路由矩阵判断 → 自动选择最佳 Agent。
+> agency-kit 的核心编排层。收到任务 → 路由矩阵判断 → 自动选择最佳 Agent。
 
 ## 路由矩阵
 

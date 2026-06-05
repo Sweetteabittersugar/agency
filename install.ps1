@@ -1,7 +1,7 @@
-# install.ps1 — everythingclaudecode Windows PowerShell 安装脚本
+# install.ps1 — agency-kit Windows PowerShell 安装脚本
 
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "   everythingclaudecode 安装程序" -ForegroundColor Cyan
+Write-Host "   agency-kit 安装程序" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 

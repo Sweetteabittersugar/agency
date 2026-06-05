@@ -1,4 +1,4 @@
-# everythingclaudecode
+# agency-kit
 
 > Chinese-native Claude Code configuration platform — Agent orchestration, cost tracking, creative workflows. Battle-tested in daily production.
 
@@ -6,15 +6,15 @@
 [![Version](https://img.shields.io/badge/version-0.1.0-green)](VERSION)
 
 ```bash
-git clone https://github.com/Sweetteabittersugar/everythingclaudecode.git
-cd everythingclaudecode && ./install.sh
+git clone https://github.com/Sweetteabittersugar/agency-kit.git
+cd agency-kit && ./install.sh
 ```
 
 * [中文 README](README.md)
 
 ## What is this
 
-**everythingclaudecode** is a Claude Code enhancement system. It's not another AI tool — it's a plugin layer that adds these capabilities to your existing Claude Code:
+**agency-kit** is a Claude Code enhancement system. It's not another AI tool — it's a plugin layer that adds these capabilities to your existing Claude Code:
 
 ```
 Your Claude Code
@@ -29,7 +29,7 @@ Your Claude Code
 
 ## Why this
 
-| | Vanilla Claude Code | ECC | **everythingclaudecode** |
+| | Vanilla Claude Code | ECC | **agency-kit** |
 |---|---|---|---|
 | Language | English | English | **Chinese-native** |
 | Agent routing | Manual | Manual | **Auto routing matrix** |
@@ -42,8 +42,8 @@ Your Claude Code
 
 ```bash
 # Clone
-git clone https://github.com/Sweetteabittersugar/everythingclaudecode.git
-cd everythingclaudecode
+git clone https://github.com/Sweetteabittersugar/agency-kit.git
+cd agency-kit
 
 # Install (auto-links to Claude Code)
 ./install.sh        # macOS / Linux / Git Bash

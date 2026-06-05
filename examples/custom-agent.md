@@ -1,6 +1,6 @@
 # 自定义 Agent 示例
 
-展示如何为 everythingclaudecode 创建和注册自定义 Agent。
+展示如何为 agency-kit 创建和注册自定义 Agent。
 
 ## 1. 创建 Agent 文件
 
