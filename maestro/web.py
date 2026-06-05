@@ -16,7 +16,7 @@ import sqlite3
 import threading
 from pathlib import Path
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "maestro"))
@@ -35,6 +35,18 @@ from main import route_task, load_agent, estimate_cost, ROUTING
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 DEEPSEEK_BASE = "https://api.deepseek.com"
 PORT = 8800
+
+
+# =====================================================================
+# Version
+# =====================================================================
+def _read_version():
+    vf = PROJECT_ROOT / "VERSION"
+    if vf.exists():
+        return vf.read_text(encoding="utf-8").strip()
+    return "0.1.0"
+
+AGENCY_VERSION = _read_version()
 
 
 # =====================================================================
@@ -66,15 +78,22 @@ body{
   position:sticky;top:0;z-index:100;
 }
 .app-title{font-size:18px;font-weight:700;color:var(--blue);letter-spacing:-0.5px;}
-.app-title span{color:var(--muted);font-weight:400;font-size:13px;margin-left:6px;}
+.app-title .ver{color:var(--muted);font-weight:400;font-size:11px;margin-left:6px;}
 
-.mode-switch{display:flex;gap:0;background:var(--bg);border-radius:6px;overflow:hidden;border:1px solid var(--border);}
-.mode-btn{
-  padding:6px 16px;font-size:13px;border:none;cursor:pointer;
-  background:transparent;color:var(--muted);transition:all .15s;
+.header-right{display:flex;align-items:center;gap:16px;}
+
+/* Mode Toggle Switch ============================================== */
+.mode-switch{
+  display:flex;align-items:center;gap:8px;background:var(--bg);
+  border:1px solid var(--border);border-radius:20px;padding:3px;
 }
-.mode-btn.active{background:var(--blue);color:#fff;}
-.mode-btn:hover:not(.active){color:var(--text);background:#1c2128;}
+.mode-option{
+  padding:5px 14px;font-size:12px;font-weight:500;border:none;cursor:pointer;
+  border-radius:17px;background:transparent;color:var(--muted);transition:all .2s;
+  white-space:nowrap;
+}
+.mode-option.active{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(88,166,255,.3);}
+.mode-option:hover:not(.active){color:var(--text);}
 
 /* ===== Layout =================================================== */
 .main-content{display:flex;height:calc(100vh - 53px);}
@@ -110,7 +129,7 @@ body{
   flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg);
 }
 .input-row{
-  display:flex;gap:10px;padding:16px 20px;border-bottom:1px solid var(--border);
+  display:flex;gap:10px;padding:16px 20px 8px;border-bottom:1px solid var(--border);
 }
 #task-input{
   flex:1;padding:12px 16px;background:var(--card);border:1px solid var(--border);
@@ -122,10 +141,24 @@ body{
 #send-btn{
   padding:10px 22px;background:var(--green);color:#fff;border:none;
   border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap;
-  transition:background .15s;
+  transition:all .15s;min-width:70px;
 }
 #send-btn:hover{background:var(--green-hover);}
 #send-btn:disabled{opacity:.5;cursor:not-allowed;}
+#send-btn.stopping{background:var(--red);}
+#send-btn.stopping:hover{background:#e04040;}
+
+/* Quick Buttons Row ----------------------------------------------- */
+.quick-row{
+  display:flex;gap:6px;padding:6px 20px 8px;flex-wrap:wrap;
+  border-bottom:1px solid var(--border);
+}
+.quick-btn{
+  padding:4px 12px;font-size:12px;border:1px solid var(--border);
+  border-radius:14px;background:transparent;color:var(--muted);cursor:pointer;
+  transition:all .15s;white-space:nowrap;
+}
+.quick-btn:hover{color:var(--blue);border-color:var(--blue);background:rgba(88,166,255,0.06);}
 
 .route-badge{
   display:flex;gap:12px;padding:8px 20px;font-size:12px;flex-wrap:wrap;
@@ -146,6 +179,17 @@ body{
 }
 #output-area .placeholder{color:var(--muted);font-family:inherit;font-size:14px;}
 .output-error{color:var(--red);}
+
+/* Copy Button ---------------------------------------------------- */
+.output-footer{
+  display:flex;justify-content:flex-end;padding:0 20px 12px;border-top:1px solid var(--border);padding-top:8px;
+}
+.copy-btn{
+  padding:6px 16px;font-size:12px;background:var(--card);color:var(--muted);
+  border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:all .15s;
+}
+.copy-btn:hover{color:var(--blue);border-color:var(--blue);}
+.copy-btn.copied{color:var(--green);border-color:var(--green);}
 
 /* Dev Mode ------------------------------------------------------- */
 #dev-mode{display:none;width:100%;flex-direction:column;}
@@ -191,7 +235,7 @@ body{
   max-height:300px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;
   color:var(--text);
 }
-.agent-test-row{display:flex;gap:8px;margin-top:10px;}
+.agent-test-row{display:flex;gap:8px;margin-top:10px;align-items:center;}
 .agent-test-input{
   flex:1;padding:8px 12px;background:var(--bg);border:1px solid var(--border);
   border-radius:6px;color:var(--text);font-size:13px;outline:none;font-family:inherit;
@@ -202,6 +246,11 @@ body{
   border-radius:6px;font-size:13px;cursor:pointer;white-space:nowrap;
 }
 .agent-test-btn:hover{background:var(--green-hover);}
+.agent-edit-btn{
+  padding:8px 16px;background:var(--blue);color:#fff;border:none;
+  border-radius:6px;font-size:13px;cursor:pointer;white-space:nowrap;margin-left:4px;
+}
+.agent-edit-btn:hover{opacity:.9;}
 
 /* Routes Tab ----------------------------------------------------- */
 .route-input-row{display:flex;gap:10px;margin-bottom:16px;}
@@ -253,6 +302,16 @@ body{
 .cost-model-table td{padding:8px 12px;border-bottom:1px solid var(--border);}
 .cost-model-table tr:hover td{background:#1c2128;}
 
+.cost-section-title{font-size:14px;font-weight:600;color:var(--text);margin:24px 0 12px;}
+.cost-recent-table{width:100%;border-collapse:collapse;font-size:12px;}
+.cost-recent-table th{
+  text-align:left;padding:6px 10px;border-bottom:2px solid var(--border);color:var(--muted);font-weight:600;font-size:11px;
+}
+.cost-recent-table td{padding:6px 10px;border-bottom:1px solid var(--border);}
+.cost-recent-table tr:hover td{background:#1c2128;}
+.cost-recent-table .time-col{white-space:nowrap;color:var(--muted);}
+.cost-recent-table .cost-col{color:var(--orange);font-weight:500;}
+
 /* Settings Tab --------------------------------------------------- */
 .settings-group{margin-bottom:24px;}
 .settings-group h3{font-size:14px;font-weight:600;color:var(--text);margin-bottom:10px;}
@@ -285,6 +344,49 @@ body{
 /* Loading overlay ------------------------------------------------- */
 .loading-text{color:var(--muted);font-size:13px;text-align:center;padding:20px;}
 
+/* Modal ---------------------------------------------------------- */
+.modal-overlay{
+  position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);
+  z-index:400;display:flex;align-items:center;justify-content:center;
+}
+.modal-overlay.hidden{display:none;}
+.modal-box{
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  width:90%;max-width:800px;max-height:85vh;display:flex;flex-direction:column;
+  box-shadow:0 8px 40px rgba(0,0,0,.5);
+}
+.modal-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 20px;border-bottom:1px solid var(--border);
+}
+.modal-header h3{font-size:16px;color:var(--blue);}
+.modal-close-btn{
+  background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;
+  padding:4px 8px;border-radius:4px;
+}
+.modal-close-btn:hover{color:var(--red);background:#1c2128;}
+.modal-body{flex:1;overflow-y:auto;padding:20px;}
+#modal-editor{
+  width:100%;min-height:400px;resize:vertical;background:var(--bg);
+  border:1px solid var(--border);border-radius:8px;color:var(--text);
+  font:13px/1.6 'Cascadia Code','Fira Code',monospace;padding:14px;outline:none;
+}
+#modal-editor:focus{border-color:var(--blue);}
+.modal-footer{
+  display:flex;gap:10px;justify-content:flex-end;
+  padding:14px 20px;border-top:1px solid var(--border);
+}
+.modal-save-btn{
+  padding:8px 20px;background:var(--green);color:#fff;border:none;
+  border-radius:6px;font-size:13px;cursor:pointer;transition:background .15s;
+}
+.modal-save-btn:hover{background:var(--green-hover);}
+.modal-cancel-btn{
+  padding:8px 20px;background:var(--bg);color:var(--text);border:1px solid var(--border);
+  border-radius:6px;font-size:13px;cursor:pointer;transition:all .15s;
+}
+.modal-cancel-btn:hover{border-color:var(--muted);}
+
 /* Scrollbar ------------------------------------------------------ */
 ::-webkit-scrollbar{width:6px;height:6px;}
 ::-webkit-scrollbar-track{background:transparent;}
@@ -295,7 +397,7 @@ body{
 @media(max-width:768px){
   .app-header{padding:10px 16px;}
   .app-title{font-size:16px;}
-  .mode-btn{padding:5px 12px;font-size:12px;}
+  .mode-option{padding:4px 10px;font-size:11px;}
   .history-panel{display:none;}
   .history-panel.mobile-open{
     display:flex;position:fixed;top:53px;left:0;bottom:0;z-index:200;
@@ -304,13 +406,15 @@ body{
   .history-toggle{
     display:flex!important;align-items:center;justify-content:center;
   }
-  .input-row{padding:12px 16px;}
+  .input-row{padding:12px 16px 6px;}
+  .quick-row{padding:4px 16px 8px;}
   #task-input{font-size:16px;}
   #output-area{padding:16px;}
   .agents-grid{grid-template-columns:1fr;}
   .cost-stats{flex-direction:column;}
   .tabs{overflow-x:auto;padding:0 8px;}
   .tab-btn{padding:10px 14px;font-size:12px;white-space:nowrap;}
+  .modal-box{width:95%;max-height:90vh;}
 }
 
 .history-toggle{
@@ -324,11 +428,12 @@ body{
 /* Toast ---------------------------------------------------------- */
 .toast{
   position:fixed;bottom:20px;right:20px;padding:10px 20px;border-radius:8px;
-  font-size:13px;color:#fff;z-index:300;animation:toastIn .3s ease;
+  font-size:13px;color:#fff;z-index:500;animation:toastIn .3s ease;
   box-shadow:0 4px 12px rgba(0,0,0,.4);
 }
 .toast.error{background:var(--red);}
 .toast.info{background:var(--blue);}
+.toast.success{background:var(--green);}
 @keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 </style>
 </head>
@@ -336,10 +441,12 @@ body{
 
 <!-- ============ HEADER ============ -->
 <header class="app-header">
-  <div class="app-title">Agency<span>Agent Test Console</span></div>
-  <div class="mode-switch">
-    <button class="mode-btn active" data-mode="user" id="mode-user-btn">使用者</button>
-    <button class="mode-btn" data-mode="dev" id="mode-dev-btn">开发者</button>
+  <div class="app-title">Agency<span class="ver" id="version-tag">v0.1.0</span></div>
+  <div class="header-right">
+    <div class="mode-switch">
+      <button class="mode-option active" data-mode="user" id="mode-user-btn">使用者</button>
+      <button class="mode-option" data-mode="dev" id="mode-dev-btn">开发者</button>
+    </div>
   </div>
 </header>
 
@@ -359,8 +466,19 @@ body{
         <textarea id="task-input" placeholder="输入任何任务，系统自动分配 Agent..." rows="1"></textarea>
         <button id="send-btn">发送</button>
       </div>
+      <div class="quick-row" id="quick-row">
+        <button class="quick-btn" data-prompt="帮我写一段 Python 代码来实现一个简单的 REST API">写代码</button>
+        <button class="quick-btn" data-prompt="审查这段代码的安全性和性能问题">审查代码</button>
+        <button class="quick-btn" data-prompt="这段代码运行时报错了，帮我找找 Bug">找Bug</button>
+        <button class="quick-btn" data-prompt="帮我为这个模块编写全面的单元测试">写测试</button>
+        <button class="quick-btn" data-prompt="帮我解释一下这段代码的逻辑和流程">解释代码</button>
+        <button class="quick-btn" data-prompt="帮我优化这段代码的性能，减少不必要的计算和内存分配">优化性能</button>
+      </div>
       <div class="route-badge" id="route-badge"></div>
       <div id="output-area"><span class="placeholder">等待输入任务...</span></div>
+      <div class="output-footer" id="output-footer" style="display:none;">
+        <button class="copy-btn" id="copy-btn" onclick="copyOutput()">复制结果</button>
+      </div>
     </div>
   </div>
 
@@ -399,6 +517,13 @@ body{
         <thead><tr><th>模型</th><th>调用次数</th><th>费用 (USD)</th></tr></thead>
         <tbody id="cost-model-tbody"></tbody>
       </table>
+      <div class="cost-section-title">最近调用记录</div>
+      <div style="max-height:400px;overflow-y:auto;">
+        <table class="cost-recent-table">
+          <thead><tr><th>时间</th><th>Agent</th><th>模型</th><th>输入 Token</th><th>输出 Token</th><th>费用</th><th>耗时</th></tr></thead>
+          <tbody id="cost-recent-tbody"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px;">加载中...</td></tr></tbody>
+        </table>
+      </div>
     </div>
 
     <!-- Settings Tab -->
@@ -427,6 +552,16 @@ body{
         </div>
       </div>
       <div class="settings-group">
+        <h3>系统信息</h3>
+        <div class="setting-row">
+          <div>
+            <div class="sr-label">版本</div>
+            <div class="sr-desc">Agency 当前版本号</div>
+          </div>
+          <span style="color:var(--blue);font-weight:600;font-size:14px;" id="settings-version">v0.1.0</span>
+        </div>
+      </div>
+      <div class="settings-group">
         <h3>提示</h3>
         <div class="setting-row" style="color:var(--muted);font-size:13px;">
           修改 .env 后需重启 <code style="color:var(--blue);">python maestro/web.py</code> 使配置生效。
@@ -436,6 +571,23 @@ body{
 
   </div><!-- /dev-mode -->
 </div><!-- /main-content -->
+
+<!-- ============ EDIT MODAL ============ -->
+<div class="modal-overlay hidden" id="edit-modal-overlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="modal-title">编辑 Agent</h3>
+      <button class="modal-close-btn" onclick="closeEditModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <textarea id="modal-editor" placeholder="加载中..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-cancel-btn" onclick="closeEditModal()">取消</button>
+      <button class="modal-save-btn" onclick="saveAgent()">保存</button>
+    </div>
+  </div>
+</div>
 
 <!-- ============ SCRIPT ============ -->
 <script>
@@ -463,6 +615,8 @@ const taskInput = $('#task-input');
 const sendBtn = $('#send-btn');
 const routeBadge = $('#route-badge');
 const outputArea = $('#output-area');
+const outputFooter = $('#output-footer');
+const copyBtn = $('#copy-btn');
 const historyList = $('#history-list');
 const historyPanel = $('#history-panel');
 const historyToggle = $('#history-toggle');
@@ -471,6 +625,16 @@ const historyClear = $('#history-clear');
 // Dev mode tabs
 const tabBtns = $$('.tab-btn');
 const tabPanels = $$('.tab-panel');
+
+// Version
+const versionTag = $('#version-tag');
+const settingsVersion = $('#settings-version');
+
+// Edit modal
+const editModalOverlay = $('#edit-modal-overlay');
+const modalEditor = $('#modal-editor');
+const modalTitle = $('#modal-title');
+let editingAgentName = '';
 
 // ===================================================================
 // Mode Switching
@@ -486,6 +650,7 @@ function switchMode(mode) {
       devMode.dataset.loaded = '1';
       loadAgents();
       loadCost();
+      loadCostRecent();
       loadSettings();
     }
   } else {
@@ -510,6 +675,8 @@ tabBtns.forEach(btn => {
     btn.classList.add('active');
     tabPanels.forEach(p => p.classList.remove('active'));
     $('#tab-' + tab).classList.add('active');
+    // Load cost recent on switch
+    if (tab === 'cost') loadCostRecent();
   });
 });
 
@@ -579,6 +746,7 @@ function renderHistory() {
         taskInput.value = h.task;
         outputArea.innerHTML = '<span class="placeholder">点击发送重新执行此任务...</span>';
         routeBadge.innerHTML = '';
+        outputFooter.style.display = 'none';
         sendBtn.click();
       }
     });
@@ -606,9 +774,49 @@ document.addEventListener('click', (e) => {
 });
 
 // ===================================================================
-// User Mode: Chat
+// Quick Buttons
+// ===================================================================
+document.querySelectorAll('.quick-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (isStreaming) return;
+    taskInput.value = btn.dataset.prompt;
+    taskInput.style.height = 'auto';
+    taskInput.style.height = Math.min(taskInput.scrollHeight, 120) + 'px';
+    sendTask();
+  });
+});
+
+// ===================================================================
+// Copy Output
+// ===================================================================
+function copyOutput() {
+  const text = outputArea.textContent || '';
+  if (!text.trim()) return;
+  navigator.clipboard.writeText(text).then(() => {
+    copyBtn.textContent = '已复制';
+    copyBtn.classList.add('copied');
+    setTimeout(() => {
+      copyBtn.textContent = '复制结果';
+      copyBtn.classList.remove('copied');
+    }, 2000);
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast('已复制到剪贴板', 'success');
+  });
+}
+
+// ===================================================================
+// User Mode: Chat (with AbortController support)
 // ===================================================================
 let isStreaming = false;
+let abortController = null;
 
 taskInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
@@ -623,17 +831,58 @@ taskInput.addEventListener('input', () => {
   taskInput.style.height = Math.min(taskInput.scrollHeight, 120) + 'px';
 });
 
-sendBtn.addEventListener('click', sendTask);
+sendBtn.addEventListener('click', () => {
+  if (isStreaming) {
+    // 正在流式输出中，点击 = 停止
+    stop();
+  } else {
+    sendTask();
+  }
+});
+
+function setSendingUI(sending) {
+  if (sending) {
+    sendBtn.textContent = '停止';
+    sendBtn.classList.add('stopping');
+    sendBtn.disabled = false;
+    taskInput.disabled = true;
+  } else {
+    sendBtn.textContent = '发送';
+    sendBtn.classList.remove('stopping');
+    sendBtn.disabled = false;
+    taskInput.disabled = false;
+  }
+}
+
+function stop() {
+  if (abortController) {
+    abortController.abort();
+    abortController = null;
+  }
+  isStreaming = false;
+  setSendingUI(false);
+  outputArea.textContent += '\n\n[已停止]';
+  outputArea.scrollTop = outputArea.scrollHeight;
+  outputFooter.style.display = 'block';
+  setTimeout(() => taskInput.focus(), 100);
+}
 
 async function sendTask() {
   if (isStreaming) return;
   const task = taskInput.value.trim();
   if (!task) return;
 
+  // Clean up previous state
+  if (abortController) {
+    abortController.abort();
+    abortController = null;
+  }
+
   isStreaming = true;
-  sendBtn.disabled = true;
-  taskInput.disabled = true;
+  setSendingUI(true);
+  abortController = new AbortController();
   outputArea.innerHTML = '<span class="placeholder"><span class="spinner"></span>路由中...</span>';
+  outputFooter.style.display = 'none';
   routeBadge.innerHTML = '';
 
   const startTime = performance.now();
@@ -645,7 +894,8 @@ async function sendTask() {
     const routeResp = await fetch('/api/route', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ task })
+      body: JSON.stringify({ task }),
+      signal: abortController.signal
     });
     const routeData = await routeResp.json();
     if (routeData.error) {
@@ -665,7 +915,8 @@ async function sendTask() {
     const chatResp = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ task, agent })
+      body: JSON.stringify({ task, agent }),
+      signal: abortController.signal
     });
 
     if (!chatResp.ok) {
@@ -691,6 +942,12 @@ async function sendTask() {
         if (line.startsWith('data: ')) {
           const data = line.slice(6);
           if (data === '[DONE]') break;
+          if (data === '[CANCELLED]') {
+            fullOutput += '\n\n[已停止]';
+            outputArea.textContent = fullOutput;
+            outputArea.scrollTop = outputArea.scrollHeight;
+            break;
+          }
           try {
             const chunk = JSON.parse(data);
             const content = chunk.choices?.[0]?.delta?.content;
@@ -730,19 +987,135 @@ async function sendTask() {
     // Save to history
     addHistory(task, agent, model, fullOutput.substring(0, 500), elapsed + 's', '$' + cost);
 
+    // Show copy button
+    outputFooter.style.display = 'flex';
+
   } catch (e) {
-    outputArea.innerHTML = '<span class="output-error">请求失败: ' + escHtml(e.message) + '</span>';
+    if (e.name === 'AbortError') {
+      outputArea.textContent += '\n\n[已停止]';
+    } else {
+      outputArea.innerHTML = '<span class="output-error">请求失败: ' + escHtml(e.message) + '</span>';
+    }
   } finally {
     isStreaming = false;
-    sendBtn.disabled = false;
-    taskInput.disabled = false;
+    abortController = null;
+    setSendingUI(false);
     taskInput.focus();
     taskInput.style.height = 'auto';
+    outputFooter.style.display = (outputArea.textContent && outputArea.textContent.trim()) ? 'flex' : 'none';
   }
 }
 
 // ===================================================================
-// Dev Mode: Agents Tab
+// User Mode: sendTaskDirect (for agent test button, with abort support)
+// ===================================================================
+async function sendTaskDirect(task, agent) {
+  if (isStreaming) return;
+
+  if (abortController) {
+    abortController.abort();
+    abortController = null;
+  }
+
+  isStreaming = true;
+  setSendingUI(true);
+  abortController = new AbortController();
+  outputArea.innerHTML = '<span class="placeholder"><span class="spinner"></span>直接调用 ' + escHtml(agent) + '...</span>';
+  outputFooter.style.display = 'none';
+  routeBadge.innerHTML = '';
+
+  const startTime = performance.now();
+  let model = '';
+
+  try {
+    // Use /api/route just to get model info
+    const routeResp = await fetch('/api/route', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task }),
+      signal: abortController.signal
+    });
+    const routeData = await routeResp.json();
+    model = routeData.model || 'deepseek-chat';
+
+    routeBadge.innerHTML =
+      '<span class="rb-agent">Agent: ' + escHtml(agent) + ' (直接指定)</span>' +
+      '<span class="rb-model">模型: ' + escHtml(model) + '</span>';
+
+    outputArea.textContent = '';
+
+    const chatResp = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task, agent }),
+      signal: abortController.signal
+    });
+
+    if (!chatResp.ok) {
+      const errText = await chatResp.text();
+      outputArea.innerHTML = '<span class="output-error">API 错误: ' + escHtml(errText.substring(0, 200)) + '</span>';
+      return;
+    }
+
+    const reader = chatResp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullOutput = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          if (data === '[DONE]') break;
+          if (data === '[CANCELLED]') {
+            fullOutput += '\n\n[已停止]';
+            outputArea.textContent = fullOutput;
+            outputArea.scrollTop = outputArea.scrollHeight;
+            break;
+          }
+          try {
+            const chunk = JSON.parse(data);
+            const content = chunk.choices?.[0]?.delta?.content;
+            if (content) {
+              fullOutput += content;
+              outputArea.textContent = fullOutput;
+              outputArea.scrollTop = outputArea.scrollHeight;
+            }
+          } catch(e) {}
+        }
+      }
+    }
+
+    const elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
+    routeBadge.innerHTML +=
+      '<span class="rb-time">' + elapsed + 's</span>';
+
+    addHistory(task, agent, model, fullOutput.substring(0, 500), elapsed + 's', '?');
+
+    outputFooter.style.display = 'flex';
+
+  } catch(e) {
+    if (e.name === 'AbortError') {
+      outputArea.textContent += '\n\n[已停止]';
+    } else {
+      outputArea.innerHTML = '<span class="output-error">请求失败: ' + escHtml(e.message) + '</span>';
+    }
+  } finally {
+    isStreaming = false;
+    abortController = null;
+    setSendingUI(false);
+    taskInput.focus();
+    outputFooter.style.display = (outputArea.textContent && outputArea.textContent.trim()) ? 'flex' : 'none';
+  }
+}
+
+// ===================================================================
+// Dev Mode: Agents Tab (with edit button)
 // ===================================================================
 let agentsData = [];
 
@@ -782,6 +1155,7 @@ function renderAgents(agents) {
         '<div class="agent-test-row">' +
           '<input class="agent-test-input" placeholder="输入测试任务发给 ' + escHtml(a.name) + '...">' +
           '<button class="agent-test-btn">测试</button>' +
+          '<button class="agent-edit-btn">编辑</button>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -790,7 +1164,7 @@ function renderAgents(agents) {
   // Click to expand/collapse
   grid.querySelectorAll('.agent-card').forEach(card => {
     card.addEventListener('click', (e) => {
-      // Don't toggle if clicking on test input or button
+      // Don't toggle if clicking on test input, buttons
       if (e.target.closest('.agent-test-row')) return;
       const wasExpanded = card.classList.contains('expanded');
       // Collapse all
@@ -812,91 +1186,83 @@ function renderAgents(agents) {
       // Temporarily override routing to use this agent
       await sendTaskDirect(t, card.dataset.name);
     });
+
+    // Edit button
+    const editBtn = card.querySelector('.agent-edit-btn');
+    editBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      openEditModal(card.dataset.name);
+    });
   });
 }
 
-async function sendTaskDirect(task, agent) {
-  if (isStreaming) return;
-  isStreaming = true;
-  sendBtn.disabled = true;
-  taskInput.disabled = true;
-  outputArea.innerHTML = '<span class="placeholder"><span class="spinner"></span>直接调用 ' + escHtml(agent) + '...</span>';
-  routeBadge.innerHTML = '';
-
-  const startTime = performance.now();
-  let model = '';
+// ===================================================================
+// Agent Edit Modal
+// ===================================================================
+async function openEditModal(name) {
+  editingAgentName = name;
+  modalTitle.textContent = '编辑 Agent: ' + name;
+  modalEditor.value = '加载中...';
+  modalEditor.disabled = true;
+  editModalOverlay.classList.remove('hidden');
 
   try {
-    // Use /api/route just to get model info
-    const routeResp = await fetch('/api/route', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ task })
-    });
-    const routeData = await routeResp.json();
-    model = routeData.model || 'deepseek-chat';
-
-    routeBadge.innerHTML =
-      '<span class="rb-agent">Agent: ' + escHtml(agent) + ' (直接指定)</span>' +
-      '<span class="rb-model">模型: ' + escHtml(model) + '</span>';
-
-    outputArea.textContent = '';
-
-    const chatResp = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ task, agent })
-    });
-
-    if (!chatResp.ok) {
-      const errText = await chatResp.text();
-      outputArea.innerHTML = '<span class="output-error">API 错误: ' + escHtml(errText.substring(0, 200)) + '</span>';
-      return;
+    const resp = await fetch('/api/agent-content?name=' + encodeURIComponent(name));
+    const data = await resp.json();
+    if (data.error) {
+      modalEditor.value = '加载失败: ' + data.error;
+    } else {
+      modalEditor.value = data.content || '';
     }
-
-    const reader = chatResp.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let fullOutput = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6);
-          if (data === '[DONE]') break;
-          try {
-            const chunk = JSON.parse(data);
-            const content = chunk.choices?.[0]?.delta?.content;
-            if (content) {
-              fullOutput += content;
-              outputArea.textContent = fullOutput;
-              outputArea.scrollTop = outputArea.scrollHeight;
-            }
-          } catch(e) {}
-        }
-      }
-    }
-
-    const elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
-    routeBadge.innerHTML +=
-      '<span class="rb-time">' + elapsed + 's</span>';
-
-    addHistory(task, agent, model, fullOutput.substring(0, 500), elapsed + 's', '?');
-
   } catch(e) {
-    outputArea.innerHTML = '<span class="output-error">请求失败: ' + escHtml(e.message) + '</span>';
+    modalEditor.value = '加载失败: ' + e.message;
   } finally {
-    isStreaming = false;
-    sendBtn.disabled = false;
-    taskInput.disabled = false;
-    taskInput.focus();
+    modalEditor.disabled = false;
+    modalEditor.focus();
   }
 }
+
+function closeEditModal() {
+  editModalOverlay.classList.add('hidden');
+  editingAgentName = '';
+  modalEditor.value = '';
+}
+
+async function saveAgent() {
+  if (!editingAgentName) return;
+  const content = modalEditor.value;
+
+  try {
+    const resp = await fetch('/api/agent-save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: editingAgentName, content: content })
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      toast('Agent "' + editingAgentName + '" 已保存', 'success');
+      closeEditModal();
+      // Reload agents to refresh
+      loadAgents();
+    } else {
+      toast('保存失败: ' + (data.error || '未知错误'), 'error');
+    }
+  } catch(e) {
+    toast('保存失败: ' + e.message, 'error');
+  }
+}
+
+// Close modal on overlay click
+editModalOverlay.addEventListener('click', (e) => {
+  if (e.target === editModalOverlay) closeEditModal();
+});
+
+// Close modal on Escape
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !editModalOverlay.classList.contains('hidden')) {
+    closeEditModal();
+  }
+});
 
 // ===================================================================
 // Dev Mode: Routes Tab
@@ -983,6 +1349,48 @@ async function loadCost() {
   }
 }
 
+async function loadCostRecent() {
+  try {
+    const tbody = $('#cost-recent-tbody');
+    const resp = await fetch('/api/cost-recent');
+    const rows = await resp.json();
+
+    if (!rows || rows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px;">暂无记录</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = rows.map(r =>
+      '<tr>' +
+        '<td class="time-col">' + escHtml(r.time || '') + '</td>' +
+        '<td>' + escHtml(r.channel || '') + '</td>' +
+        '<td>' + escHtml(r.model || '') + '</td>' +
+        '<td>' + (r.in_tokens || 0) + '</td>' +
+        '<td>' + (r.out_tokens || 0) + '</td>' +
+        '<td class="cost-col">$' + ((r.cost_usd || 0)).toFixed(6) + '</td>' +
+        '<td>' + (r.duration_s || 0) + 's</td>' +
+      '</tr>'
+    ).join('');
+  } catch(e) {
+    $('#cost-recent-tbody').innerHTML = '<tr><td colspan="7" class="output-error">加载失败: ' + escHtml(e.message) + '</td></tr>';
+  }
+}
+
+// ===================================================================
+// Version
+// ===================================================================
+async function loadVersion() {
+  try {
+    const resp = await fetch('/api/version');
+    const data = await resp.json();
+    const v = 'v' + (data.version || '0.1.0');
+    if (versionTag) versionTag.textContent = v;
+    if (settingsVersion) settingsVersion.textContent = v;
+  } catch(e) {
+    // ignore
+  }
+}
+
 // ===================================================================
 // Dev Mode: Settings Tab
 // ===================================================================
@@ -1041,6 +1449,7 @@ function escHtml(s) {
 // ===================================================================
 // Init
 // ===================================================================
+loadVersion();
 renderHistory();
 taskInput.focus();
 </script>
@@ -1116,10 +1525,53 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as e:
                 self.send_json({"error": str(e)})
 
+        elif parsed.path == "/api/cost-recent":
+            try:
+                db_path = PROJECT_ROOT / "maestro" / "cost.db"
+                if db_path.exists():
+                    conn = sqlite3.connect(str(db_path))
+                    rows = conn.execute(
+                        "SELECT time, channel, model, in_tokens, out_tokens, cost_usd, duration_s "
+                        "FROM costs ORDER BY id DESC LIMIT 20"
+                    ).fetchall()
+                    conn.close()
+                    result = [
+                        {
+                            "time": r[0],
+                            "channel": r[1],
+                            "model": r[2],
+                            "in_tokens": r[3],
+                            "out_tokens": r[4],
+                            "cost_usd": r[5],
+                            "duration_s": r[6],
+                        }
+                        for r in rows
+                    ]
+                    self.send_json(result)
+                else:
+                    self.send_json([])
+            except Exception as e:
+                self.send_json({"error": str(e)})
+
         elif parsed.path == "/api/settings":
             self.send_json({
                 "deepseek_key_configured": bool(DEEPSEEK_API_KEY),
             })
+
+        elif parsed.path == "/api/version":
+            self.send_json({"version": AGENCY_VERSION})
+
+        elif parsed.path.startswith("/api/agent-content"):
+            qs = parse_qs(parsed.query)
+            agent_name = qs.get("name", [""])[0]
+            agent_file = PROJECT_ROOT / "agents" / f"{agent_name}.md"
+            if agent_file.exists():
+                self.send_json({
+                    "name": agent_name,
+                    "content": agent_file.read_text(encoding="utf-8"),
+                })
+            else:
+                self.send_json({"error": "not found"})
 
         else:
             self.send_response(404)
@@ -1189,17 +1641,47 @@ class Handler(BaseHTTPRequestHandler):
                         continue
                     line = line.decode("utf-8")
                     if line.startswith("data: "):
-                        self.wfile.write(f"{line}\n\n".encode("utf-8"))
-                        self.wfile.flush()
+                        try:
+                            self.wfile.write(f"{line}\n\n".encode("utf-8"))
+                            self.wfile.flush()
+                        except (BrokenPipeError, ConnectionResetError):
+                            break  # 客户端断开（点了停止）
                 self.wfile.write("data: [DONE]\n\n".encode("utf-8"))
                 self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError):
+                pass  # 用户主动停止，正常
             except Exception as e:
-                self.wfile.write(
-                    f'data: {{"error": "{str(e)}"}}\n\n'.encode("utf-8")
-                )
+                try:
+                    self.wfile.write(
+                        f'data: {{"error": "{str(e)}"}}\n\n'.encode("utf-8")
+                    )
+                    self.wfile.flush()
+                except Exception:
+                    pass
 
         elif parsed.path == "/api/stat":
-            self.send_json({"elapsed": "?", "cost": "?"})
+            task = body.get("task", "")
+            agent = body.get("agent", "coder")
+            try:
+                db_path = PROJECT_ROOT / "maestro" / "cost.db"
+                if db_path.exists():
+                    conn = sqlite3.connect(str(db_path))
+                    row = conn.execute(
+                        "SELECT cost_usd, duration_s FROM costs WHERE channel=? ORDER BY id DESC LIMIT 1",
+                        (agent,),
+                    ).fetchone()
+                    conn.close()
+                    if row:
+                        self.send_json({
+                            "elapsed": f"{row[1] or 0:.1f}",
+                            "cost": f"{row[0] or 0:.6f}",
+                        })
+                    else:
+                        self.send_json({"elapsed": "?", "cost": "?"})
+                else:
+                    self.send_json({"elapsed": "?", "cost": "?"})
+            except Exception:
+                self.send_json({"elapsed": "?", "cost": "?"})
 
         # --- 新增端点 ---
         elif parsed.path == "/api/route-test":
@@ -1216,6 +1698,16 @@ class Handler(BaseHTTPRequestHandler):
                 })
             results.sort(key=lambda x: x["score"], reverse=True)
             self.send_json(results)
+
+        elif parsed.path == "/api/agent-save":
+            name = body.get("name", "")
+            content = body.get("content", "")
+            if not name:
+                self.send_json({"ok": False, "error": "name is required"})
+                return
+            agent_file = PROJECT_ROOT / "agents" / f"{name}.md"
+            agent_file.write_text(content, encoding="utf-8")
+            self.send_json({"ok": True})
 
         else:
             self.send_response(404)
@@ -1235,5 +1727,5 @@ class Handler(BaseHTTPRequestHandler):
 # Entry point
 # =====================================================================
 if __name__ == "__main__":
-    print(f"\n  Agency Web UI  ->  http://localhost:{PORT}\n")
+    print(f"\n  Agency Web UI v{AGENCY_VERSION}  ->  http://localhost:{PORT}\n")
     HTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
