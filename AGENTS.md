@@ -13,7 +13,10 @@
 | 审查 Go | `go-reviewer` | Go 生态专项审查 |
 | 审查 TypeScript/React/Node | `typescript-reviewer` | TS/JS 生态专项审查 |
 | 安全/审计/漏洞 | `security-reviewer` | 深度安全审查 |
+| 数据库/SQL/Schema/索引 | `database-reviewer` | SQL 性能与 Schema 审查 |
 | 测试/验证/跑/确认/test | `test-runner` | 执行测试，报告结果 |
+| TDD/测试先行/红绿重构 | `tdd-guide` | TDD 五步循环向导 |
+| E2E/端到端/Playwright/浏览器测试 | `e2e-runner` | Playwright 端到端测试 |
 | 构建报错/编译失败/依赖冲突 | `build-error-resolver` | 构建错误增量修复 |
 | 写小说/章节/大纲/人物/世界观 | `webnovel-writer` | 创作工作流 |
 | 清理死代码/重复/未用依赖 | `refactor-cleaner` | 安全删除，不做功能重构 |
@@ -21,6 +24,12 @@
 | 通用/整理/配置/杂务 | `general-worker` | 非专业领域任务 |
 | 规划/设计/架构/方案 | `planner` | 先规划再执行 |
 | 查费用/用量/成本/@cost | `cost-analyst` | API 费用分析 |
+| 性能/瓶颈/优化/慢查询 | `performance-optimizer` | 性能瓶颈分析与优化 |
+| 调度/编排/多Agent协作/拆解任务 | `orchestrator` | 复杂任务拆解与多Agent协作 |
+| 产品决策/功能范围/优先级/验收 | `ceo` | 产品决策与验收 |
+| QA/质量/边界/回归 | `qa` | 测试策略与质量保证 |
+| CI/CD/Docker/部署/环境 | `devops` | CI/CD 与基础设施 |
+| 发版/发布/CHANGELOG/版本管理 | `release-manager` | 版本管理与发布检查 |
 | 模糊/复合意图 | 反问用户 | 不猜测，先澄清 |
 
 ## 任务分级
@@ -64,8 +73,11 @@
 | `go-reviewer.md` | Go 审查员 | 生产 | sonnet |
 | `typescript-reviewer.md` | TypeScript 审查员 | 生产 | sonnet |
 | `security-reviewer.md` | 安全审计员 | 生产 | sonnet |
+| `database-reviewer.md` | 数据库审查员 | 生产 | sonnet |
 | `explorer.md` | 代码探索员 | 生产 | haiku |
 | `test-runner.md` | 测试执行员 | 生产 | haiku |
+| `tdd-guide.md` | TDD 向导 | 生产 | sonnet |
+| `e2e-runner.md` | E2E 测试专家 | 生产 | sonnet |
 | `build-error-resolver.md` | 构建错误修复 | 生产 | sonnet |
 | `general-worker.md` | 通用执行者 | 生产 | sonnet |
 | `webnovel-writer.md` | 小说作家 | 生产 | opus |
@@ -73,6 +85,12 @@
 | `cost-analyst.md` | 费用分析师 | 生产 | haiku |
 | `doc-updater.md` | 文档更新员 | 生产 | haiku |
 | `refactor-cleaner.md` | 代码清理员 | 生产 | sonnet |
+| `performance-optimizer.md` | 性能优化师 | 生产 | sonnet |
+| `orchestrator.md` | 总调度 | 生产 | sonnet |
+| `ceo.md` | 产品决策者 | 生产 | sonnet |
+| `qa.md` | QA 工程师 | 生产 | sonnet |
+| `devops.md` | DevOps 工程师 | 生产 | sonnet |
+| `release-manager.md` | 发布经理 | 生产 | haiku |
 
 ## 混合派发策略
 

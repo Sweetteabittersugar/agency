@@ -28,7 +28,7 @@ assignees: ""
 
 - OS: [e.g. Windows 11, macOS 15]
 - Claude Code 版本: [e.g. 1.0.0]
-- everythingclaudecode 版本: [e.g. 0.1.0]
+- agency-kit 版本: [e.g. 0.1.0]
 
 ## 补充信息
 
