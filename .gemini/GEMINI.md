@@ -139,19 +139,19 @@ Gemini CLI 有自己的任务系统，Maestro 调度引擎的适配策略：
 
 ```bash
 # 1. 复制规则文件
-cp -r agency-kit/rules/common ~/.gemini/rules/
-cp -r agency-kit/rules/python ~/.gemini/rules/     # 按需
-cp -r agency-kit/rules/typescript ~/.gemini/rules/ # 按需
-cp -r agency-kit/rules/golang ~/.gemini/rules/     # 按需
+cp -r agency/rules/common ~/.gemini/rules/
+cp -r agency/rules/python ~/.gemini/rules/     # 按需
+cp -r agency/rules/typescript ~/.gemini/rules/ # 按需
+cp -r agency/rules/golang ~/.gemini/rules/     # 按需
 
 # 2. 配置 gemini.json（Agent 定义）
 # 参考上方 Agent 映射章节
 
 # 3. 复制费用追踪脚本
 mkdir -p your-project/maestro
-cp agency-kit/maestro/cost-tracker.py your-project/maestro/
-cp agency-kit/maestro/cost-analyzer.py your-project/maestro/
-cp agency-kit/maestro/cost-writer.py your-project/maestro/
+cp agency/maestro/cost-tracker.py your-project/maestro/
+cp agency/maestro/cost-analyzer.py your-project/maestro/
+cp agency/maestro/cost-writer.py your-project/maestro/
 
 # 4. 创建自定义命令
 mkdir -p ~/.gemini/commands

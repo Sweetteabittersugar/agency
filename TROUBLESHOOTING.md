@@ -73,4 +73,4 @@ python maestro/cost-tracker.py
 ## 反馈
 
 如果以上没有解决你的问题，请提交 Issue：
-https://github.com/Sweetteabittersugar/agency-kit/issues
+https://github.com/Sweetteabittersugar/agency/issues

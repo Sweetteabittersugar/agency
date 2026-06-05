@@ -7,7 +7,7 @@
 
 ```bash
 # 方式一：一行安装（推荐）
-git clone https://github.com/Sweetteabittersugar/agency-kit.git && cd agency-kit && ./install.sh
+git clone https://github.com/Sweetteabittersugar/agency.git && cd agency && ./install.sh
 
 # 方式二：npm
 npm install -g agency-kit
@@ -49,8 +49,8 @@ cp agents/coder.md ~/.claude/agents/
 
 ```bash
 # 克隆仓库
-git clone https://github.com/Sweetteabittersugar/agency-kit.git
-cd agency-kit
+git clone https://github.com/Sweetteabittersugar/agency.git
+cd agency
 
 # 安装（自动链接到 Claude Code）
 ./install.sh        # macOS / Linux / Git Bash

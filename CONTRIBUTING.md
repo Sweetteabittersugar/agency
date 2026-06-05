@@ -18,8 +18,8 @@
 **前提条件**：Python 3.10+、Git、Claude Code（已安装并配置）、Git Bash（Windows）或 bash（macOS/Linux）
 
 ```bash
-git clone https://github.com/Sweetteabittersugar/agency-kit.git
-cd agency-kit
+git clone https://github.com/Sweetteabittersugar/agency.git
+cd agency
 ./install.sh        # macOS / Linux / Git Bash（或 .\install.ps1 for Windows）
 python -m pytest tests/ -v   # 验证安装
 ```

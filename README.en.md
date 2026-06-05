@@ -6,8 +6,8 @@
 [![Version](https://img.shields.io/badge/version-0.1.0-green)](VERSION)
 
 ```bash
-git clone https://github.com/Sweetteabittersugar/agency-kit.git
-cd agency-kit && ./install.sh
+git clone https://github.com/Sweetteabittersugar/agency.git
+cd agency && ./install.sh
 ```
 
 * [中文 README](README.md)
@@ -42,8 +42,8 @@ Your Claude Code
 
 ```bash
 # Clone
-git clone https://github.com/Sweetteabittersugar/agency-kit.git
-cd agency-kit
+git clone https://github.com/Sweetteabittersugar/agency.git
+cd agency
 
 # Install (auto-links to Claude Code)
 ./install.sh        # macOS / Linux / Git Bash

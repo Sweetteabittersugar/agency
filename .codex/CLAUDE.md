@@ -62,15 +62,15 @@ Codex CLI 有自己的 Agent 调度机制，Maestro 的 dispatch.py 不能直接
 
 ```bash
 # 1. 复制规则文件
-cp -r agency-kit/rules/common ~/.codex/rules/
-cp -r agency-kit/rules/python ~/.codex/rules/
-cp -r agency-kit/rules/typescript ~/.codex/rules/
-cp -r agency-kit/rules/golang ~/.codex/rules/
+cp -r agency/rules/common ~/.codex/rules/
+cp -r agency/rules/python ~/.codex/rules/
+cp -r agency/rules/typescript ~/.codex/rules/
+cp -r agency/rules/golang ~/.codex/rules/
 
 # 2. 复制费用追踪脚本（保留 Python 脚本部分）
 mkdir -p your-project/maestro
-cp agency-kit/maestro/cost-tracker.py your-project/maestro/
-cp agency-kit/maestro/cost-analyzer.py your-project/maestro/
+cp agency/maestro/cost-tracker.py your-project/maestro/
+cp agency/maestro/cost-analyzer.py your-project/maestro/
 
 # 3. 在项目中引用规则
 # 在项目的 CLAUDE.md 或 .codex.md 中添加：

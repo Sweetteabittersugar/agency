@@ -22,9 +22,9 @@ your-project/
 
 ```bash
 # 从 agency-kit 复制
-cp agency-kit/maestro/dispatch.py your-project/maestro/
-cp agency-kit/maestro/gateway.py your-project/maestro/
-cp agency-kit/maestro/sandbox.py your-project/maestro/  # 可选：隔离执行
+cp agency/maestro/dispatch.py your-project/maestro/
+cp agency/maestro/gateway.py your-project/maestro/
+cp agency/maestro/sandbox.py your-project/maestro/  # 可选：隔离执行
 ```
 
 ### 2. 创建最小 Agent
@@ -94,7 +94,7 @@ python maestro/gateway.py <task_id>
 复制所有 Maestro 脚本以获得完整功能：
 
 ```bash
-cp -r agency-kit/maestro/ your-project/maestro/
+cp -r agency/maestro/ your-project/maestro/
 ```
 
 ### 完整文件清单

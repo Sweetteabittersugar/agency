@@ -5,8 +5,8 @@
 ### 方式一：Git 克隆（推荐）
 
 ```bash
-git clone https://github.com/Sweetteabittersugar/agency-kit.git
-cd agency-kit
+git clone https://github.com/Sweetteabittersugar/agency.git
+cd agency
 ./install.sh
 ```
 
