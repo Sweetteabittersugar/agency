@@ -846,11 +846,14 @@ function setSendingUI(sending) {
     sendBtn.classList.add('stopping');
     sendBtn.disabled = false;
     taskInput.disabled = true;
+    taskInput.readOnly = true;
   } else {
     sendBtn.textContent = '发送';
     sendBtn.classList.remove('stopping');
     sendBtn.disabled = false;
     taskInput.disabled = false;
+    taskInput.readOnly = false;
+    taskInput.style.pointerEvents = 'auto';
   }
 }
 
@@ -864,7 +867,7 @@ function stop() {
   outputArea.textContent += '\n\n[已停止]';
   outputArea.scrollTop = outputArea.scrollHeight;
   outputFooter.style.display = 'block';
-  setTimeout(() => taskInput.focus(), 100);
+  setTimeout(() => { taskInput.focus(); taskInput.disabled = false; taskInput.readOnly = false; }, 100);
 }
 
 async function sendTask() {
@@ -1000,9 +1003,10 @@ async function sendTask() {
     isStreaming = false;
     abortController = null;
     setSendingUI(false);
-    taskInput.focus();
+    taskInput.value = '';
     taskInput.style.height = 'auto';
     outputFooter.style.display = (outputArea.textContent && outputArea.textContent.trim()) ? 'flex' : 'none';
+    setTimeout(() => { taskInput.focus(); taskInput.disabled = false; taskInput.readOnly = false; }, 100);
   }
 }
 
@@ -1109,7 +1113,9 @@ async function sendTaskDirect(task, agent) {
     isStreaming = false;
     abortController = null;
     setSendingUI(false);
-    taskInput.focus();
+    taskInput.value = '';
+    taskInput.style.height = 'auto';
+    setTimeout(() => { taskInput.focus(); taskInput.disabled = false; }, 100);
     outputFooter.style.display = (outputArea.textContent && outputArea.textContent.trim()) ? 'flex' : 'none';
   }
 }
