@@ -2,9 +2,30 @@
 
 > **Agent 层不需要任何密钥。** 下载 → 复制 → 能用。只有可选的 Maestro 调度引擎需要 API key。
 
+## 方式零：零依赖，直接跑（不装任何东西，不依赖 Claude Code）
+
+如果你只是想用一个 Agent 干活，不需要 Claude Code，不需要安装脚本：
+
+```bash
+# 1. 获取 DeepSeek API Key：https://platform.deepseek.com/api_keys
+# 2. 写到 .env
+echo "DEEPSEEK_API_KEY=sk-xxxx" > .env
+# 3. 直接跑
+python maestro/run.py coder "写一个快排函数"
+python maestro/run.py explorer "分析这个目录结构"
+python maestro/run.py --list       # 看有哪些 Agent 可用
+```
+
+- 不需要 Claude Code
+- 不需要安装 npm / pip
+- 不需要 install.sh
+- 只依赖 Python 3.10+ 和 `pip install requests pyyaml`
+
+可用 Agent：`coder`、`reviewer`、`explorer`、`planner`、`test-runner`、`general-worker` 等 19 个，全在 `agents/` 目录下。
+
 ## 你不需要装全部
 
-### 第 0 层：只装一个 Agent（30 秒）
+### 第 0 层：只装一个 Agent（30 秒，需 Claude Code）
 
 ```bash
 # 复制你需要的 agent 到 Claude Code 配置目录

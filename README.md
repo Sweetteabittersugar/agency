@@ -6,6 +6,10 @@
 [![Version](https://img.shields.io/badge/version-0.1.0-green)](VERSION)
 
 ```bash
+# 方式零：不装任何东西，直接跑（只需 DeepSeek key，零依赖）
+echo "DEEPSEEK_API_KEY=sk-xxxx" > .env
+python maestro/run.py coder "写一个快排函数"
+
 # 方式一：一行安装（推荐）
 git clone https://github.com/Sweetteabittersugar/agency.git && cd agency && ./install.sh
 
