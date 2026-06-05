@@ -39,9 +39,48 @@ def load_env():
 
 load_env()
 
-DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
-DEEPSEEK_BASE = "https://api.deepseek.com"
-DEFAULT_MODEL = "deepseek-chat"
+DEFAULT_MODEL = os.environ.get("DEFAULT_MODEL", "deepseek-chat")
+
+MODEL_MAP = {
+    "haiku": os.environ.get("LIGHT_MODEL", "deepseek-chat"),
+    "sonnet": os.environ.get("STANDARD_MODEL", "deepseek-chat"),
+    "opus": os.environ.get("HEAVY_MODEL", "deepseek-reasoner"),
+}
+
+
+def get_provider_config():
+    """解析 API 配置，返回 (base_url, api_key, headers)"""
+    base_url = ""
+    api_key = ""
+
+    # DeepSeek
+    if os.environ.get("DEEPSEEK_API_KEY"):
+        base_url = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+        api_key = os.environ["DEEPSEEK_API_KEY"]
+    # OpenAI 兼容
+    elif os.environ.get("OPENAI_API_KEY"):
+        base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
+        api_key = os.environ["OPENAI_API_KEY"]
+    # Ollama
+    elif os.environ.get("OLLAMA_BASE_URL"):
+        base_url = os.environ["OLLAMA_BASE_URL"]
+        api_key = "ollama"
+    else:
+        return None, None, None
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    if api_key == "ollama":
+        headers = {"Content-Type": "application/json"}
+
+    return base_url.rstrip("/"), api_key, headers
+
+
+def get_actual_model(agent_model_name):
+    """将 agent frontmatter 中的模型名映射到实际模型"""
+    return MODEL_MAP.get(agent_model_name, DEFAULT_MODEL)
 
 # ── 路由矩阵 ───────────────────────────────────
 ROUTING = {
@@ -113,8 +152,7 @@ def load_agent(name):
             try:
                 fm = yaml.safe_load(parts[1])
                 if fm:
-                    model_map = {"haiku": "deepseek-chat", "sonnet": "deepseek-chat", "opus": "deepseek-reasoner"}
-                    model = model_map.get(fm.get("model", ""), DEFAULT_MODEL)
+                    model = get_actual_model(fm.get("model", ""))
             except Exception:
                 pass
             return parts[2].strip(), model
@@ -124,22 +162,18 @@ def load_agent(name):
 
 # ── DeepSeek API ───────────────────────────────
 def chat(system_prompt, user_message, model=DEFAULT_MODEL):
-    """流式调用 DeepSeek API"""
-    if not DEEPSEEK_API_KEY:
+    """流式调用 LLM API（多提供者支持）"""
+    base_url, api_key, headers = get_provider_config()
+    if not base_url:
         print("=" * 50)
-        print("  需要 DeepSeek API Key")
+        print("  需要配置 API Key")
         print("=" * 50)
         print()
-        print("1. 打开 https://platform.deepseek.com/api_keys")
-        print("2. 创建 Key")
-        print("3. 在项目根目录创建 .env：")
-        print("     DEEPSEEK_API_KEY=sk-xxxxxxxx")
+        print("在项目根目录创建 .env，配置以下之一：")
+        print("  DEEPSEEK_API_KEY=sk-xxxxxxxx")
+        print("  OPENAI_API_KEY=sk-xxxxxxxx")
+        print("  OLLAMA_BASE_URL=http://localhost:11434/v1")
         sys.exit(1)
-
-    headers = {
-        "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-        "Content-Type": "application/json",
-    }
 
     payload = {
         "model": model,
@@ -156,56 +190,65 @@ def chat(system_prompt, user_message, model=DEFAULT_MODEL):
     in_tokens = len(system_prompt) // 4 + len(user_message) // 4  # 粗略估算
     out_chars = 0
 
-    try:
-        resp = requests.post(
-            f"{DEEPSEEK_BASE}/v1/chat/completions",
-            headers=headers,
-            json=payload,
-            stream=True,
-            timeout=300,
-        )
-
-        if resp.status_code != 200:
-            print(f"\n✗ API 错误 ({resp.status_code}): {resp.text[:300]}")
+    max_retries = 2
+    resp = None
+    for attempt in range(max_retries + 1):
+        try:
+            resp = requests.post(
+                f"{base_url}/chat/completions",
+                headers=headers,
+                json=payload,
+                stream=True,
+                timeout=300,
+            )
+            break
+        except requests.exceptions.ConnectionError:
+            if attempt < max_retries:
+                time.sleep(1)
+            else:
+                print(f"\n✗ 连接失败，已重试{max_retries}次")
+                return in_tokens, 0, 0
+        except KeyboardInterrupt:
+            print("\n\n已中断。")
             return in_tokens, 0, 0
 
-        print()
-        for line in resp.iter_lines():
-            if not line:
-                continue
-            line = line.decode("utf-8")
-            if line.startswith("data: "):
-                data = line[6:]
-                if data == "[DONE]":
-                    break
-                try:
-                    chunk = json.loads(data)
-                    delta = chunk.get("choices", [{}])[0].get("delta", {})
-                    content = delta.get("content", "")
-                    if content:
-                        print(content, end="", flush=True)
-                        out_chars += len(content)
-                except json.JSONDecodeError:
-                    pass
-        print()
-
-        elapsed = time.time() - start_time
-        out_tokens = out_chars // 2
-        cost = estimate_cost(model, in_tokens, out_tokens)
-
-        print(f"\n── Agent: {current_agent} | 模型: {model} | {elapsed:.1f}s | ~${cost:.4f}")
-
-        # 记录成本
-        record_cost(in_tokens, out_tokens, cost, model, elapsed)
-
-        return in_tokens, out_tokens, cost
-
-    except requests.exceptions.ConnectionError:
-        print("\n✗ 无法连接 DeepSeek API。")
+    if resp is None:
         return in_tokens, 0, 0
-    except KeyboardInterrupt:
-        print("\n\n已中断。")
+
+    if resp.status_code != 200:
+        print(f"\n✗ API 错误 ({resp.status_code}): {resp.text[:300]}")
         return in_tokens, 0, 0
+
+    print()
+    for line in resp.iter_lines():
+        if not line:
+            continue
+        line = line.decode("utf-8")
+        if line.startswith("data: "):
+            data = line[6:]
+            if data == "[DONE]":
+                break
+            try:
+                chunk = json.loads(data)
+                delta = chunk.get("choices", [{}])[0].get("delta", {})
+                content = delta.get("content", "")
+                if content:
+                    print(content, end="", flush=True)
+                    out_chars += len(content)
+            except json.JSONDecodeError:
+                pass
+    print()
+
+    elapsed = time.time() - start_time
+    out_tokens = out_chars // 2
+    cost = estimate_cost(model, in_tokens, out_tokens)
+
+    print(f"\n── Agent: {current_agent} | 模型: {model} | {elapsed:.1f}s | ~${cost:.4f}")
+
+    # 记录成本
+    record_cost(in_tokens, out_tokens, cost, model, elapsed)
+
+    return in_tokens, out_tokens, cost
 
 
 # ── 成本估算 ───────────────────────────────────

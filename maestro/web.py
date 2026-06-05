@@ -32,9 +32,50 @@ if env_file.exists():
 
 from main import route_task, load_agent, estimate_cost, ROUTING
 
-DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
-DEEPSEEK_BASE = "https://api.deepseek.com"
 PORT = 8800
+
+
+# --- 提供者解析 ---
+def get_provider_config():
+    """解析 API 配置，返回 (base_url, api_key, headers)"""
+    base_url = ""
+    api_key = ""
+
+    # DeepSeek
+    if os.environ.get("DEEPSEEK_API_KEY"):
+        base_url = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+        api_key = os.environ["DEEPSEEK_API_KEY"]
+    # OpenAI 兼容
+    elif os.environ.get("OPENAI_API_KEY"):
+        base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
+        api_key = os.environ["OPENAI_API_KEY"]
+    # Ollama
+    elif os.environ.get("OLLAMA_BASE_URL"):
+        base_url = os.environ["OLLAMA_BASE_URL"]
+        api_key = "ollama"
+    else:
+        return None, None, None
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    if api_key == "ollama":
+        headers = {"Content-Type": "application/json"}
+
+    return base_url.rstrip("/"), api_key, headers
+
+
+MODEL_MAP = {
+    "haiku": os.environ.get("LIGHT_MODEL", "deepseek-chat"),
+    "sonnet": os.environ.get("STANDARD_MODEL", "deepseek-chat"),
+    "opus": os.environ.get("HEAVY_MODEL", "deepseek-reasoner"),
+}
+
+
+def get_actual_model(agent_model_name):
+    """将 agent frontmatter 中的模型名映射到实际模型"""
+    return MODEL_MAP.get(agent_model_name, os.environ.get("DEFAULT_MODEL", "deepseek-chat"))
 
 
 # =====================================================================
@@ -543,7 +584,9 @@ body{
             <span id="stat-cost"></span>
           </div>
           <div class="of-right">
-            <button class="footer-btn" id="btn-copy">复制结果</button>
+            <button class="footer-btn" id="btn-copy-md">复制 MD</button>
+            <button class="footer-btn" id="btn-download-md">下载 .md</button>
+            <button class="footer-btn" id="btn-copy-text">复制文本</button>
             <button class="footer-btn" id="btn-new-chat">新对话</button>
           </div>
         </div>
@@ -599,21 +642,65 @@ body{
     <!-- Settings -->
     <div class="dev-panel" id="panel-settings">
       <div class="settings-group">
-        <h3>API 配置</h3>
+        <h3>API 提供者</h3>
         <div class="setting-row">
-          <div><div class="sr-label">DEEPSEEK_API_KEY</div><div class="sr-desc">在项目根目录 .env 中配置</div></div>
+          <div><div class="sr-label">提供者</div><div class="sr-desc">选择 API 服务（需在 .env 中配置对应 Key）</div></div>
+          <select class="model-select" id="settings-provider">
+            <option value="deepseek">DeepSeek</option>
+            <option value="openai">OpenAI 兼容</option>
+            <option value="ollama">Ollama 本地</option>
+            <option value="custom">自定义</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <div><div class="sr-label">API Key</div><div class="sr-desc">运行时使用（.env 优先）</div></div>
+          <input type="password" id="settings-apikey" style="padding:6px 12px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;width:240px;" placeholder="sk-...">
+        </div>
+        <div class="setting-row">
+          <div><div class="sr-label">Base URL</div><div class="sr-desc">API 端点地址</div></div>
+          <input type="text" id="settings-baseurl" style="padding:6px 12px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;width:280px;" placeholder="https://api.deepseek.com">
+        </div>
+        <div class="setting-row">
+          <div><div class="sr-label">状态</div><div class="sr-desc">当前 API 配置检测</div></div>
           <span class="status-dot" id="key-status">检查中...</span>
         </div>
       </div>
       <div class="settings-group">
-        <h3>默认模型</h3>
+        <h3>模型映射</h3>
         <div class="setting-row">
-          <div><div class="sr-label">对话模型</div><div class="sr-desc">未指定模型时的默认选择</div></div>
+          <div><div class="sr-label">Light（轻量级）</div><div class="sr-desc">Haiku 级 Agent（explorer 等）</div></div>
+          <input type="text" id="settings-light-model" style="padding:6px 12px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;width:200px;" placeholder="deepseek-chat">
+        </div>
+        <div class="setting-row">
+          <div><div class="sr-label">Standard（标准）</div><div class="sr-desc">Sonnet 级 Agent（coder 等）</div></div>
+          <input type="text" id="settings-standard-model" style="padding:6px 12px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;width:200px;" placeholder="deepseek-chat">
+        </div>
+        <div class="setting-row">
+          <div><div class="sr-label">Heavy（重量级）</div><div class="sr-desc">Opus 级 Agent（planner 等）</div></div>
+          <input type="text" id="settings-heavy-model" style="padding:6px 12px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;width:200px;" placeholder="deepseek-reasoner">
+        </div>
+      </div>
+      <div class="settings-group">
+        <h3>生成参数</h3>
+        <div class="setting-row">
+          <div><div class="sr-label">Temperature</div><div class="sr-desc" id="temp-val-label">0.7</div></div>
+          <input type="range" id="settings-temperature" min="0" max="2" step="0.1" value="0.7" style="width:180px;accent-color:var(--primary);">
+        </div>
+        <div class="setting-row">
+          <div><div class="sr-label">Max Tokens</div><div class="sr-desc">单次输出上限</div></div>
+          <input type="number" id="settings-max-tokens" value="8192" min="256" max="65536" step="256" style="padding:6px 12px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;width:120px;">
+        </div>
+        <div class="setting-row">
+          <div><div class="sr-label">默认模型</div><div class="sr-desc">未指定时的默认选择</div></div>
           <select class="model-select" id="default-model">
             <option value="deepseek-chat">deepseek-chat</option>
             <option value="deepseek-reasoner">deepseek-reasoner</option>
           </select>
         </div>
+      </div>
+      <div class="settings-group">
+        <button class="btn-sm primary" id="btn-save-settings" style="margin-right:8px;">保存设置</button>
+        <button class="btn-sm" id="btn-reload-config" style="background:transparent;color:var(--text);border:1px solid var(--border);">重新加载 .env</button>
       </div>
       <div class="settings-group">
         <h3>系统</h3>
@@ -624,7 +711,7 @@ body{
       </div>
       <div class="settings-group">
         <div class="setting-row" style="color:var(--muted);font-size:12px;justify-content:flex-start;">
-          修改 .env 后需重启 <code style="color:var(--primary);">python maestro/web.py</code>
+          提供者和模型映射需在 .env 中配置后重启生效；其他设置保存在浏览器本地
         </div>
       </div>
     </div>
@@ -693,6 +780,8 @@ var editingAgent = '';
 var HIST_KEY = 'agency_history_v2';
 var MAX_HIST = 15;
 var SETTINGS_KEY = 'agency_settings_v2';
+var CONV_KEY = 'agency_conversations';
+var MAX_CONV_ROUNDS = 20;
 
 // ===================================================================
 // Core State
@@ -700,6 +789,10 @@ var SETTINGS_KEY = 'agency_settings_v2';
 var isStreaming = false;
 var abortCtrl = null;
 var streamTimer = null;  // elapsed timer
+var conversationMessages = [];  // 多轮会话 messages 数组
+var currentAgent = '';   // 当前对话的 Agent 名
+var currentModel = '';   // 当前对话的模型名
+var currentSystemPrompt = '';  // 当前 system prompt
 
 // ===================================================================
 // resetUI() -- 唯一的状态恢复入口
@@ -771,10 +864,45 @@ function loadHistory() {
 function saveHistory(items) {
   localStorage.setItem(HIST_KEY, JSON.stringify(items.slice(0, MAX_HIST)));
 }
+function saveConversation(convId) {
+  try {
+    var convs = JSON.parse(localStorage.getItem(CONV_KEY) || '{}');
+    convs[convId] = {
+      messages: conversationMessages,
+      agent: currentAgent,
+      model: currentModel,
+      updated: Date.now()
+    };
+    // 只保留最近 20 个对话
+    var keys = Object.keys(convs).sort(function(a,b) { return convs[b].updated - convs[a].updated; });
+    if (keys.length > 20) {
+      var trimmed = {};
+      keys.slice(0, 20).forEach(function(k) { trimmed[k] = convs[k]; });
+      convs = trimmed;
+    }
+    localStorage.setItem(CONV_KEY, JSON.stringify(convs));
+  } catch(_) {}
+}
+function restoreConversation(convId) {
+  try {
+    var convs = JSON.parse(localStorage.getItem(CONV_KEY) || '{}');
+    var conv = convs[convId];
+    if (conv && conv.messages) {
+      conversationMessages = conv.messages;
+      currentAgent = conv.agent || '';
+      currentModel = conv.model || '';
+      if (conv.messages.length > 0 && conv.messages[0].role === 'system') {
+        currentSystemPrompt = conv.messages[0].content;
+      }
+    }
+  } catch(_) {}
+}
 function addHistory(task, agent, model, elapsed, cost) {
   var items = loadHistory();
-  items.unshift({ id: Date.now(), task: task, agent: agent, model: model, elapsed: elapsed, cost: cost, date: new Date().toLocaleString('zh-CN') });
+  var convId = Date.now();
+  items.unshift({ id: convId, task: task, agent: agent, model: model, elapsed: elapsed, cost: cost, date: new Date().toLocaleString('zh-CN') });
   saveHistory(items);
+  saveConversation(convId);
   renderHistory();
 }
 function renderHistory() {
@@ -784,23 +912,30 @@ function renderHistory() {
     list.innerHTML = '<div class="sidebar-empty">暂无记录</div>';
   } else {
     list.innerHTML = items.map(function(h, i) {
-      return '<div class="sidebar-item" data-idx="' + i + '" title="' + escHtml(h.task) + '">'
+      return '<div class="sidebar-item" data-idx="' + i + '" data-conv-id="' + h.id + '" title="' + escHtml(h.task) + '">'
         + '<div class="si-task">' + escHtml(h.task.substring(0, 45)) + '</div>'
         + '<div class="si-meta"><span style="color:#a78bfa">' + escHtml(h.agent) + '</span><span>' + escHtml(h.elapsed || '?') + '</span></div>'
         + '</div>';
     }).join('');
   }
-  // Replay click
+  // Replay click -- restore conversation context
   list.querySelectorAll('.sidebar-item').forEach(function(el) {
     el.addEventListener('click', function() {
       var items = loadHistory();
       var h = items[parseInt(el.dataset.idx)];
       if (h) {
+        restoreConversation(h.id);
         taskInput.value = h.task;
-        outputBody.innerHTML = '<span class="placeholder">点击发送重新执行...</span>';
-        routeBadge.innerHTML = '';
-        outputFooter.style.display = 'none';
-        sendBtn.click();
+        outputBody.innerHTML = '<span class="placeholder">对话已恢复（' + conversationMessages.length + ' 条消息），点击发送继续...</span>';
+        routeBadge.innerHTML =
+          '<span class="badge badge-agent">Agent: ' + escHtml(h.agent) + '</span>'
+          + '<span class="badge badge-model">' + escHtml(h.model) + '</span>';
+        outputFooter.style.display = 'flex';
+        statTime.textContent = h.elapsed || '';
+        statCost.textContent = h.cost || '';
+        statusDot.classList.add('idle');
+        outputLabel.textContent = 'Agent: ' + h.agent;
+        taskInput.focus();
       }
     });
   });
@@ -825,6 +960,10 @@ document.addEventListener('click', function(e) {
 // New Chat
 // ===================================================================
 function newChat() {
+  conversationMessages = [];
+  currentAgent = '';
+  currentModel = '';
+  currentSystemPrompt = '';
   outputBody.innerHTML = '<span class="placeholder">输入任务后按 Enter 发送</span>';
   routeBadge.innerHTML = '';
   outputFooter.style.display = 'none';
@@ -839,15 +978,51 @@ function newChat() {
 $('#btn-new-chat').addEventListener('click', newChat);
 
 // ===================================================================
-// Copy
+// Export: Copy Markdown
 // ===================================================================
-$('#btn-copy').addEventListener('click', function() {
+$('#btn-copy-md').addEventListener('click', function() {
   var text = outputBody.textContent || '';
   if (!text.trim()) return;
-  var btn = $('#btn-copy');
+  var md = '# Agency 对话\n\n**Agent**: ' + escHtml(currentAgent || '?') + ' | **模型**: ' + escHtml(currentModel || '?') + '\n\n---\n\n' + text;
+  var btn = $('#btn-copy-md');
+  navigator.clipboard.writeText(md).then(function() {
+    btn.textContent = '已复制'; btn.classList.add('copied');
+    setTimeout(function() { btn.textContent = '复制 MD'; btn.classList.remove('copied'); }, 2000);
+  }).catch(function() {
+    var ta = document.createElement('textarea');
+    ta.value = md; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    toast('已复制', 'success');
+  });
+});
+
+// ===================================================================
+// Export: Download .md
+// ===================================================================
+$('#btn-download-md').addEventListener('click', function() {
+  var text = outputBody.textContent || '';
+  if (!text.trim()) return;
+  var md = '# Agency 对话\n\n**Agent**: ' + escHtml(currentAgent || '?') + ' | **模型**: ' + escHtml(currentModel || '?') + '\n\n---\n\n' + text;
+  var blob = new Blob([md], { type: 'text/markdown' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'agency-' + Date.now() + '.md';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('已下载', 'success');
+});
+
+// ===================================================================
+// Export: Copy Plain Text
+// ===================================================================
+$('#btn-copy-text').addEventListener('click', function() {
+  var text = outputBody.textContent || '';
+  if (!text.trim()) return;
+  var btn = $('#btn-copy-text');
   navigator.clipboard.writeText(text).then(function() {
     btn.textContent = '已复制'; btn.classList.add('copied');
-    setTimeout(function() { btn.textContent = '复制结果'; btn.classList.remove('copied'); }, 2000);
+    setTimeout(function() { btn.textContent = '复制文本'; btn.classList.remove('copied'); }, 2000);
   }).catch(function() {
     var ta = document.createElement('textarea');
     ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
@@ -928,7 +1103,7 @@ $$('.tag-chip').forEach(function(chip) {
 });
 
 // ===================================================================
-// sendTask() -- 核心发送逻辑（完整 try-catch-finally）
+// sendTask() -- 多轮会话核心发送逻辑
 // ===================================================================
 async function sendTask() {
   if (isStreaming) return;
@@ -970,6 +1145,8 @@ async function sendTask() {
     }
     agent = routeData.agent;
     model = routeData.model;
+    currentAgent = agent;
+    currentModel = model;
 
     routeBadge.innerHTML =
       '<span class="badge badge-agent">Agent: ' + escHtml(agent) + '</span>'
@@ -978,11 +1155,38 @@ async function sendTask() {
     outputLabel.textContent = 'Agent: ' + agent;
     outputBody.textContent = '';
 
-    // 2) Stream chat
+    // 2) 构建 messages（多轮会话）
+    var actualModel = model;
+    var appSettings = loadAppSettings();
+    if (appSettings.defaultModel && appSettings.defaultModel !== 'deepseek-chat') {
+      actualModel = appSettings.defaultModel;
+    }
+
+    if (conversationMessages.length === 0) {
+      // 第一轮：加载 system prompt
+      var agentResp = await fetch('/api/agent-content?name=' + encodeURIComponent(agent));
+      var agentData = await agentResp.json();
+      currentSystemPrompt = agentData.content || '';
+      conversationMessages = [
+        { role: 'system', content: currentSystemPrompt },
+        { role: 'user', content: task }
+      ];
+    } else {
+      // 后续轮：追加 user message
+      conversationMessages.push({ role: 'user', content: task });
+      // 截断：保留 system + 最近 MAX_CONV_ROUNDS 轮
+      if (conversationMessages.length > 1 + MAX_CONV_ROUNDS * 2) {
+        var sys = conversationMessages[0];
+        var recent = conversationMessages.slice(-(MAX_CONV_ROUNDS * 2));
+        conversationMessages = [sys].concat(recent);
+      }
+    }
+
+    // 3) Stream chat（发送完整 messages 数组）
     var chatResp = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ task: task, agent: agent }),
+      body: JSON.stringify({ messages: conversationMessages, model: actualModel }),
       signal: abortCtrl.signal
     });
 
@@ -995,6 +1199,7 @@ async function sendTask() {
     var reader = chatResp.body.getReader();
     var decoder = new TextDecoder();
     var buffer = '';
+    var assistantContent = '';
 
     while (true) {
       var readResult = await reader.read();
@@ -1009,15 +1214,24 @@ async function sendTask() {
           var data = line.slice(6);
           if (data === '[DONE]') break;
           if (data === '[CANCELLED]') {
+            assistantContent += '\n\n[已停止]';
             fullOutput += '\n\n[已停止]';
             outputBody.textContent = fullOutput;
             outputBody.scrollTop = outputBody.scrollHeight;
             break;
           }
           try {
+            var errJson = JSON.parse(data);
+            if (errJson.error) {
+              outputBody.innerHTML = '<span class="error-text">' + escHtml(errJson.error) + '</span>';
+              return;
+            }
+          } catch(_) {}
+          try {
             var chunk = JSON.parse(data);
             var content = chunk.choices && chunk.choices[0] && chunk.choices[0].delta && chunk.choices[0].delta.content;
             if (content) {
+              assistantContent += content;
               fullOutput += content;
               outputBody.textContent = fullOutput;
               outputBody.scrollTop = outputBody.scrollHeight;
@@ -1027,9 +1241,14 @@ async function sendTask() {
       }
     }
 
+    // 4) 将 assistant 回复加入对话历史
+    if (assistantContent) {
+      conversationMessages.push({ role: 'assistant', content: assistantContent });
+    }
+
     var elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
 
-    // 3) Cost stat
+    // 5) Cost stat
     var cost = '?';
     try {
       var statResp = await fetch('/api/stat', {
@@ -1069,7 +1288,7 @@ async function sendTask() {
 }
 
 // ===================================================================
-// sendTaskDirect -- 直接指定 agent（开发者测试用）
+// sendTaskDirect -- 直接指定 agent（开发者测试用，支持多轮）
 // ===================================================================
 async function sendTaskDirect(task, agent) {
   if (isStreaming) return;
@@ -1099,6 +1318,8 @@ async function sendTaskDirect(task, agent) {
     });
     var routeData = await routeResp.json();
     model = routeData.model || 'deepseek-chat';
+    currentAgent = agent;
+    currentModel = model;
 
     routeBadge.innerHTML =
       '<span class="badge badge-agent">Agent: ' + escHtml(agent) + ' (指定)</span>'
@@ -1107,10 +1328,19 @@ async function sendTaskDirect(task, agent) {
     outputLabel.textContent = 'Agent: ' + agent;
     outputBody.textContent = '';
 
+    // 构建 messages
+    var agentResp = await fetch('/api/agent-content?name=' + encodeURIComponent(agent));
+    var agentData = await agentResp.json();
+    currentSystemPrompt = agentData.content || '';
+    conversationMessages = [
+      { role: 'system', content: currentSystemPrompt },
+      { role: 'user', content: task }
+    ];
+
     var chatResp = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ task: task, agent: agent }),
+      body: JSON.stringify({ messages: conversationMessages, model: model }),
       signal: abortCtrl.signal
     });
     if (!chatResp.ok) {
@@ -1122,6 +1352,7 @@ async function sendTaskDirect(task, agent) {
     var reader = chatResp.body.getReader();
     var decoder = new TextDecoder();
     var buffer = '';
+    var assistantContent = '';
     while (true) {
       var rr = await reader.read();
       if (rr.done) break;
@@ -1133,14 +1364,24 @@ async function sendTaskDirect(task, agent) {
         if (line.indexOf('data: ') === 0) {
           var data = line.slice(6);
           if (data === '[DONE]') break;
-          if (data === '[CANCELLED]') { fullOutput += '\n\n[已停止]'; outputBody.textContent = fullOutput; break; }
+          if (data === '[CANCELLED]') {
+            assistantContent += '\n\n[已停止]';
+            fullOutput += '\n\n[已停止]';
+            outputBody.textContent = fullOutput;
+            break;
+          }
+          try { var ej = JSON.parse(data); if (ej.error) { outputBody.innerHTML = '<span class="error-text">' + escHtml(ej.error) + '</span>'; return; } } catch(_) {}
           try {
             var c = JSON.parse(data);
             var ct = c.choices && c.choices[0] && c.choices[0].delta && c.choices[0].delta.content;
-            if (ct) { fullOutput += ct; outputBody.textContent = fullOutput; outputBody.scrollTop = outputBody.scrollHeight; }
+            if (ct) { assistantContent += ct; fullOutput += ct; outputBody.textContent = fullOutput; outputBody.scrollTop = outputBody.scrollHeight; }
           } catch(_) {}
         }
       }
+    }
+
+    if (assistantContent) {
+      conversationMessages.push({ role: 'assistant', content: assistantContent });
     }
 
     var elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
@@ -1345,14 +1586,81 @@ async function loadSettings() {
   try {
     var resp = await fetch('/api/settings'); var data = await resp.json();
     var badge = $('#key-status');
-    if (data.deepseek_key_configured) { badge.textContent = '已配置'; badge.className = 'status-dot ok'; }
+    if (data.has_key) { badge.textContent = '已配置 (' + (data.provider_type || '?') + ')'; badge.className = 'status-dot ok'; }
     else { badge.textContent = '未配置'; badge.className = 'status-dot bad'; }
+
+    // 填充表单
+    var prov = $('#settings-provider');
+    if (data.provider_type === 'deepseek') prov.value = 'deepseek';
+    else if (data.provider_type === 'openai') prov.value = 'openai';
+    else if (data.provider_type === 'ollama') prov.value = 'ollama';
+    else prov.value = 'custom';
+
+    $('#settings-baseurl').value = data.base_url || '';
+    $('#settings-light-model').value = (data.model_mapping && data.model_mapping.light) || 'deepseek-chat';
+    $('#settings-standard-model').value = (data.model_mapping && data.model_mapping.standard) || 'deepseek-chat';
+    $('#settings-heavy-model').value = (data.model_mapping && data.model_mapping.heavy) || 'deepseek-reasoner';
   } catch(_) { $('#key-status').textContent = '检查失败'; $('#key-status').className = 'status-dot bad'; }
+
   var s = loadAppSettings();
   var sel = $('#default-model');
   sel.value = s.defaultModel || 'deepseek-chat';
   sel.addEventListener('change', function() { saveAppSettings({ defaultModel: sel.value }); toast('默认模型已更新', 'info'); });
+
+  // Temperature
+  var tempSlider = $('#settings-temperature');
+  tempSlider.value = s.temperature !== undefined ? s.temperature : 0.7;
+  $('#temp-val-label').textContent = tempSlider.value;
+  tempSlider.addEventListener('input', function() {
+    $('#temp-val-label').textContent = tempSlider.value;
+  });
+
+  // Max Tokens
+  $('#settings-max-tokens').value = s.maxTokens || 8192;
+
+  // API Key (from localStorage, .env is source of truth)
+  var ak = $('#settings-apikey');
+  ak.value = s.apiKey || '';
+
+  // Base URL
+  $('#settings-baseurl').value = s.baseUrl || $('#settings-baseurl').value;
+
+  // Model mapping fields
+  $('#settings-light-model').value = s.lightModel || $('#settings-light-model').value;
+  $('#settings-standard-model').value = s.standardModel || $('#settings-standard-model').value;
+  $('#settings-heavy-model').value = s.heavyModel || $('#settings-heavy-model').value;
+
+  // Provider
+  $('#settings-provider').value = s.provider || $('#settings-provider').value;
 }
+
+// Save Settings button
+$('#btn-save-settings').addEventListener('click', function() {
+  var settings = {
+    provider: $('#settings-provider').value,
+    apiKey: $('#settings-apikey').value,
+    baseUrl: $('#settings-baseurl').value,
+    lightModel: $('#settings-light-model').value,
+    standardModel: $('#settings-standard-model').value,
+    heavyModel: $('#settings-heavy-model').value,
+    temperature: parseFloat($('#settings-temperature').value),
+    maxTokens: parseInt($('#settings-max-tokens').value) || 8192,
+    defaultModel: $('#default-model').value,
+  };
+  saveAppSettings(settings);
+  toast('设置已保存（模型映射和提供者需在 .env 中配置后重启生效）', 'success');
+});
+
+// Reload .env button
+$('#btn-reload-config').addEventListener('click', async function() {
+  try {
+    var resp = await fetch('/api/config-reload', { method: 'POST' });
+    var data = await resp.json();
+    if (data.ok) { toast('.env 已重新加载', 'success'); loadSettings(); }
+    else { toast('加载失败: ' + (data.error || '?'), 'error'); }
+  } catch(e) { toast('请求失败: ' + e.message, 'error'); }
+});
+
 function loadAppSettings() { try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'); } catch(_) { return {}; } }
 function saveAppSettings(s) { var c = loadAppSettings(); localStorage.setItem(SETTINGS_KEY, JSON.stringify(Object.assign(c, s))); }
 
@@ -1477,8 +1785,31 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json({"error": str(e)})
 
         elif parsed.path == "/api/settings":
+            provider_type = ""
+            has_key = False
+            if os.environ.get("DEEPSEEK_API_KEY"):
+                provider_type = "deepseek"
+                has_key = True
+            elif os.environ.get("OPENAI_API_KEY"):
+                provider_type = "openai"
+                has_key = True
+            elif os.environ.get("OLLAMA_BASE_URL"):
+                provider_type = "ollama"
+                has_key = True
+
+            base_url, _, _ = get_provider_config()
             self.send_json({
-                "deepseek_key_configured": bool(DEEPSEEK_API_KEY),
+                "provider_type": provider_type,
+                "base_url": base_url or "",
+                "has_key": has_key,
+                "model_mapping": {
+                    "light": os.environ.get("LIGHT_MODEL", "deepseek-chat"),
+                    "standard": os.environ.get("STANDARD_MODEL", "deepseek-chat"),
+                    "heavy": os.environ.get("HEAVY_MODEL", "deepseek-reasoner"),
+                },
+                "default_model": os.environ.get("DEFAULT_MODEL", "deepseek-chat"),
+                "temperature": 0.7,
+                "max_tokens": 8192,
             })
 
         elif parsed.path == "/api/version":
@@ -1521,16 +1852,32 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json({"agent": agent, "score": score, "model": model})
 
         elif parsed.path == "/api/chat":
+            # 支持两种模式：
+            # 1) messages 数组（多轮会话）
+            # 2) task + agent（兼容旧版 / 开发者测试）
+            messages = body.get("messages")
             task = body.get("task", "")
             agent = body.get("agent", "coder")
-            system_prompt, model = load_agent(agent)
+            req_model = body.get("model", "")
 
-            import requests as req
-
-            key = os.environ.get("DEEPSEEK_API_KEY", "")
-            if not key:
-                self.send_json({"error": "DEEPSEEK_API_KEY not set"})
+            base_url, api_key, headers = get_provider_config()
+            if not base_url:
+                self.send_json({"error": "未配置 API Key。请在 .env 中设置 DEEPSEEK_API_KEY / OPENAI_API_KEY / OLLAMA_BASE_URL"})
                 return
+
+            if messages:
+                # 多轮会话模式：前端直接传完整的 messages 数组
+                model = req_model or os.environ.get("DEFAULT_MODEL", "deepseek-chat")
+            else:
+                # 兼容旧版：后端构建 messages
+                system_prompt, model = load_agent(agent)
+                if not req_model:
+                    req_model = model
+                model = req_model or model
+                messages = [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": task},
+                ]
 
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
@@ -1538,26 +1885,52 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Connection", "keep-alive")
             self.end_headers()
 
+            import requests as req
+
+            payload = {
+                "model": model,
+                "messages": messages,
+                "stream": True,
+                "temperature": 0.7,
+                "max_tokens": 8192,
+            }
+
+            max_retries = 2
+            resp = None
+            for attempt in range(max_retries + 1):
+                try:
+                    resp = req.post(
+                        f"{base_url}/chat/completions",
+                        headers=headers,
+                        json=payload,
+                        stream=True,
+                        timeout=300,
+                    )
+                    break
+                except req.exceptions.ConnectionError:
+                    if attempt < max_retries:
+                        time.sleep(1)
+                    else:
+                        try:
+                            self.wfile.write(f"data: {{\"error\": \"连接失败，已重试{max_retries}次\"}}\n\n".encode("utf-8"))
+                            self.wfile.flush()
+                        except Exception:
+                            pass
+                        return
+
+            if resp is None:
+                return
+
+            if resp.status_code != 200:
+                try:
+                    err_text = resp.text[:300] if hasattr(resp, 'text') else str(resp.status_code)
+                    self.wfile.write(f'data: {{"error": "API 错误 ({resp.status_code}): {err_text}"}}\n\n'.encode("utf-8"))
+                    self.wfile.flush()
+                except Exception:
+                    pass
+                return
+
             try:
-                resp = req.post(
-                    f"{DEEPSEEK_BASE}/v1/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {key}",
-                        "Content-Type": "application/json",
-                    },
-                    json={
-                        "model": model,
-                        "messages": [
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": task},
-                        ],
-                        "stream": True,
-                        "temperature": 0.7,
-                        "max_tokens": 8192,
-                    },
-                    stream=True,
-                    timeout=300,
-                )
                 for line in resp.iter_lines():
                     if not line:
                         continue
@@ -1629,6 +2002,19 @@ class Handler(BaseHTTPRequestHandler):
             agent_file = PROJECT_ROOT / "agents" / f"{name}.md"
             agent_file.write_text(content, encoding="utf-8")
             self.send_json({"ok": True})
+
+        elif parsed.path == "/api/config-reload":
+            """重新加载 .env（不重启服务器）"""
+            env_file = PROJECT_ROOT / ".env"
+            if env_file.exists():
+                for line in env_file.read_text(encoding="utf-8").splitlines():
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        k, v = line.split("=", 1)
+                        os.environ[k.strip()] = v.strip().strip('"').strip("'")
+                self.send_json({"ok": True, "message": ".env 已重新加载"})
+            else:
+                self.send_json({"ok": False, "error": ".env 文件不存在"})
 
         else:
             self.send_response(404)
