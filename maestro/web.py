@@ -30,7 +30,7 @@ if env_file.exists():
             k, v = line.split("=", 1)
             os.environ[k.strip()] = v.strip().strip('"').strip("'")
 
-from main import route_task, load_agent, estimate_cost, ROUTING
+from main import route_task, route_with_fallback, route_with_cache, semantic_match, load_agent, estimate_cost, ROUTING, get_agent_stats, record_agent_result
 
 PORT = 8800
 
@@ -276,6 +276,25 @@ body{
 .badge-model{background:rgba(0,184,148,.1);color:#5eead4;border:1px solid rgba(0,184,148,.18);}
 .badge-time{color:var(--muted);font-size:11px;}
 .badge-cost{color:var(--orange);font-size:11px;font-weight:600;}
+.badge-conf{font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;}
+.badge-conf.high{background:rgba(0,184,148,.12);color:var(--green);border:1px solid rgba(0,184,148,.2);}
+.badge-conf.medium{background:rgba(240,160,96,.12);color:var(--orange);border:1px solid rgba(240,160,96,.2);}
+.badge-conf.low{background:rgba(255,107,107,.12);color:var(--red);border:1px solid rgba(255,107,107,.2);}
+
+/* Route Candidates */
+.route-candidates{
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  margin-top:6px;font-size:11px;color:var(--muted);
+}
+.route-candidates .cand-btn{
+  padding:2px 10px;font-size:11px;background:rgba(108,92,231,.06);
+  border:1px solid rgba(108,92,231,.15);border-radius:12px;
+  color:#a78bfa;cursor:pointer;font-weight:500;transition:var(--transition);
+}
+.route-candidates .cand-btn:hover{
+  background:rgba(108,92,231,.15);border-color:rgba(108,92,231,.35);
+  transform:translateY(-1px);
+}
 
 /* Output Panel */
 .output-panel{
@@ -821,6 +840,15 @@ body{
         <button class="btn-sm" id="btn-reload-config" style="background:transparent;color:var(--text);border:1px solid var(--border);">重新加载 .env</button>
       </div>
       <div class="settings-group">
+        <h3>Agent 成功率</h3>
+        <div style="max-height:240px;overflow-y:auto;">
+          <table class="logs-table">
+            <thead><tr><th>Agent</th><th>总执行次数</th><th>成功率</th></tr></thead>
+            <tbody id="agent-stats-tbody"><tr><td colspan="3" style="text-align:center;color:var(--muted);padding:16px;">暂无数据</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="settings-group">
         <h3>系统</h3>
         <div class="setting-row">
           <div><div class="sr-label">版本</div><div class="sr-desc">Agency 当前版本</div></div>
@@ -1197,6 +1225,21 @@ document.addEventListener('click', function(e) {
   if (sidebar.classList.contains('mobile-open') && !sidebar.contains(e.target) && e.target !== $('#hist-toggle')) {
     sidebar.classList.remove('mobile-open');
   }
+  // 备选 Agent 按钮点击
+  if (e.target.classList.contains('cand-btn')) {
+    var agentName = e.target.dataset.agent;
+    if (agentName && !isStreaming) {
+      e.target.style.background = 'rgba(108,92,231,.2)';
+      e.target.style.borderColor = 'rgba(108,92,231,.4)';
+      routeBadge.innerHTML = '<span class="badge badge-agent">Agent: ' + escHtml(agentName) + ' (手动选择)</span>';
+      // 用选定的 agent 重新执行
+      var rawTask = taskInput.value.trim();
+      if (!rawTask) { taskInput.value = currentTaskText || ''; rawTask = taskInput.value.trim(); }
+      if (rawTask) {
+        sendTaskDirect(rawTask, agentName);
+      }
+    }
+  }
 });
 
 // ===================================================================
@@ -1349,10 +1392,13 @@ $$('.tag-chip').forEach(function(chip) {
 // ===================================================================
 // sendTask() -- 多轮会话核心发送逻辑
 // ===================================================================
+var currentTaskText = '';
+
 async function sendTask() {
   if (isStreaming) return;
   var rawTask = taskInput.value.trim();
   if (!rawTask) return;
+  currentTaskText = rawTask;
 
   // 清理残留
   if (abortCtrl) { abortCtrl.abort(); abortCtrl = null; }
@@ -1384,6 +1430,9 @@ async function sendTask() {
       'cost': 'cost-analyst', '费用': 'cost-analyst',
       'db': 'database-reviewer', '数据库': 'database-reviewer',
       'perf': 'performance-optimizer', '性能': 'performance-optimizer',
+      'ceo': 'ceo', '产品': 'ceo', 'qa': 'qa', '质量': 'qa',
+      'devops': 'devops', '部署': 'devops', 'docker': 'devops',
+      'release': 'release-manager', '发布': 'release-manager',
     };
     // 先用别名映射，再用服务器端精确/模糊匹配
     if (agentAliases[requestedAgent]) {
@@ -1431,9 +1480,23 @@ async function sendTask() {
     currentModel = model;
 
     var directLabel = routeData.direct ? ' (指定)' : '';
+    var conf = routeData.confidence;
+    var confClass = conf >= 0.7 ? 'high' : (conf >= 0.4 ? 'medium' : 'low');
     routeBadge.innerHTML =
       '<span class="badge badge-agent">Agent: ' + escHtml(agent) + directLabel + '</span>'
-      + '<span class="badge badge-model">' + escHtml(model) + '</span>';
+      + '<span class="badge badge-model">' + escHtml(model) + '</span>'
+      + (conf !== undefined ? '<span class="badge-conf ' + confClass + '">' + (conf*100).toFixed(0) + '%</span>' : '');
+
+    // 低置信度备选
+    var candidates = routeData.candidates || [];
+    if (candidates.length > 0 && conf < 0.5) {
+      var candHtml = '<div class="route-candidates">不太确定？试试: ';
+      for (var ci = 0; ci < candidates.length; ci++) {
+        candHtml += '<button class="cand-btn" data-agent="' + escHtml(candidates[ci]) + '">' + escHtml(candidates[ci]) + '</button> ';
+      }
+      candHtml += '</div>';
+      routeBadge.innerHTML += candHtml;
+    }
 
     outputLabel.textContent = 'Agent: ' + agent;
     outputBody.textContent = '';
@@ -1611,7 +1674,8 @@ async function sendTaskDirect(task, agent) {
 
     routeBadge.innerHTML =
       '<span class="badge badge-agent">Agent: ' + escHtml(agent) + ' (指定)</span>'
-      + '<span class="badge badge-model">' + escHtml(model) + '</span>';
+      + '<span class="badge badge-model">' + escHtml(model) + '</span>'
+      + '<span class="badge-conf high">100%</span>';
 
     outputLabel.textContent = 'Agent: ' + agent;
     outputBody.textContent = '';
@@ -2014,16 +2078,19 @@ async function runRouteTest() {
     });
     var results = await resp.json();
     if (!results.length) { tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:20px;">无匹配</td></tr>'; return; }
+    var matchedSet = {};
+    (results[0] && results[0].matched || []).forEach(function(k) { matchedSet[k] = true; });
     tbody.innerHTML = results.map(function(r, i) {
       var best = i === 0 && r.score > 0;
-      var kws = (r.keywords||[]).map(function(kw) {
-        var hit = task.toLowerCase().indexOf(kw.toLowerCase()) !== -1;
+      var kws = (r.keywords||[]).slice(0, 8).map(function(kw) {
+        var hit = matchedSet[kw] || (r.matched||[]).indexOf(kw) >= 0;
         return '<span class="kw' + (hit?' hit':'') + '">' + escHtml(kw) + '</span>';
       }).join('');
+      var moreKws = (r.keywords||[]).length > 8 ? ' ...' : '';
       return '<tr class="' + (best?'best':'') + '">'
         + '<td>' + escHtml(r.agent) + (best?' <span style="color:var(--green);font-size:10px;">&#10003; 最佳</span>':'') + '</td>'
         + '<td><span class="score-badge">' + r.score + '</span></td>'
-        + '<td><div class="kw-tags">' + kws + '</div></td></tr>';
+        + '<td><div class="kw-tags">' + kws + moreKws + '</div></td></tr>';
     }).join('');
   } catch(ee) { tbody.innerHTML = '<tr><td colspan="3" class="error-text">错误: ' + escHtml(ee.message) + '</td></tr>'; }
 }
@@ -2115,6 +2182,32 @@ async function loadSettings() {
   $('#settings-baseurl').value = s.baseUrl || $('#settings-baseurl').value;
 
   // Model mapping fields
+
+  // Agent Stats
+  loadAgentStats();
+}
+
+async function loadAgentStats() {
+  try {
+    var resp = await fetch('/api/agent-stats');
+    var data = await resp.json();
+    var tbody = $('#agent-stats-tbody');
+    var entries = Object.entries(data);
+    if (entries.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:16px;">暂无数据</td></tr>';
+      return;
+    }
+    entries.sort(function(a, b) { return b[1].success_rate - a[1].success_rate; });
+    tbody.innerHTML = entries.map(function(e) {
+      var rate = e[1].success_rate;
+      var pct = (rate * 100).toFixed(0) + '%';
+      var color = rate >= 0.8 ? 'var(--green)' : (rate >= 0.5 ? 'var(--orange)' : 'var(--red)');
+      return '<tr><td>' + escHtml(e[0]) + '</td><td>' + e[1].total + '</td><td style="color:' + color + ';font-weight:600">' + pct + '</td></tr>';
+    }).join('');
+  } catch(_) {
+    $('#agent-stats-tbody').innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:16px;">加载失败</td></tr>';
+  }
+}
   $('#settings-light-model').value = s.lightModel || $('#settings-light-model').value;
   $('#settings-standard-model').value = s.standardModel || $('#settings-standard-model').value;
   $('#settings-heavy-model').value = s.heavyModel || $('#settings-heavy-model').value;
@@ -2170,22 +2263,40 @@ async function loadVersion() {
 // ===================================================================
 var pipelines = [
   {
-    name: '代码审查流水线',
-    chain: 'coder → code-reviewer → security-reviewer',
-    desc: '写代码 → 通用审查 → 安全检查',
-    steps: ['coder', 'code-reviewer', 'security-reviewer']
+    name: 'Plan-Build-Review',
+    chain: 'planner → coder → code-reviewer',
+    desc: 'Superpowers 验证循环',
+    steps: ['planner', 'coder', 'code-reviewer']
   },
   {
-    name: '新功能开发流水线',
+    name: 'TDD 循环',
+    chain: 'tdd-guide → test-runner',
+    desc: 'RED-GREEN-REFACTOR',
+    steps: ['tdd-guide', 'test-runner']
+  },
+  {
+    name: 'gstack 发布管道',
+    chain: 'ceo → coder → qa → release-manager',
+    desc: 'CEO → Engineer → QA → Release',
+    steps: ['ceo', 'coder', 'qa', 'release-manager']
+  },
+  {
+    name: '安全审查管道',
+    chain: 'code-reviewer → security-reviewer → coder',
+    desc: '代码 → 安全审计 → 修复验证',
+    steps: ['code-reviewer', 'security-reviewer', 'coder']
+  },
+  {
+    name: '全栈开发管道',
     chain: 'planner → coder → test-runner → code-reviewer',
     desc: '规划 → 实现 → 测试 → 审查',
     steps: ['planner', 'coder', 'test-runner', 'code-reviewer']
   },
   {
-    name: 'Bug 修复流水线',
-    chain: 'explorer → coder → test-runner',
-    desc: '定位 → 修复 → 验证',
-    steps: ['explorer', 'coder', 'test-runner']
+    name: 'Bug 狩猎管道',
+    chain: 'explorer → coder → build-error-resolver → test-runner → code-reviewer',
+    desc: '搜索 → 定位 → 修复 → 测试 → 审查',
+    steps: ['explorer', 'coder', 'build-error-resolver', 'test-runner', 'code-reviewer']
   }
 ];
 
@@ -2439,6 +2550,9 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 self.send_json({"error": "not found"})
 
+        elif parsed.path == "/api/agent-stats":
+            self.send_json(get_agent_stats())
+
         else:
             self.send_response(404)
             self.end_headers()
@@ -2494,6 +2608,11 @@ class Handler(BaseHTTPRequestHandler):
                         "refactor": "refactor-cleaner",
                         "e2e": "e2e-runner",
                         "perf": "performance-optimizer",
+                        "ceo": "ceo",
+                        "qa": "qa",
+                        "devops": "devops",
+                        "release": "release-manager",
+                        "release-manager": "release-manager",
                     }
                     if not matched and force_agent in ALIASES:
                         matched = ALIASES[force_agent]
@@ -2503,8 +2622,10 @@ class Handler(BaseHTTPRequestHandler):
                     self.send_json({
                         "agent": matched,
                         "score": 99,
+                        "confidence": 0.99,
                         "model": model,
                         "direct": True,
+                        "method": "direct",
                     })
                 else:
                     self.send_json({
@@ -2512,9 +2633,34 @@ class Handler(BaseHTTPRequestHandler):
                     })
                 return
 
-            agent, score = route_task(task)
+            # v2 路由：带缓存和置信度
+            agent, score, confidence, method = route_with_cache(task)
+
+            # 低置信度时列出备选 agent
+            candidates = []
+            if confidence < 0.5:
+                # 收集得分前5的 agent 作为备选
+                task_lower = task.lower()
+                all_scores = {}
+                for a_name, keywords in ROUTING.items():
+                    s = 0
+                    for kw in keywords:
+                        if kw.lower() in task_lower:
+                            s += len(kw) * 2
+                    if s > 0:
+                        all_scores[a_name] = s
+                ranked = sorted(all_scores.items(), key=lambda x: x[1], reverse=True)
+                candidates = [a for a, _ in ranked[:5] if a != agent][:3]
+
             system_prompt, model = load_agent(agent)
-            self.send_json({"agent": agent, "score": score, "model": model})
+            self.send_json({
+                "agent": agent,
+                "score": score,
+                "confidence": round(confidence, 2),
+                "model": model,
+                "method": method,
+                "candidates": candidates,
+            })
 
         elif parsed.path == "/api/chat":
             # 支持两种模式：
@@ -2612,10 +2758,19 @@ class Handler(BaseHTTPRequestHandler):
                 pass
             except Exception as e:
                 try:
+                    record_agent_result(agent, False)
+                except Exception:
+                    pass
+                try:
                     self.wfile.write(
                         f'data: {{"error": "{str(e)}"}}\n\n'.encode("utf-8")
                     )
                     self.wfile.flush()
+                except Exception:
+                    pass
+            else:
+                try:
+                    record_agent_result(agent, True)
                 except Exception:
                     pass
 
@@ -2646,13 +2801,19 @@ class Handler(BaseHTTPRequestHandler):
         elif parsed.path == "/api/route-test":
             task = body.get("task", "")
             results = []
+            task_lower = task.lower()
             for agent_name, keywords in ROUTING.items():
-                score = sum(
-                    1 for kw in keywords if kw.lower() in task.lower()
-                )
+                score = 0
+                matched = []
+                for kw in keywords:
+                    if kw.lower() in task_lower:
+                        weight = len(kw) * 2
+                        score += weight
+                        matched.append(kw)
                 results.append({
                     "agent": agent_name,
                     "score": score,
+                    "matched": matched,
                     "keywords": keywords,
                 })
             results.sort(key=lambda x: x["score"], reverse=True)

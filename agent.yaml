@@ -123,3 +123,27 @@ agents:
     model: sonnet
     tools: [Read, Write, Bash, Grep, Glob]
     routing: ["拆解", "分配", "协作", "多个任务", "全部", "整套"]
+
+  ceo:
+    file: agents/ceo.md
+    model: sonnet
+    tools: [Read, Grep, Glob]
+    routing: ["产品", "需求", "优先级", "用户故事", "验收标准", "功能范围"]
+
+  qa:
+    file: agents/qa.md
+    model: sonnet
+    tools: [Read, Bash, Grep, Glob]
+    routing: ["测试策略", "边界用例", "回归", "QA", "质量保证", "测试计划"]
+
+  devops:
+    file: agents/devops.md
+    model: sonnet
+    tools: [Read, Write, Edit, Bash, Grep, Glob]
+    routing: ["CI/CD", "Docker", "部署", "环境配置", "devops", "运维", "容器化"]
+
+  release-manager:
+    file: agents/release-manager.md
+    model: haiku
+    tools: [Read, Write, Edit, Bash, Grep, Glob]
+    routing: ["发布", "版本", "CHANGELOG", "tag", "release", "回滚", "semver"]

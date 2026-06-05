@@ -16,6 +16,7 @@ import sys
 import json
 import yaml
 import time
+import hashlib
 import sqlite3
 import requests
 from pathlib import Path
@@ -84,50 +85,244 @@ def get_actual_model(agent_model_name):
 
 # ── 路由矩阵 ───────────────────────────────────
 ROUTING = {
-    "coder": ["写", "改", "重构", "代码", "实现", "开发", "修复", "bug", "函数", "类", "模块"],
-    "explorer": ["查", "搜", "找", "定位", "分析", "grep", "搜索", "在哪", "哪些文件"],
-    "code-reviewer": ["审查", "review", "检查代码"],
-    "python-reviewer": ["python", "django", "fastapi", "flask", "pip", "pytest"],
-    "go-reviewer": ["go ", "golang", "goroutine", "go mod"],
-    "typescript-reviewer": ["typescript", "ts ", "react", "node.js", "前端", "vue"],
-    "security-reviewer": ["安全", "审计", "漏洞", "注入", "xss", "csrf", "加密"],
-    "test-runner": ["测试", "验证", "跑测试", "跑一下", "test", "通过没"],
-    "tdd-guide": ["tdd", "测试驱动", "先写测试"],
-    "e2e-runner": ["e2e", "端到端", "playwright", "浏览器测试"],
-    "build-error-resolver": ["构建", "编译", "构建错误", "编译失败", "build error", "装不上"],
-    "planner": ["规划", "设计", "架构", "方案", "计划", "怎么实现", "技术选型"],
-    "database-reviewer": ["数据库", "sql", "schema", "索引", "查询", "慢查询", "postgres", "mysql"],
-    "performance-optimizer": ["性能", "优化", "瓶颈", "慢", "卡", "内存", "cpu"],
-    "cost-analyst": ["费用", "用量", "成本", "花了多少", "账单"],
-    "doc-updater": ["文档", "readme", "changelog", "更新文档"],
-    "refactor-cleaner": ["清理", "死代码", "重复", "未用依赖", "删掉"],
-    "general-worker": ["整理", "配置", "杂务", "通用", "帮我看"],
-    "webnovel-writer": ["小说", "章节", "大纲", "人物", "世界观", "故事"],
-    "orchestrator": ["拆解", "分配", "协作", "多个任务", "全部", "整套", "完整项目", "全流程"],
+    "coder": [
+        "写", "改", "重构", "代码", "实现", "开发", "修复", "bug",
+        "函数", "类", "模块", "接口", "api", "后端", "脚本", "算法",
+        "写一个", "改一下", "修bug", "编程", "程序", "加个功能",
+        "新建文件", "改代码", "写代码", "改函数",
+    ],
+    "explorer": [
+        "查", "搜", "找", "定位", "分析", "grep", "搜索", "在哪",
+        "哪些文件", "找一下", "看看哪里", "找找看", "搜一下",
+        "哪里有", "查一下", "过一遍", "排查", "追溯",
+    ],
+    "code-reviewer": [
+        "审查", "review", "检查代码", "代码审查", "代码检查",
+        "code review", "审阅", "复查", "检查一下",
+    ],
+    "python-reviewer": [
+        "python", "django", "fastapi", "flask", "pip", "pytest",
+        "python代码", "py文件", "python项目",
+    ],
+    "go-reviewer": [
+        "go ", "golang", "goroutine", "go mod", "go代码",
+        "go项目", "go语言",
+    ],
+    "typescript-reviewer": [
+        "typescript", "ts ", "react", "node.js", "前端", "vue",
+        "javascript", "js ", "tsx", "jsx", "组件",
+    ],
+    "security-reviewer": [
+        "安全", "审计", "漏洞", "注入", "xss", "csrf", "加密",
+        "安全隐患", "安全检查", "安全审查", "sql注入",
+    ],
+    "test-runner": [
+        "测试", "验证", "跑测试", "跑一下", "test", "通过没",
+        "单元测试", "集成测试", "测试用例", "跑一遍", "验证一下",
+    ],
+    "tdd-guide": ["tdd", "测试驱动", "先写测试", "测试驱动开发"],
+    "e2e-runner": [
+        "e2e", "端到端", "playwright", "浏览器测试",
+        "端到端测试", "e2e测试",
+    ],
+    "build-error-resolver": [
+        "构建", "编译", "构建错误", "编译失败", "build error",
+        "装不上", "构建失败", "编译报错", "装不了",
+    ],
+    "planner": [
+        "规划", "设计", "架构", "方案", "计划", "怎么实现",
+        "技术选型", "系统设计", "设计方案", "整体设计",
+        "架构设计", "规划一下", "设计一下",
+    ],
+    "database-reviewer": [
+        "数据库", "sql", "schema", "索引", "查询", "慢查询",
+        "postgres", "mysql", "orm", "表结构", "建表",
+    ],
+    "performance-optimizer": [
+        "性能", "优化", "瓶颈", "慢", "卡", "内存", "cpu",
+        "性能优化", "加速", "提速", "快一点", "太慢",
+    ],
+    "cost-analyst": [
+        "费用", "用量", "成本", "花了多少", "账单",
+        "花费", "费用统计", "成本分析",
+    ],
+    "doc-updater": [
+        "文档", "readme", "changelog", "更新文档",
+        "写文档", "补文档", "更新readme",
+    ],
+    "refactor-cleaner": [
+        "清理", "死代码", "重复", "未用依赖", "删掉",
+        "重构整理", "代码清理", "精简",
+    ],
+    "general-worker": [
+        "整理", "配置", "杂务", "通用", "帮我看",
+        "帮我看看", "处理一下", "帮忙", "看下",
+    ],
+    "webnovel-writer": [
+        "小说", "章节", "大纲", "人物", "世界观", "故事",
+        "写小说", "情节", "角色", "续写",
+    ],
+    "orchestrator": [
+        "拆解", "分配", "协作", "多个任务", "全部", "整套",
+        "完整项目", "全流程", "所有任务", "全部完成",
+        "统筹", "编排",
+    ],
+    "ceo": [
+        "产品", "需求", "优先级", "用户故事", "验收标准", "功能范围",
+        "功能需求", "需求分析", "产品需求", "prd",
+    ],
+    "qa": [
+        "测试策略", "边界用例", "回归", "qa", "质量保证", "测试计划",
+        "测试用例", "边界条件", "异常测试", "质量", "用例设计",
+    ],
+    "devops": [
+        "ci/cd", "docker", "部署", "环境配置", "devops", "运维",
+        "容器化", "dockerfile", "k8s", "kubernetes", "上线",
+        "ci", "cd", "容器", "镜像", "编排",
+    ],
+    "release-manager": [
+        "发布", "版本", "changelog", "tag", "release", "回滚",
+        "semver", "发版", "版本号", "发布管理", "发布检查",
+        "release note", "发布说明",
+    ],
 }
 
 
-def route_task(task):
-    """根据任务关键词匹配最佳 Agent，平局时优先更精确/更专业的 agent"""
+def route_task(task, force_agent=None):
+    """路由 v2 -- 加权关键词匹配 + 置信度"""
+    if force_agent:
+        return force_agent, 99, 0.99
+
     task_lower = task.lower()
     scores = {}
+
     for agent, keywords in ROUTING.items():
         score = 0
-        total_kw_len = 0
+        matched = []
         for kw in keywords:
             if kw.lower() in task_lower:
-                score += 1
-                total_kw_len += len(kw)
+                # 加权：长关键词 > 短，越长越精确
+                weight = len(kw) * 2
+                score += weight
+                matched.append(kw)
         if score > 0:
-            # 三元组：(命中数, 命中关键词总长, -关键词总数)
-            # 数多 > 字长(精确) > 词少(专业)
-            scores[agent] = (score, total_kw_len, -len(keywords))
+            scores[agent] = {"score": score, "matched": matched}
 
     if not scores:
-        return "coder", 0  # 默认 coder
+        return "coder", 0, 0.0
 
-    best = max(scores, key=scores.get)
-    return best, scores[best][0]
+    # 成功率权重调整（复合学习）
+    agent_stats = get_agent_stats()
+    for agent_name in list(scores.keys()):
+        if agent_name in agent_stats:
+            rate = agent_stats[agent_name]["success_rate"]
+            if rate < 0.5 and agent_stats[agent_name]["total"] >= 3:
+                scores[agent_name]["score"] = int(scores[agent_name]["score"] * 0.7)
+
+    # 排序
+    ranked = sorted(scores.items(), key=lambda x: x[1]["score"], reverse=True)
+    best = ranked[0]
+    second = ranked[1] if len(ranked) > 1 else (None, {"score": 0})
+
+    # 置信度 = (最高分 - 次高分) / 最高分
+    if second[1]["score"] > 0:
+        confidence = (best[1]["score"] - second[1]["score"]) / best[1]["score"]
+    else:
+        confidence = 1.0
+
+    return best[0], best[1]["score"], max(0, min(1, confidence))
+
+
+def semantic_match(task):
+    """基于 Jaccard 2-gram 相似度的语义匹配。零依赖，轻量实现。"""
+    best_agent = "coder"
+    best_score = 0.0
+    task_ngrams = set()
+    for i in range(len(task) - 1):
+        task_ngrams.add(task[i : i + 2])
+
+    if not task_ngrams:
+        return best_agent, 0.0
+
+    agents_dir = PROJECT_ROOT / "agents"
+    if not agents_dir.exists():
+        return best_agent, 0.0
+
+    for f in sorted(agents_dir.glob("*.md")):
+        try:
+            content = f.read_text(encoding="utf-8")
+        except Exception:
+            continue
+        desc = ""
+        if content.startswith("---"):
+            parts = content.split("---", 2)
+            if len(parts) >= 3:
+                try:
+                    fm = yaml.safe_load(parts[1])
+                    desc = fm.get("description", "") if fm else ""
+                except Exception:
+                    pass
+        if not desc:
+            continue
+
+        desc_ngrams = set()
+        for i in range(len(desc) - 1):
+            desc_ngrams.add(desc[i : i + 2])
+        if not desc_ngrams:
+            continue
+
+        intersection = len(task_ngrams & desc_ngrams)
+        union = len(task_ngrams | desc_ngrams)
+        score = intersection / union if union > 0 else 0
+
+        if score > best_score:
+            best_score = score
+            best_agent = f.stem
+
+    return best_agent, best_score
+
+
+def route_with_fallback(task, force_agent=None):
+    """三层路由：加权关键词 -> 语义相似 -> 低置信度标记"""
+    # Layer 1: 加权关键词（始终运行）
+    agent, score, confidence = route_task(task, force_agent)
+
+    if confidence >= 0.7 or force_agent:
+        return agent, score, confidence, "keyword"
+
+    # Layer 2: 语义匹配
+    sem_agent, sem_score = semantic_match(task)
+    if sem_agent != agent and sem_score > 0.05:
+        # 语义匹配与关键词不同，且有一定匹配度
+        return sem_agent, sem_score, confidence, "semantic"
+
+    # Layer 3: 低置信度，标记
+    return agent, score, confidence, "keyword_low_confidence"
+
+
+# 简单 LRU 缓存：最近 100 条路由结果
+_route_cache = {}  # {task_hash: (agent, score, confidence, method)}
+
+
+def route_with_cache(task, force_agent=None):
+    """带缓存的路由入口"""
+    task_hash = hashlib.md5(task.encode()).hexdigest()[:8]
+
+    # 检查缓存
+    if task_hash in _route_cache and not force_agent:
+        agent, score, confidence, method = _route_cache[task_hash]
+        return agent, score, confidence, "cache"
+
+    # 正常路由
+    agent, score, confidence, method = route_with_fallback(task, force_agent)
+
+    # 存入缓存
+    if len(_route_cache) > 100:
+        oldest = next(iter(_route_cache))
+        del _route_cache[oldest]
+    _route_cache[task_hash] = (agent, score, confidence, method)
+
+    return agent, score, confidence, method
 
 
 # ── Agent 加载 ─────────────────────────────────
@@ -327,10 +522,10 @@ def main():
             return
 
     # 路由
-    agent_name, score = route_task(task)
+    agent_name, score, confidence = route_task(task)
     current_agent = agent_name
 
-    print(f"→ 路由: {agent_name} (匹配度: {score})")
+    print(f"→ 路由: {agent_name} (得分: {score}, 置信度: {confidence:.2f})")
 
     # 加载 Agent
     system_prompt, agent_model = load_agent(agent_name)
@@ -339,6 +534,26 @@ def main():
 
     # 执行
     chat(system_prompt, task, model)
+
+
+# ── Agent 成功率追踪（Superpowers Compound Learning） ──
+_agent_stats = {}  # {agent: {"success": N, "total": N}}
+
+def record_agent_result(agent, success):
+    """记录 Agent 执行结果，用于未来路由优化"""
+    if agent not in _agent_stats:
+        _agent_stats[agent] = {"success": 0, "total": 0}
+    _agent_stats[agent]["total"] += 1
+    if success:
+        _agent_stats[agent]["success"] += 1
+
+def get_agent_stats():
+    """返回 Agent 成功率统计"""
+    result = {}
+    for agent, stats in _agent_stats.items():
+        rate = stats["success"] / stats["total"] if stats["total"] > 0 else 0
+        result[agent] = {"success_rate": round(rate, 2), "total": stats["total"]}
+    return result
 
 
 if __name__ == "__main__":
