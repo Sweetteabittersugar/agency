@@ -118,6 +118,25 @@ HTML = r"""<!DOCTYPE html>
   --shadow-lg:0 8px 32px rgba(0,0,0,.5);
   --transition:all .2s cubic-bezier(.4,0,.2,1);
 }
+[data-theme="light"]{
+  --bg-start:#f8f9fa;--bg-end:#e9ecef;
+  --surface:#fff;--surface2:#f1f3f5;
+  --card:rgba(0,0,0,.02);--card-hover:rgba(0,0,0,.04);
+  --border:rgba(0,0,0,.08);--border-focus:rgba(108,92,231,.3);
+  --text:#212529;--text2:#495057;--muted:#868e96;
+  --shadow-card:0 2px 8px rgba(0,0,0,.06);
+  --shadow-lg:0 8px 24px rgba(0,0,0,.1);
+}
+[data-theme="light"] body{
+  background:linear-gradient(160deg,#f8f9fa 0%,#f1f3f5 35%,#e9ecef 70%,#f8f9fa 100%);
+}
+[data-theme="light"] .topbar{background:rgba(255,255,255,.85);}
+[data-theme="light"] .sidebar{background:rgba(248,249,250,.7);}
+[data-theme="light"] .agent-card .ac-prompt{background:rgba(0,0,0,.03);}
+[data-theme="light"] #output-body{background:rgba(255,255,255,.5);}
+[data-theme="light"] .modal-box{background:#fff;}
+[data-theme="light"] .setting-row{background:rgba(0,0,0,.02);}
+[data-theme="light"] .topbar-logo .name{color:#6C5CE7;}
 body{
   font:14px/1.6 var(--font);
   background:linear-gradient(160deg,var(--bg-start) 0%,#15132b 35%,var(--bg-end) 70%,#0f1629 100%);
@@ -522,6 +541,96 @@ body{
   .modal-box{width:95%;max-height:90vh;}
   #dev-mode{padding:0 12px;}
 }
+
+/* Theme Toggle Button */
+#theme-btn{
+  background:none;border:1px solid var(--border);border-radius:50%;
+  width:32px;height:32px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:16px;color:var(--muted);transition:var(--transition);
+}
+#theme-btn:hover{color:var(--text);border-color:rgba(255,255,255,.2);}
+
+/* Shortcuts Help Button */
+#shortcuts-btn{
+  position:fixed;bottom:20px;right:20px;z-index:300;
+  width:34px;height:34px;border-radius:50%;background:rgba(108,92,231,.15);
+  border:1px solid rgba(108,92,231,.25);color:#a78bfa;font-size:15px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:var(--transition);font-weight:700;
+}
+#shortcuts-btn:hover{background:rgba(108,92,231,.25);color:#c4b5fd;transform:scale(1.08);}
+
+/* Shortcuts Modal */
+.shortcuts-modal{max-width:420px;}
+.shortcuts-modal .modal-body{font-size:13px;line-height:2;}
+.shortcuts-modal kbd{
+  display:inline-block;padding:2px 8px;background:rgba(108,92,231,.12);
+  border:1px solid rgba(108,92,231,.25);border-radius:4px;
+  font:11px var(--mono);color:#c4b5fd;margin:0 2px;
+}
+.shortcuts-modal .shortcut-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:6px 0;border-bottom:1px solid var(--border);
+}
+.shortcuts-modal .shortcut-desc{color:var(--text2);}
+
+/* Pipeline Tab */
+.pipeline-list{display:flex;flex-direction:column;gap:12px;}
+.pipeline-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:18px;transition:var(--transition);
+}
+.pipeline-card:hover{border-color:rgba(108,92,231,.2);}
+.pipeline-card .pl-name{font-size:15px;font-weight:600;color:#c4b5fd;margin-bottom:6px;}
+.pipeline-card .pl-chain{
+  font-size:12px;color:var(--muted);margin-bottom:4px;
+}
+.pipeline-card .pl-chain span{color:var(--primary);font-weight:500;}
+.pipeline-card .pl-desc{font-size:12px;color:var(--text2);margin-bottom:12px;}
+.pipeline-card .pl-actions{display:flex;gap:8px;align-items:center;}
+.pipeline-progress{
+  margin-top:12px;padding:12px;background:rgba(0,0,0,.15);
+  border-radius:var(--radius);font:12px/1.8 var(--mono);
+}
+.pipeline-progress .pp-step{padding:2px 0;}
+.pipeline-progress .pp-done{color:var(--green);}
+.pipeline-progress .pp-running{color:var(--orange);}
+.pipeline-progress .pp-wait{color:var(--muted);}
+
+/* MD Rendering */
+.md-code{
+  background:#0d1117;border:1px solid rgba(255,255,255,.1);
+  border-radius:8px;margin:8px 0;overflow:hidden;
+}
+.md-code-lang{
+  display:block;padding:4px 14px;font-size:11px;color:var(--muted);
+  background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.06);
+}
+.md-code pre{
+  padding:12px 14px;margin:0;font:12px/1.6 var(--mono);
+  color:#7ee787;overflow-x:auto;white-space:pre-wrap;
+}
+.md-inline{
+  background:rgba(108,92,231,.12);color:#c4b5fd;padding:1px 5px;
+  border-radius:3px;font:12px var(--mono);
+}
+.md-h3{font-size:15px;font-weight:600;color:var(--text);margin:12px 0 6px;}
+.md-h4{font-size:13px;font-weight:600;color:var(--text2);margin:10px 0 4px;}
+.md-li{color:var(--text2);margin-left:16px;line-height:1.8;}
+[data-theme="light"] .md-code{background:#1e1e2e;}
+[data-theme="light"] .md-inline{background:rgba(108,92,231,.08);}
+
+/* History item delete + rename */
+.sidebar-item{position:relative;}
+.sidebar-item .si-delete{
+  position:absolute;right:6px;top:50%;transform:translateY(-50%);
+  display:none;width:20px;height:20px;border-radius:50%;
+  background:rgba(255,107,107,.15);border:1px solid rgba(255,107,107,.2);
+  color:var(--red);font-size:12px;cursor:pointer;line-height:18px;text-align:center;
+  transition:var(--transition);
+}
+.sidebar-item:hover .si-delete{display:block;}
+.sidebar-item .si-delete:hover{background:rgba(255,107,107,.3);}
 </style>
 </head>
 <body>
@@ -537,6 +646,7 @@ body{
       <button class="mode-opt active" data-mode="user">使用者</button>
       <button class="mode-opt" data-mode="dev">开发者</button>
     </div>
+    <button id="theme-btn" title="切换主题">☀</button>
   </div>
 </header>
 
@@ -555,8 +665,12 @@ body{
     <div class="chat-area">
       <!-- Input -->
       <div class="input-section">
-        <textarea id="task-input" placeholder="告诉 Agency 你想做什么..." rows="1"></textarea>
+        <textarea id="task-input" placeholder="输入任务，或 @agent名 指定 Agent..." rows="1"></textarea>
         <button id="send-btn" title="发送 (Enter) / 停止 (Esc)">&#10132;</button>
+      </div>
+      <!-- @agent Hint -->
+      <div class="route-badge" id="at-hint" style="margin-bottom:10px;">
+        <span style="font-size:11px;color:var(--muted);">@coder 写代码 | @reviewer 审查 | @planner 做规划 | @explorer 搜索 | @orchestrator 拆解任务</span>
       </div>
       <!-- Quick Tags -->
       <div class="tag-row" id="tag-row">
@@ -602,10 +716,14 @@ body{
       <button class="dev-tab" data-tab="cost">Cost</button>
       <button class="dev-tab" data-tab="settings">Settings</button>
       <button class="dev-tab" data-tab="logs">Logs</button>
+      <button class="dev-tab" data-tab="pipeline">流水线</button>
     </nav>
 
     <!-- Agents -->
     <div class="dev-panel active" id="panel-agents">
+      <div style="margin-bottom:14px;">
+        <button class="btn-sm primary" id="btn-create-agent" style="font-size:13px;padding:8px 18px;">&#10024; 用 AI 创建 Agent</button>
+      </div>
       <div class="agent-grid" id="agent-grid"><span style="color:var(--muted);font-size:13px;">加载中...</span></div>
     </div>
 
@@ -725,8 +843,17 @@ body{
         </table>
       </div>
     </div>
+
+    <!-- Pipeline -->
+    <div class="dev-panel" id="panel-pipeline">
+      <div class="pipeline-list" id="pipeline-list"></div>
+      <div class="pipeline-progress" id="pipeline-progress" style="display:none;"></div>
+    </div>
   </div>
 </div>
+
+<!-- ====================== SHORTCUTS BUTTON ====================== -->
+<button id="shortcuts-btn" title="快捷键 (? 键)">?</button>
 
 <!-- ====================== EDIT MODAL ====================== -->
 <div class="modal-overlay hidden" id="modal-overlay">
@@ -741,6 +868,69 @@ body{
     <div class="modal-footer">
       <button class="btn-sm" style="background:transparent;color:var(--text);border:1px solid var(--border);" id="modal-cancel">取消</button>
       <button class="btn-sm green" id="modal-save">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====================== AGENT FACTORY MODAL ====================== -->
+<div class="modal-overlay hidden" id="factory-overlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="factory-title">&#10024; 用 AI 创建 Agent</h3>
+      <button class="modal-close" id="factory-close">&times;</button>
+    </div>
+    <div class="modal-body" id="factory-body">
+      <!-- Step 1: Describe -->
+      <div id="factory-step-1">
+        <div style="margin-bottom:12px;color:var(--text2);font-size:13px;line-height:1.7;">
+          描述你想要的 Agent，AI 会自动生成完整的 Agent 定义文件。<br>
+          例如：<span style="color:var(--muted);">"我需要一个能分析日志文件并找出异常的 Agent"</span>
+        </div>
+        <textarea id="factory-requirement"
+          style="width:100%;min-height:100px;resize:vertical;background:rgba(0,0,0,.35);border:1px solid var(--border);border-radius:8px;color:var(--text);font:13px/1.6 var(--font);padding:12px;outline:none;"
+          placeholder="描述你需要的 Agent..."></textarea>
+        <div style="margin-top:12px;text-align:right;">
+          <button class="btn-sm primary" id="factory-generate-btn">&#10024; 生成</button>
+        </div>
+      </div>
+      <!-- Step 2: Generating & Review -->
+      <div id="factory-step-2" style="display:none;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <span class="spinner" id="factory-spinner"></span>
+          <span style="color:var(--muted);font-size:12px;" id="factory-status">正在生成...</span>
+        </div>
+        <textarea id="factory-generated"
+          style="width:100%;min-height:320px;resize:vertical;background:rgba(0,0,0,.35);border:1px solid var(--border);border-radius:8px;color:var(--text);font:13px/1.6 var(--mono);padding:14px;outline:none;"
+          placeholder="等待生成..."></textarea>
+        <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end;">
+          <button class="btn-sm" style="background:transparent;color:var(--text);border:1px solid var(--border);" id="factory-regenerate-btn">&#8635; 重新生成</button>
+          <button class="btn-sm green" id="factory-save-btn" disabled>&#128190; 保存 Agent</button>
+        </div>
+      </div>
+      <!-- Step 3: Done -->
+      <div id="factory-step-3" style="display:none;text-align:center;padding:40px 20px;">
+        <div style="font-size:48px;margin-bottom:16px;">&#10024;</div>
+        <div style="font-size:15px;color:var(--green);font-weight:600;margin-bottom:8px;">Agent 创建成功！</div>
+        <div style="color:var(--muted);font-size:13px;margin-bottom:20px;" id="factory-done-msg"></div>
+        <button class="btn-sm primary" id="factory-done-btn">关闭并刷新</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================== SHORTCUTS MODAL ====================== -->
+<div class="modal-overlay hidden" id="shortcuts-overlay">
+  <div class="modal-box shortcuts-modal">
+    <div class="modal-header">
+      <h3>键盘快捷键</h3>
+      <button class="modal-close" id="shortcuts-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="shortcut-row"><span class="shortcut-desc">发送任务</span><kbd>Ctrl+Enter</kbd></div>
+      <div class="shortcut-row"><span class="shortcut-desc">停止生成</span><kbd>Esc</kbd></div>
+      <div class="shortcut-row"><span class="shortcut-desc">指定 Agent</span><kbd>@agent名</kbd></div>
+      <div class="shortcut-row"><span class="shortcut-desc">换行</span><kbd>Shift+Enter</kbd></div>
+      <div class="shortcut-row"><span class="shortcut-desc">显示此面板</span><kbd>?</kbd></div>
     </div>
   </div>
 </div>
@@ -773,6 +963,11 @@ var modalOverlay = $('#modal-overlay');
 var modalEditor = $('#modal-editor');
 var modalTitle = $('#modal-title');
 var editingAgent = '';
+
+// Theme + Shortcuts
+var themeBtn = $('#theme-btn');
+var shortcutsOverlay = $('#shortcuts-overlay');
+var outputRawText = '';
 
 // ===================================================================
 // Constants
@@ -856,6 +1051,26 @@ function toast(msg, type) {
 }
 
 // ===================================================================
+// Markdown Rendering
+// ===================================================================
+function renderMD(text) {
+  if (!text) return text;
+  // Code blocks
+  text = text.replace(/```(\w*)\n([\s\S]*?)```/g,
+    '<div class="md-code"><span class="md-code-lang">$1</span><pre>$2</pre></div>');
+  // Inline code
+  text = text.replace(/`([^`]+)`/g, '<code class="md-inline">$1</code>');
+  // Bold
+  text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // Headings (must do before lists)
+  text = text.replace(/^### (.+)$/gm, '<h4 class="md-h4">$1</h4>');
+  text = text.replace(/^## (.+)$/gm, '<h3 class="md-h3">$1</h3>');
+  // List items
+  text = text.replace(/^- (.+)$/gm, '<li class="md-li">$1</li>');
+  return text;
+}
+
+// ===================================================================
 // History
 // ===================================================================
 function loadHistory() {
@@ -913,14 +1128,27 @@ function renderHistory() {
   } else {
     list.innerHTML = items.map(function(h, i) {
       return '<div class="sidebar-item" data-idx="' + i + '" data-conv-id="' + h.id + '" title="' + escHtml(h.task) + '">'
+        + '<button class="si-delete" data-idx="' + i + '" title="删除">&times;</button>'
         + '<div class="si-task">' + escHtml(h.task.substring(0, 45)) + '</div>'
         + '<div class="si-meta"><span style="color:#a78bfa">' + escHtml(h.agent) + '</span><span>' + escHtml(h.elapsed || '?') + '</span></div>'
         + '</div>';
     }).join('');
   }
+  // Delete button handler
+  list.querySelectorAll('.si-delete').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var idx = parseInt(btn.dataset.idx);
+      var items = loadHistory();
+      items.splice(idx, 1);
+      saveHistory(items);
+      renderHistory();
+    });
+  });
   // Replay click -- restore conversation context
   list.querySelectorAll('.sidebar-item').forEach(function(el) {
-    el.addEventListener('click', function() {
+    el.addEventListener('click', function(e) {
+      if (e.target.classList.contains('si-delete')) return;
       var items = loadHistory();
       var h = items[parseInt(el.dataset.idx)];
       if (h) {
@@ -936,6 +1164,21 @@ function renderHistory() {
         statusDot.classList.add('idle');
         outputLabel.textContent = 'Agent: ' + h.agent;
         taskInput.focus();
+      }
+    });
+    // Double-click to rename
+    el.addEventListener('dblclick', function(e) {
+      e.stopPropagation();
+      var items = loadHistory();
+      var h = items[parseInt(el.dataset.idx)];
+      if (h) {
+        var newName = prompt('新名称:', h.task.substring(0, 45));
+        if (newName && newName.trim()) {
+          h.task = newName.trim();
+          h.title = newName.trim();
+          saveHistory(items);
+          renderHistory();
+        }
       }
     });
   });
@@ -1063,6 +1306,7 @@ $$('.dev-tab').forEach(function(btn) {
     $('#panel-' + tab).classList.add('active');
     if (tab === 'cost') loadCostRecent();
     if (tab === 'logs') loadLogs();
+    if (tab === 'pipeline') renderPipelines();
   });
 });
 
@@ -1107,11 +1351,47 @@ $$('.tag-chip').forEach(function(chip) {
 // ===================================================================
 async function sendTask() {
   if (isStreaming) return;
-  var task = taskInput.value.trim();
-  if (!task) return;
+  var rawTask = taskInput.value.trim();
+  if (!rawTask) return;
 
   // 清理残留
   if (abortCtrl) { abortCtrl.abort(); abortCtrl = null; }
+
+  // @agent 解析
+  var forceAgent = '';
+  var task = rawTask;
+  var atMatch = rawTask.match(/^@(\S+)\s+/);
+  if (atMatch) {
+    var requestedAgent = atMatch[1].toLowerCase();
+    task = rawTask.slice(atMatch[0].length);
+    if (!task) { toast('请在 @agent名 后输入任务描述', 'error'); return; }
+    // 模糊匹配 agent 名（用已知别名简化前端匹配）
+    var agentAliases = {
+      'coder': 'coder', '写代码': 'coder', 'code': 'coder',
+      'reviewer': 'code-reviewer', '审查': 'code-reviewer', 'review': 'code-reviewer',
+      'explorer': 'explorer', '搜索': 'explorer', '查找': 'explorer', 'search': 'explorer',
+      'test': 'test-runner', '测试': 'test-runner', 'test-runner': 'test-runner',
+      'planner': 'planner', '规划': 'planner', '设计': 'planner', 'plan': 'planner',
+      'security': 'security-reviewer', '安全': 'security-reviewer',
+      'writer': 'webnovel-writer', '写小说': 'webnovel-writer', 'novel': 'webnovel-writer',
+      'orchestrator': 'orchestrator', '调度': 'orchestrator', '拆解': 'orchestrator',
+      'general': 'general-worker', '杂务': 'general-worker', '通用': 'general-worker',
+      'tdd': 'tdd-guide', 'tdd-guide': 'tdd-guide',
+      'build': 'build-error-resolver', '编译': 'build-error-resolver',
+      'doc': 'doc-updater', '文档': 'doc-updater',
+      'refactor': 'refactor-cleaner', '清理': 'refactor-cleaner',
+      'e2e': 'e2e-runner', 'e2e-runner': 'e2e-runner',
+      'cost': 'cost-analyst', '费用': 'cost-analyst',
+      'db': 'database-reviewer', '数据库': 'database-reviewer',
+      'perf': 'performance-optimizer', '性能': 'performance-optimizer',
+    };
+    // 先用别名映射，再用服务器端精确/模糊匹配
+    if (agentAliases[requestedAgent]) {
+      forceAgent = agentAliases[requestedAgent];
+    } else {
+      forceAgent = requestedAgent;  // 让服务器端处理
+    }
+  }
 
   isStreaming = true;
   abortCtrl = new AbortController();
@@ -1132,10 +1412,12 @@ async function sendTask() {
 
   try {
     // 1) Route
+    var routeBody = { task: task };
+    if (forceAgent) { routeBody.force_agent = forceAgent; }
     var routeResp = await fetch('/api/route', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ task: task }),
+      body: JSON.stringify(routeBody),
       signal: abortCtrl.signal
     });
     var routeData = await routeResp.json();
@@ -1148,8 +1430,9 @@ async function sendTask() {
     currentAgent = agent;
     currentModel = model;
 
+    var directLabel = routeData.direct ? ' (指定)' : '';
     routeBadge.innerHTML =
-      '<span class="badge badge-agent">Agent: ' + escHtml(agent) + '</span>'
+      '<span class="badge badge-agent">Agent: ' + escHtml(agent) + directLabel + '</span>'
       + '<span class="badge badge-model">' + escHtml(model) + '</span>';
 
     outputLabel.textContent = 'Agent: ' + agent;
@@ -1284,6 +1567,11 @@ async function sendTask() {
     taskInput.value = '';
     taskInput.style.height = 'auto';
     outputFooter.style.display = (outputBody.textContent && outputBody.textContent.trim()) ? 'flex' : 'none';
+    // Render MD after streaming done
+    if (outputBody.textContent && outputBody.textContent.trim()) {
+      outputRawText = outputBody.textContent;
+      outputBody.innerHTML = renderMD(outputRawText);
+    }
   }
 }
 
@@ -1398,6 +1686,11 @@ async function sendTaskDirect(task, agent) {
   } finally {
     resetUI();
     outputFooter.style.display = (outputBody.textContent && outputBody.textContent.trim()) ? 'flex' : 'none';
+    // Render MD after streaming done
+    if (outputBody.textContent && outputBody.textContent.trim()) {
+      outputRawText = outputBody.textContent;
+      outputBody.innerHTML = renderMD(outputRawText);
+    }
   }
 }
 
@@ -1506,6 +1799,202 @@ $('#modal-save').addEventListener('click', async function() {
 });
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape' && !modalOverlay.classList.contains('hidden')) closeEditModal();
+  if (e.key === 'Escape' && !factoryOverlay.classList.contains('hidden')) closeFactoryWizard();
+  if (e.key === 'Escape' && !shortcutsOverlay.classList.contains('hidden')) shortcutsOverlay.classList.add('hidden');
+  // ? key shortcuts panel
+  if (e.key === '?' && document.activeElement !== taskInput && document.activeElement !== modalEditor) {
+    e.preventDefault();
+    shortcutsOverlay.classList.remove('hidden');
+  }
+});
+
+// Shortcuts modal events
+$('#shortcuts-close').addEventListener('click', function() { shortcutsOverlay.classList.add('hidden'); });
+shortcutsOverlay.addEventListener('click', function(e) { if (e.target === shortcutsOverlay) shortcutsOverlay.classList.add('hidden'); });
+$('#shortcuts-btn').addEventListener('click', function() { shortcutsOverlay.classList.remove('hidden'); });
+
+// ===================================================================
+// Theme Toggle
+// ===================================================================
+var currentTheme = localStorage.getItem('agency_theme') || 'dark';
+document.documentElement.setAttribute('data-theme', currentTheme);
+themeBtn.textContent = currentTheme === 'dark' ? '☀' : '☾';
+themeBtn.addEventListener('click', function() {
+  currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', currentTheme);
+  localStorage.setItem('agency_theme', currentTheme);
+  themeBtn.textContent = currentTheme === 'dark' ? '☀' : '☾';
+});
+
+// ===================================================================
+// Agent Factory Wizard
+// ===================================================================
+var factoryOverlay = $('#factory-overlay');
+var factoryAbortCtrl = null;
+var factoryGeneratedContent = '';
+
+$('#btn-create-agent').addEventListener('click', function() {
+  openFactoryWizard();
+});
+
+function openFactoryWizard() {
+  // Reset to step 1
+  $('#factory-step-1').style.display = 'block';
+  $('#factory-step-2').style.display = 'none';
+  $('#factory-step-3').style.display = 'none';
+  $('#factory-requirement').value = '';
+  $('#factory-generated').value = '';
+  $('#factory-save-btn').disabled = true;
+  factoryGeneratedContent = '';
+  factoryOverlay.classList.remove('hidden');
+  $('#factory-requirement').focus();
+}
+
+function closeFactoryWizard() {
+  if (factoryAbortCtrl) { factoryAbortCtrl.abort(); factoryAbortCtrl = null; }
+  factoryOverlay.classList.add('hidden');
+}
+
+$('#factory-close').addEventListener('click', closeFactoryWizard);
+factoryOverlay.addEventListener('click', function(e) {
+  if (e.target === factoryOverlay) closeFactoryWizard();
+});
+
+// Step 1 -> Step 2: Generate
+$('#factory-generate-btn').addEventListener('click', async function() {
+  var req = $('#factory-requirement').value.trim();
+  if (!req) { toast('请先描述你需要的 Agent', 'error'); return; }
+
+  // Switch to step 2
+  $('#factory-step-1').style.display = 'none';
+  $('#factory-step-2').style.display = 'block';
+  $('#factory-generated').value = '';
+  $('#factory-spinner').style.display = 'inline-block';
+  $('#factory-status').textContent = '正在生成...';
+  $('#factory-save-btn').disabled = true;
+
+  factoryAbortCtrl = new AbortController();
+  var fullText = '';
+
+  try {
+    var resp = await fetch('/api/agent-generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requirement: req }),
+      signal: factoryAbortCtrl.signal
+    });
+
+    if (!resp.ok) {
+      $('#factory-generated').value = 'API 错误 (' + resp.status + ')';
+      $('#factory-spinner').style.display = 'none';
+      $('#factory-status').textContent = '生成失败';
+      return;
+    }
+
+    var reader = resp.body.getReader();
+    var decoder = new TextDecoder();
+    var buffer = '';
+
+    while (true) {
+      var rr = await reader.read();
+      if (rr.done) break;
+      buffer += decoder.decode(rr.value, { stream: true });
+      var lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i];
+        if (line.indexOf('data: ') === 0) {
+          var data = line.slice(6);
+          if (data === '[DONE]') break;
+          try {
+            var chunk = JSON.parse(data);
+            var content = chunk.choices && chunk.choices[0] && chunk.choices[0].delta && chunk.choices[0].delta.content;
+            if (content) {
+              fullText += content;
+              $('#factory-generated').value = fullText;
+              $('#factory-generated').scrollTop = $('#factory-generated').scrollHeight;
+            }
+          } catch(_) {}
+        }
+      }
+    }
+
+    factoryGeneratedContent = fullText;
+    $('#factory-spinner').style.display = 'none';
+    $('#factory-status').textContent = fullText ? '生成完成，可编辑后保存' : '生成为空，请重试';
+    if (fullText) {
+      $('#factory-save-btn').disabled = false;
+      $('#factory-status').textContent = '生成完成，可编辑后保存';
+    } else {
+      $('#factory-status').textContent = '生成为空，请重新描述需求';
+    }
+  } catch(e) {
+    if (e.name === 'AbortError') {
+      $('#factory-status').textContent = '已取消';
+    } else {
+      $('#factory-generated').value = '请求失败: ' + (e.message || String(e));
+      $('#factory-status').textContent = '生成失败';
+    }
+    $('#factory-spinner').style.display = 'none';
+  } finally {
+    factoryAbortCtrl = null;
+  }
+});
+
+// Regenerate
+$('#factory-regenerate-btn').addEventListener('click', function() {
+  // Go back to step 1
+  $('#factory-step-2').style.display = 'none';
+  $('#factory-step-1').style.display = 'block';
+  $('#factory-requirement').value = '';
+  $('#factory-generated').value = '';
+  $('#factory-requirement').focus();
+});
+
+// Save
+$('#factory-save-btn').addEventListener('click', async function() {
+  var content = $('#factory-generated').value.trim();
+  if (!content) { toast('没有可保存的内容', 'error'); return; }
+
+  // Extract agent name from YAML frontmatter
+  var nameMatch = content.match(/^---\s*\nname:\s*(\S+)/m);
+  if (!nameMatch) {
+    toast('无法从生成内容中提取 Agent name，请确保 frontmatter 中有 name 字段', 'error');
+    return;
+  }
+  var agentName = nameMatch[1];
+
+  $('#factory-save-btn').disabled = true;
+  $('#factory-save-btn').textContent = '保存中...';
+
+  try {
+    var resp = await fetch('/api/agent-create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: agentName, content: content })
+    });
+    var data = await resp.json();
+    if (data.ok) {
+      // Show step 3
+      $('#factory-step-2').style.display = 'none';
+      $('#factory-step-3').style.display = 'block';
+      $('#factory-done-msg').textContent = 'Agent "' + agentName + '" 已创建并注册到 agent.yaml 和 agents.json';
+    } else {
+      toast('保存失败: ' + (data.error || '?'), 'error');
+      $('#factory-save-btn').disabled = false;
+      $('#factory-save-btn').textContent = '保存 Agent';
+    }
+  } catch(e) {
+    toast('保存失败: ' + (e.message || String(e)), 'error');
+    $('#factory-save-btn').disabled = false;
+    $('#factory-save-btn').textContent = '保存 Agent';
+  }
+});
+
+// Done
+$('#factory-done-btn').addEventListener('click', function() {
+  closeFactoryWizard();
+  loadAgents();  // Refresh agent list
 });
 
 // ===================================================================
@@ -1674,6 +2163,129 @@ async function loadVersion() {
     if (verTag) verTag.textContent = v;
     if (settingsVer) settingsVer.textContent = v;
   } catch(_) {}
+}
+
+// ===================================================================
+// Pipeline
+// ===================================================================
+var pipelines = [
+  {
+    name: '代码审查流水线',
+    chain: 'coder → code-reviewer → security-reviewer',
+    desc: '写代码 → 通用审查 → 安全检查',
+    steps: ['coder', 'code-reviewer', 'security-reviewer']
+  },
+  {
+    name: '新功能开发流水线',
+    chain: 'planner → coder → test-runner → code-reviewer',
+    desc: '规划 → 实现 → 测试 → 审查',
+    steps: ['planner', 'coder', 'test-runner', 'code-reviewer']
+  },
+  {
+    name: 'Bug 修复流水线',
+    chain: 'explorer → coder → test-runner',
+    desc: '定位 → 修复 → 验证',
+    steps: ['explorer', 'coder', 'test-runner']
+  }
+];
+
+function renderPipelines() {
+  var list = $('#pipeline-list');
+  var prog = $('#pipeline-progress');
+  prog.style.display = 'none';
+  prog.innerHTML = '';
+  list.innerHTML = pipelines.map(function(pl, pi) {
+    return '<div class="pipeline-card">'
+      + '<div class="pl-name">' + pl.name + '</div>'
+      + '<div class="pl-chain">' + pl.chain.replace(/ → /g, ' <span>→</span> ') + '</div>'
+      + '<div class="pl-desc">' + pl.desc + '</div>'
+      + '<div class="pl-actions">'
+        + '<button class="btn-sm primary pl-run-btn" data-pipe-idx="' + pi + '">执行</button>'
+      + '</div></div>';
+  }).join('');
+  list.querySelectorAll('.pl-run-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var pi = parseInt(btn.dataset.pipeIdx);
+      runPipeline(pipelines[pi]);
+    });
+  });
+}
+
+function runPipeline(pipeline) {
+  var prog = $('#pipeline-progress');
+  prog.style.display = 'block';
+  var steps = pipeline.steps.map(function(s) { return { agent: s, status: 'wait', output: '' }; });
+  prog.innerHTML = '<div style="font-weight:600;color:#c4b5fd;margin-bottom:8px;">🔄 流水线: ' + pipeline.name + '</div>'
+    + '<div style="color:var(--muted);">──────────────────────────</div>'
+    + steps.map(function(s, i) {
+        return '<div class="pp-step pp-wait" id="pp-step-' + i + '">⬜ 第' + (i+1) + '步: ' + s.agent + ' — 等待中</div>';
+      }).join('');
+
+  (async function() {
+    for (var i = 0; i < steps.length; i++) {
+      var el = $('#pp-step-' + i);
+      el.className = 'pp-step pp-running';
+      el.innerHTML = '⏳ 第' + (i+1) + '步: ' + steps[i].agent + ' — 执行中...';
+      try {
+        var resp = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [
+              { role: 'system', content: '你是' + steps[i].agent + '。完成以下任务，直接输出结果。' },
+              { role: 'user', content: (steps[i-1] && steps[i-1].output) ? ('上一步输出:\n' + steps[i-1].output.substring(0, 1000) + '\n\n请基于此继续完成你的部分。') : '执行你的任务。' }
+            ]
+          })
+        });
+        if (resp.ok) {
+          var reader = resp.body.getReader();
+          var decoder = new TextDecoder();
+          var buffer = '';
+          var content = '';
+          var done = false;
+          while (!done) {
+            var rr = await reader.read();
+            if (rr.done) break;
+            buffer += decoder.decode(rr.value, { stream: true });
+            var lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            for (var j = 0; j < lines.length; j++) {
+              var line = lines[j];
+              if (line.indexOf('data: ') === 0) {
+                var data = line.slice(6);
+                if (data === '[DONE]') { done = true; break; }
+                try {
+                  var chunk = JSON.parse(data);
+                  var ct = chunk.choices && chunk.choices[0] && chunk.choices[0].delta && chunk.choices[0].delta.content;
+                  if (ct) content += ct;
+                } catch(_) {}
+              }
+            }
+          }
+          steps[i].output = content;
+          el.className = 'pp-step pp-done';
+          el.innerHTML = '✅ 第' + (i+1) + '步: ' + steps[i].agent + ' — 已完成';
+        } else {
+          el.className = 'pp-step pp-done';
+          el.innerHTML = '❌ 第' + (i+1) + '步: ' + steps[i].agent + ' — 失败';
+        }
+      } catch(e) {
+        el.className = 'pp-step pp-done';
+        el.innerHTML = '❌ 第' + (i+1) + '步: ' + steps[i].agent + ' — 错误: ' + (e.message || '?');
+      }
+    }
+    prog.innerHTML += '<div style="margin-top:8px;color:var(--green);">✅ 流水线执行完毕</div>';
+    // Display final output in main area
+    var lastOut = steps[steps.length-1].output;
+    if (lastOut) {
+      switchMode('user');
+      outputBody.textContent = lastOut;
+      outputRawText = lastOut;
+      outputBody.innerHTML = renderMD(outputRawText);
+      outputFooter.style.display = 'flex';
+      outputLabel.textContent = '流水线完成';
+    }
+  })();
 }
 
 // ===================================================================
@@ -1847,6 +2459,59 @@ class Handler(BaseHTTPRequestHandler):
 
         if parsed.path == "/api/route":
             task = body.get("task", "")
+            force_agent = body.get("force_agent", "")
+
+            if force_agent:
+                # 模糊匹配 agent 名
+                matched = None
+                agents_dir = PROJECT_ROOT / "agents"
+                # 精确匹配
+                exact = agents_dir / f"{force_agent}.md"
+                if exact.exists():
+                    matched = force_agent
+                else:
+                    # 模糊匹配
+                    for f in sorted(agents_dir.glob("*.md")):
+                        if force_agent in f.stem:
+                            matched = f.stem
+                            break
+                    # 别名映射
+                    ALIASES = {
+                        "reviewer": "code-reviewer",
+                        "test": "test-runner",
+                        "writer": "webnovel-writer",
+                        "planner": "planner",
+                        "security": "security-reviewer",
+                        "explorer": "explorer",
+                        "coder": "coder",
+                        "orchestrator": "orchestrator",
+                        "cost": "cost-analyst",
+                        "general": "general-worker",
+                        "docker": "general-worker",
+                        "tdd": "tdd-guide",
+                        "build": "build-error-resolver",
+                        "doc": "doc-updater",
+                        "refactor": "refactor-cleaner",
+                        "e2e": "e2e-runner",
+                        "perf": "performance-optimizer",
+                    }
+                    if not matched and force_agent in ALIASES:
+                        matched = ALIASES[force_agent]
+
+                if matched:
+                    system_prompt, model = load_agent(matched)
+                    self.send_json({
+                        "agent": matched,
+                        "score": 99,
+                        "model": model,
+                        "direct": True,
+                    })
+                else:
+                    self.send_json({
+                        "error": f"Agent '{force_agent}' 不存在。可用: {', '.join(sorted(f.stem for f in agents_dir.glob('*.md')))}"
+                    })
+                return
+
             agent, score = route_task(task)
             system_prompt, model = load_agent(agent)
             self.send_json({"agent": agent, "score": score, "model": model})
@@ -2015,6 +2680,175 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json({"ok": True, "message": ".env 已重新加载"})
             else:
                 self.send_json({"ok": False, "error": ".env 文件不存在"})
+
+        elif parsed.path == "/api/agent-generate":
+            """AI 生成 Agent 定义（流式）"""
+            requirement = body.get("requirement", "")
+            if not requirement:
+                self.send_json({"error": "requirement 不能为空"})
+                return
+
+            gen_prompt = f"""你是一个 Agent 设计专家。根据用户需求生成一个完整的 Agent 定义文件。
+
+输出格式严格如下：
+
+---
+name: agent-name（英文，kebab-case，如 log-analyzer、data-cleaner）
+description: 一句话描述（中文）
+tools: ["Read", "Write", "Bash", "Grep", "Glob"]
+model: sonnet
+---
+
+# Agent 名称 -- 一句话描述
+
+## 角色
+（2-3句话说明这个 agent 是谁、负责什么）
+
+## 核心能力
+- 能力1
+- 能力2
+- 能力3
+
+## 工作流
+1. 步骤1
+2. 步骤2
+3. 步骤3
+
+## 输出格式
+直接对话回复，包含：
+1. 结论（一句话）
+2. 详细结果
+3. 建议（如有）
+
+## 约束
+- 根据需求填充
+
+---
+
+用户需求：{requirement}
+
+请直接输出完整的 Agent 定义文件，不要任何额外说明。"""
+
+            base_url, api_key, headers = get_provider_config()
+            if not base_url:
+                self.send_json({"error": "未配置 API Key"})
+                return
+
+            model = os.environ.get("DEFAULT_MODEL", "deepseek-chat")
+
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream")
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("Connection", "keep-alive")
+            self.end_headers()
+
+            import requests as req
+            payload = {
+                "model": model,
+                "messages": [
+                    {"role": "user", "content": gen_prompt},
+                ],
+                "stream": True,
+                "temperature": 0.7,
+                "max_tokens": 4096,
+            }
+
+            try:
+                resp = req.post(
+                    f"{base_url}/chat/completions",
+                    headers=headers,
+                    json=payload,
+                    stream=True,
+                    timeout=120,
+                )
+                if resp.status_code != 200:
+                    err = resp.text[:300] if hasattr(resp, 'text') else str(resp.status_code)
+                    self.wfile.write(f'data: {{"error": "API 错误 ({resp.status_code}): {err}"}}\n\n'.encode("utf-8"))
+                    self.wfile.flush()
+                    return
+
+                for line in resp.iter_lines():
+                    if not line:
+                        continue
+                    line = line.decode("utf-8")
+                    if line.startswith("data: "):
+                        try:
+                            self.wfile.write(f"{line}\n\n".encode("utf-8"))
+                            self.wfile.flush()
+                        except (BrokenPipeError, ConnectionResetError):
+                            break
+                self.wfile.write("data: [DONE]\n\n".encode("utf-8"))
+                self.wfile.flush()
+            except Exception as e:
+                try:
+                    self.wfile.write(f'data: {{"error": "{str(e)}"}}\n\n'.encode("utf-8"))
+                    self.wfile.flush()
+                except Exception:
+                    pass
+
+        elif parsed.path == "/api/agent-create":
+            """保存新 Agent 定义，同时更新 agent.yaml 和 agents.json"""
+            agent_name = body.get("name", "").strip()
+            content = body.get("content", "").strip()
+
+            if not agent_name:
+                self.send_json({"ok": False, "error": "name 不能为空"})
+                return
+            if not content:
+                self.send_json({"ok": False, "error": "content 不能为空"})
+                return
+
+            # 安全校验：name 只能包含字母、数字、连字符
+            import re
+            if not re.match(r'^[a-z0-9][-a-z0-9]*$', agent_name):
+                self.send_json({"ok": False, "error": "Agent 名称只能包含小写字母、数字和连字符，必须以字母或数字开头"})
+                return
+
+            agents_dir = PROJECT_ROOT / "agents"
+            agent_file = agents_dir / f"{agent_name}.md"
+
+            # 检查是否已存在
+            if agent_file.exists():
+                self.send_json({"ok": False, "error": f"Agent '{agent_name}' 已存在，请使用其他名称或先删除"})
+                return
+
+            # 1. 写入 .md 文件
+            agent_file.write_text(content, encoding="utf-8")
+
+            # 2. 追加到 agents.json
+            json_path = PROJECT_ROOT / "maestro" / "agents.json"
+            try:
+                if json_path.exists():
+                    agents_data = json.loads(json_path.read_text(encoding="utf-8"))
+                    agents_data[agent_name] = {
+                        "name": agent_name,
+                        "description": "",
+                        "system_prompt_file": f"agents/{agent_name}.md",
+                        "allowed_tools": "Read,Write,Bash,Grep,Glob",
+                        "model": "sonnet",
+                        "collaborates_with": [],
+                        "output_type": "task_result",
+                        "isolation": "none",
+                        "parallel_safe": True,
+                    }
+                    json_path.write_text(json.dumps(agents_data, ensure_ascii=False, indent=2), encoding="utf-8")
+            except Exception:
+                pass  # agents.json 更新失败不阻塞
+
+            # 3. 追加到 agent.yaml
+            yaml_path = PROJECT_ROOT / "agent.yaml"
+            try:
+                if yaml_path.exists():
+                    with open(str(yaml_path), "a", encoding="utf-8") as f:
+                        f.write(f"\n  {agent_name}:\n")
+                        f.write(f"    file: agents/{agent_name}.md\n")
+                        f.write(f"    model: sonnet\n")
+                        f.write(f"    tools: [Read, Write, Bash, Grep, Glob]\n")
+                        f.write(f"    routing: []\n")
+            except Exception:
+                pass
+
+            self.send_json({"ok": True, "name": agent_name})
 
         else:
             self.send_response(404)

@@ -117,3 +117,9 @@ agents:
     model: sonnet
     tools: [Read, Write, Edit, Bash, Grep, Glob]
     routing: ["tdd", "测试驱动"]
+
+  orchestrator:
+    file: agents/orchestrator.md
+    model: sonnet
+    tools: [Read, Write, Bash, Grep, Glob]
+    routing: ["拆解", "分配", "协作", "多个任务", "全部", "整套"]

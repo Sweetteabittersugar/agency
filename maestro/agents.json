@@ -207,5 +207,16 @@
     "output_type": "test_result",
     "isolation": "none",
     "parallel_safe": false
+  },
+  "orchestrator": {
+    "name": "orchestrator",
+    "description": "总调度：复杂任务拆解、多Agent协作、结果汇总",
+    "system_prompt_file": "agents/orchestrator.md",
+    "allowed_tools": "Read,Write,Bash,Grep,Glob",
+    "model": "sonnet",
+    "collaborates_with": ["coder", "reviewer", "explorer", "test"],
+    "output_type": "orchestration_report",
+    "isolation": "none",
+    "parallel_safe": false
   }
 }
