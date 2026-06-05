@@ -96,38 +96,27 @@ inputEl.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
 });
 
-// ── Send ──
+// ── Send / Stop ──
 async function handleSend() {
   if (isStreaming) { stopStream(); return; }
   const task = inputEl.value.trim();
   if (!task) return;
 
-  // Extract @agent
   let forceAgent = '';
   let actualTask = task;
   const m = task.match(/^@(\S+)\s+/);
   if (m) { forceAgent = m[1]; actualTask = task.slice(m[0].length); }
 
-  // UI: sending state
-  isStreaming = true;
+  setStreaming(true);
   inputEl.value = '';
-  inputEl.disabled = true;
-  sendBtn.textContent = '停止';
-  sendBtn.classList.add('stopping');
-  routeBadge.innerHTML = '路由中...';
+  routeBadge.innerHTML = '...';
   if (emptyState) emptyState.style.display = 'none';
-
-  // User msg
   addMessage('user', task);
-
-  // Assistant msg placeholder
   currentAssistantMsg = addMessage('assistant', '');
   currentAssistantMsg.innerHTML = '<span class="cursor"></span>';
-
   abortController = new AbortController();
 
   try {
-    // Route
     const rResp = await fetch('/api/route', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({task: actualTask, force_agent: forceAgent}),
@@ -135,58 +124,44 @@ async function handleSend() {
     });
     const route = await rResp.json();
     if (route.error) throw new Error(route.error);
-
     routeBadge.innerHTML = `<span>Agent: ${route.agent}</span><span>${route.model}</span>`;
     currentAssistantMsg.querySelector('.cursor')?.remove();
 
-    // Stream
     const body = forceAgent
       ? JSON.stringify({task: actualTask, force_agent: forceAgent, model: route.model})
       : JSON.stringify({task: actualTask, model: route.model});
 
     const resp = await fetch('/api/chat', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body, signal: abortController.signal
+      method: 'POST', headers: {'Content-Type': 'application/json'}, body,
+      signal: abortController.signal
     });
 
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();
-    let buffer = '';
-    let rawText = '';
-
+    let buf = '', txt = '';
     while (true) {
       const {done, value} = await reader.read();
       if (done) break;
-      buffer += decoder.decode(value, {stream: true});
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
+      buf += decoder.decode(value, {stream: true});
+      const lines = buf.split('\n'); buf = lines.pop() || '';
       for (const line of lines) {
-        if (line.startsWith('event: done')) continue;
-        if (line.startsWith('event: meta')) continue;
-        if (line.startsWith('data: ')) {
-          try {
-            const d = JSON.parse(line.slice(6));
-            if (d.content) {
-              rawText += d.content;
-              currentAssistantMsg.innerHTML = renderMD(rawText) + '<span class="cursor"></span>';
-              messagesEl.scrollTop = messagesEl.scrollHeight;
-            } else if (d.elapsed) {
-              routeBadge.innerHTML += `<span>${d.elapsed}s · $${d.cost}</span>`;
-            }
-          } catch(e) {}
-        }
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const d = JSON.parse(line.slice(6));
+          if (d.content) { txt += d.content; currentAssistantMsg.innerHTML = renderMD(txt) + '<span class="cursor"></span>'; messagesEl.scrollTop = messagesEl.scrollHeight; }
+          else if (d.elapsed) routeBadge.innerHTML += `<span>${d.elapsed}s · $${d.cost}</span>`;
+        } catch(_) {}
       }
     }
     currentAssistantMsg.querySelector('.cursor')?.remove();
-
   } catch (e) {
     if (e.name === 'AbortError') {
-      if (currentAssistantMsg) currentAssistantMsg.innerHTML += '<br>[已停止]';
+      if (currentAssistantMsg) currentAssistantMsg.innerHTML += '<br>[停止]';
     } else {
-      if (currentAssistantMsg) currentAssistantMsg.innerHTML = `<span style="color:var(--danger)">错误: ${escHtml(e.message)}</span>`;
+      if (currentAssistantMsg) currentAssistantMsg.innerHTML = '<span style="color:var(--danger)">错误: ' + escHtml(e.message) + '</span>';
     }
   } finally {
-    resetUI();
+    setStreaming(false);
   }
 }
 
@@ -194,13 +169,13 @@ function stopStream() {
   if (abortController) { abortController.abort(); abortController = null; }
 }
 
-function resetUI() {
-  isStreaming = false;
-  abortController = null;
-  inputEl.disabled = false;
-  sendBtn.textContent = '发送';
-  sendBtn.classList.remove('stopping');
-  inputEl.focus();
+function setStreaming(v) {
+  isStreaming = v;
+  inputEl.disabled = v;
+  sendBtn.textContent = v ? '停止' : '发送';
+  if (v) { sendBtn.classList.add('stopping'); }
+  else { sendBtn.classList.remove('stopping'); abortController = null; }
+  if (!v) setTimeout(function(){ inputEl.focus(); inputEl.disabled = false; }, 50);
 }
 
 // ── Messages ──
