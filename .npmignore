@@ -1,0 +1,15 @@
+# npm 发布时忽略的文件
+.git
+*.log
+__pycache__
+*.pyc
+maestro/results
+maestro/tasks
+maestro/logs
+maestro/archive
+maestro/cost.db
+maestro/state.db
+.env
+.prettierrc
+.markdownlint.json
+.editorconfig

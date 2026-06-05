@@ -1,0 +1,71 @@
+{
+  "name": "everythingclaudecode",
+  "version": "0.1.0",
+  "description": "中文原生 Claude Code 配置平台 — Agent 调度、成本追踪、创作工作流，日常生产验证",
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "claude-code",
+    "agents",
+    "skills",
+    "hooks",
+    "rules",
+    "commands",
+    "maestro",
+    "multi-agent",
+    "cost-tracking",
+    "chinese",
+    "ai",
+    "automation",
+    "best-practices",
+    "tdd",
+    "code-review"
+  ],
+  "author": {
+    "name": "Sweetteabittersugar"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sweetteabittersugar/everythingclaudecode.git"
+  },
+  "homepage": "https://github.com/Sweetteabittersugar/everythingclaudecode#readme",
+  "bugs": {
+    "url": "https://github.com/Sweetteabittersugar/everythingclaudecode/issues"
+  },
+  "files": [
+    "agents/",
+    "skills/",
+    "commands/",
+    "hooks/",
+    "rules/",
+    "maestro/",
+    "scripts/",
+    "docs/",
+    "tests/",
+    ".github/",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "README.md",
+    "README.en.md",
+    "LICENSE",
+    "VERSION",
+    "CHANGELOG.md",
+    "RULES.md",
+    "SOUL.md",
+    "COMMANDS-QUICK-REF.md",
+    "CODE_OF_CONDUCT.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "agent.yaml",
+    ".env.example",
+    "pyproject.toml",
+    "install.sh",
+    "install.ps1"
+  ],
+  "scripts": {
+    "test": "python -m pytest tests/ -v",
+    "postinstall": "node scripts/install-apply.js"
+  }
+}

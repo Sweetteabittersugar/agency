@@ -1,0 +1,167 @@
+{
+  "coder": {
+    "name": "coder",
+    "description": "写代码、修bug、重构",
+    "system_prompt_file": "agents/coder.md",
+    "allowed_tools": "Read,Write,Edit,Bash(git *),Bash(ls *),Bash(python *),Glob,Grep",
+    "model": "sonnet",
+    "collaborates_with": ["reviewer", "explorer"],
+    "output_type": "code_change",
+    "isolation": "worktree",
+    "parallel_safe": true
+  },
+  "reviewer": {
+    "name": "reviewer",
+    "description": "代码审查：查bug、安全、风格",
+    "system_prompt_file": "agents/code-reviewer.md",
+    "allowed_tools": "Read,Glob,Grep,Bash(git *)",
+    "model": "sonnet",
+    "collaborates_with": ["coder", "test"],
+    "output_type": "review_report",
+    "isolation": "worktree",
+    "parallel_safe": true
+  },
+  "explorer": {
+    "name": "explorer",
+    "description": "搜索和分析代码库（只读）",
+    "system_prompt_file": "agents/explorer.md",
+    "allowed_tools": "Read,Glob,Grep,Bash(ls *)",
+    "model": "haiku",
+    "collaborates_with": ["coder", "reviewer", "test"],
+    "output_type": "analysis_report",
+    "isolation": "none",
+    "parallel_safe": true
+  },
+  "test": {
+    "name": "test",
+    "description": "运行测试和验证",
+    "system_prompt_file": "agents/test-runner.md",
+    "allowed_tools": "Read,Bash(python *),Bash(ls *),Bash(npm *),Glob,Grep",
+    "model": "haiku",
+    "collaborates_with": ["coder", "reviewer"],
+    "output_type": "test_result",
+    "isolation": "worktree",
+    "parallel_safe": true
+  },
+  "writer": {
+    "name": "writer",
+    "description": "长篇网文写作：构思、大纲、章节、人物管理",
+    "system_prompt_file": "agents/webnovel-writer.md",
+    "allowed_tools": "Read,Write,Edit,Glob,Grep,Bash(ls *)",
+    "model": "opus",
+    "collaborates_with": [],
+    "output_type": "creative_writing",
+    "isolation": "none",
+    "parallel_safe": false
+  },
+  "general-worker": {
+    "name": "general-worker",
+    "description": "通用执行者：文件整理、配置更新、数据处理等杂项任务",
+    "system_prompt_file": "agents/general-worker.md",
+    "allowed_tools": "Read,Write,Edit,Glob,Grep,Bash(ls *),Bash(python *),Bash(git *)",
+    "model": "sonnet",
+    "collaborates_with": [],
+    "output_type": "task_result",
+    "isolation": "none",
+    "parallel_safe": true
+  },
+  "planner": {
+    "name": "planner",
+    "description": "软件架构规划：需求分析、架构设计、任务拆分",
+    "system_prompt_file": "agents/planner.md",
+    "allowed_tools": "Read,Glob,Grep,Bash(ls *)",
+    "model": "sonnet",
+    "collaborates_with": ["coder", "reviewer"],
+    "output_type": "plan",
+    "isolation": "none",
+    "parallel_safe": true
+  },
+  "security-reviewer": {
+    "name": "security-reviewer",
+    "description": "安全审计：密钥泄露、注入漏洞、认证授权",
+    "system_prompt_file": "agents/security-reviewer.md",
+    "allowed_tools": "Read,Glob,Grep",
+    "model": "sonnet",
+    "collaborates_with": ["reviewer"],
+    "output_type": "security_report",
+    "isolation": "none",
+    "parallel_safe": true
+  },
+  "cost-analyst": {
+    "name": "cost-analyst",
+    "description": "LLM API 费用分析：按模型/日期/Agent 统计成本",
+    "system_prompt_file": "agents/cost-analyst.md",
+    "allowed_tools": "Read,Bash(python *),Grep,Glob",
+    "model": "haiku",
+    "collaborates_with": [],
+    "output_type": "cost_report",
+    "isolation": "none",
+    "parallel_safe": true
+  },
+  "python-reviewer": {
+    "name": "python-reviewer",
+    "description": "Python 代码审查：PEP 8、类型注解、Django/FastAPI、性能",
+    "system_prompt_file": "agents/python-reviewer.md",
+    "allowed_tools": "Read,Grep,Glob,Bash",
+    "model": "sonnet",
+    "collaborates_with": ["reviewer", "coder"],
+    "output_type": "review_report",
+    "isolation": "none",
+    "parallel_safe": true
+  },
+  "go-reviewer": {
+    "name": "go-reviewer",
+    "description": "Go 代码审查：错误处理、并发安全、接口设计",
+    "system_prompt_file": "agents/go-reviewer.md",
+    "allowed_tools": "Read,Grep,Glob,Bash",
+    "model": "sonnet",
+    "collaborates_with": ["reviewer", "coder"],
+    "output_type": "review_report",
+    "isolation": "none",
+    "parallel_safe": true
+  },
+  "typescript-reviewer": {
+    "name": "typescript-reviewer",
+    "description": "TypeScript 代码审查：类型安全、React 最佳实践、Node.js 性能",
+    "system_prompt_file": "agents/typescript-reviewer.md",
+    "allowed_tools": "Read,Grep,Glob,Bash",
+    "model": "sonnet",
+    "collaborates_with": ["reviewer", "coder"],
+    "output_type": "review_report",
+    "isolation": "none",
+    "parallel_safe": true
+  },
+  "build-error-resolver": {
+    "name": "build-error-resolver",
+    "description": "构建错误修复：编译错误、依赖冲突、类型错误，增量修复",
+    "system_prompt_file": "agents/build-error-resolver.md",
+    "allowed_tools": "Read,Bash,Grep,Glob,Edit,Write",
+    "model": "sonnet",
+    "collaborates_with": ["coder"],
+    "output_type": "fix_result",
+    "isolation": "none",
+    "parallel_safe": false
+  },
+  "doc-updater": {
+    "name": "doc-updater",
+    "description": "文档更新：根据代码变更自动更新 README、CHANGELOG、API 文档",
+    "system_prompt_file": "agents/doc-updater.md",
+    "allowed_tools": "Read,Write,Edit,Grep,Glob,Bash",
+    "model": "haiku",
+    "collaborates_with": ["coder"],
+    "output_type": "doc_update",
+    "isolation": "none",
+    "parallel_safe": true
+  },
+  "refactor-cleaner": {
+    "name": "refactor-cleaner",
+    "description": "代码清理：死代码、重复代码、未使用依赖的安全删除",
+    "system_prompt_file": "agents/refactor-cleaner.md",
+    "allowed_tools": "Read,Write,Edit,Grep,Glob,Bash",
+    "model": "sonnet",
+    "collaborates_with": [],
+    "output_type": "cleanup_result",
+    "isolation": "none",
+    "parallel_safe": false
+  }
+}

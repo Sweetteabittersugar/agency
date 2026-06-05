@@ -1,0 +1,95 @@
+# everythingclaudecode Agent 注册表
+# 所有子代理的统一配置入口
+
+version: "0.1.0"
+
+agents:
+  coder:
+    file: agents/coder.md
+    model: sonnet
+    tools: [Read, Grep, Glob, Bash, Write, Edit, NotebookEdit]
+    routing: ["写", "改", "重构", "代码", "实现", "开发"]
+
+  code-reviewer:
+    file: agents/code-reviewer.md
+    model: sonnet
+    tools: [Read, Grep, Glob, Bash]
+    routing: ["审查", "review", "检查"]
+
+  explorer:
+    file: agents/explorer.md
+    model: haiku
+    tools: [Read, Grep, Glob, Bash]
+    routing: ["查", "搜", "找", "定位", "分析", "grep"]
+
+  test-runner:
+    file: agents/test-runner.md
+    model: haiku
+    tools: [Read, Bash, Grep, Glob]
+    routing: ["测试", "验证", "跑", "确认", "test"]
+
+  general-worker:
+    file: agents/general-worker.md
+    model: sonnet
+    tools: [Read, Write, Edit, Bash, Grep, Glob]
+    routing: ["通用", "整理", "配置", "杂务"]
+
+  webnovel-writer:
+    file: agents/webnovel-writer.md
+    model: opus
+    tools: [Read, Write, Edit, Grep, Glob]
+    routing: ["写小说", "章节", "大纲", "人物", "世界观"]
+
+  planner:
+    file: agents/planner.md
+    model: sonnet
+    tools: [Read, Grep, Glob, Bash]
+    routing: ["规划", "设计", "架构", "方案"]
+
+  security-reviewer:
+    file: agents/security-reviewer.md
+    model: sonnet
+    tools: [Read, Grep, Glob, Bash]
+    routing: ["安全", "审计", "漏洞"]
+
+  cost-analyst:
+    file: agents/cost-analyst.md
+    model: haiku
+    tools: [Read, Bash, Grep, Glob]
+    routing: ["费用", "用量", "成本", "@cost"]
+
+  python-reviewer:
+    file: agents/python-reviewer.md
+    model: sonnet
+    tools: [Read, Grep, Glob, Bash]
+    routing: ["审查 Python", "Django", "FastAPI", "Flask", "pip"]
+
+  go-reviewer:
+    file: agents/go-reviewer.md
+    model: sonnet
+    tools: [Read, Grep, Glob, Bash]
+    routing: ["审查 Go", "golang", "goroutine"]
+
+  typescript-reviewer:
+    file: agents/typescript-reviewer.md
+    model: sonnet
+    tools: [Read, Grep, Glob, Bash]
+    routing: ["审查 TypeScript", "React", "Node.js", "前端"]
+
+  build-error-resolver:
+    file: agents/build-error-resolver.md
+    model: sonnet
+    tools: [Read, Bash, Grep, Glob, Edit, Write]
+    routing: ["构建报错", "编译失败", "依赖冲突", "构建错误"]
+
+  doc-updater:
+    file: agents/doc-updater.md
+    model: haiku
+    tools: [Read, Write, Edit, Grep, Glob, Bash]
+    routing: ["更新文档", "README", "CHANGELOG", "文档同步"]
+
+  refactor-cleaner:
+    file: agents/refactor-cleaner.md
+    model: sonnet
+    tools: [Read, Write, Edit, Grep, Glob, Bash]
+    routing: ["清理", "死代码", "重复", "未用依赖", "重构清理"]

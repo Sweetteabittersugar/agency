@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp", "--browser", "chromium"]
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["@context7/mcp"]
+    }
+  }
+}

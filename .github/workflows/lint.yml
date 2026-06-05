@@ -1,0 +1,58 @@
+name: Lint
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: "./hooks"
+          format: tty
+
+      - name: YAML Lint
+        uses: ibiqlik/action-yamllint@v3
+        with:
+          file_or_dir: ".github/workflows/ agent.yaml"
+          config_data: |
+            extends: default
+            rules:
+              line-length: disable
+              document-start: disable
+
+      - name: Markdown Lint
+        uses: avto-dev/markdown-lint@v1
+        with:
+          args: "*.md docs/ agents/ rules/"
+
+      - name: Check Agent Frontmatter
+        run: |
+          echo "Checking agent YAML frontmatter..."
+          for f in agents/*.md; do
+            if ! head -1 "$f" | grep -q "^---$"; then
+              echo "ERROR: $f missing YAML frontmatter"
+              exit 1
+            fi
+            echo "  OK: $f"
+          done
+          echo "All agents have valid frontmatter."
+
+      - name: Check Hook Shebangs
+        run: |
+          echo "Checking hook shebangs..."
+          for f in hooks/*.sh; do
+            if ! head -1 "$f" | grep -q "^#!/usr/bin/env bash"; then
+              echo "ERROR: $f invalid shebang"
+              exit 1
+            fi
+            echo "  OK: $f"
+          done
+          echo "All hooks have valid shebangs."
