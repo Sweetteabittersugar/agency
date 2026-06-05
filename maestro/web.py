@@ -314,9 +314,33 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
 
+def _kill_old():
+    """Kill existing python processes listening on our port."""
+    try:
+        import subprocess, platform
+        if platform.system() == "Windows":
+            out = subprocess.check_output(
+                f'netstat -ano | findstr "127.0.0.1:{PORT} " | findstr "LISTENING"',
+                shell=True, text=True, timeout=5
+            )
+            pids = set()
+            for line in out.strip().split('\n'):
+                parts = line.strip().split()
+                if len(parts) >= 5 and parts[-1].isdigit():
+                    pid = int(parts[-1])
+                    if pid != os.getpid():
+                        pids.add(str(pid))
+            for pid in pids:
+                subprocess.run(f'taskkill //F //PID {pid}', shell=True,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                print(f"  Killed old server (PID {pid})")
+    except Exception:
+        pass
+
 if __name__ == "__main__":
     import webbrowser
+    _kill_old()
     threading.Timer(1.0, lambda: webbrowser.open(f"http://127.0.0.1:{PORT}")).start()
-    print(f"\n  Agency API Server v{AGENCY_VERSION}")
+    print(f"\n  Agency v{AGENCY_VERSION}")
     print(f"  http://localhost:{PORT}\n")
     HTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
