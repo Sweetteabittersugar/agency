@@ -93,3 +93,27 @@ agents:
     model: sonnet
     tools: [Read, Write, Edit, Grep, Glob, Bash]
     routing: ["清理", "死代码", "重复", "未用依赖", "重构清理"]
+
+  database-reviewer:
+    file: agents/database-reviewer.md
+    model: sonnet
+    tools: [Read, Grep, Glob, Bash]
+    routing: ["数据库", "sql", "schema", "索引", "查询"]
+
+  e2e-runner:
+    file: agents/e2e-runner.md
+    model: sonnet
+    tools: [Read, Write, Bash, Grep, Glob]
+    routing: ["e2e", "端到端", "playwright"]
+
+  performance-optimizer:
+    file: agents/performance-optimizer.md
+    model: sonnet
+    tools: [Read, Bash, Grep, Glob, Edit, Write]
+    routing: ["性能", "优化", "瓶颈"]
+
+  tdd-guide:
+    file: agents/tdd-guide.md
+    model: sonnet
+    tools: [Read, Write, Edit, Bash, Grep, Glob]
+    routing: ["tdd", "测试驱动"]

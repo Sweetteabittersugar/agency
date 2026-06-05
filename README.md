@@ -6,7 +6,8 @@
 [![Version](https://img.shields.io/badge/version-0.1.0-green)](VERSION)
 
 ```bash
-# 方式零：零依赖，直接跑（只需 DeepSeek key）
+# 方式零：不装 Claude Code，直接跑（只需 Python + DeepSeek key）
+pip install pyyaml requests
 echo "DEEPSEEK_API_KEY=sk-xxxx" > .env
 python maestro/main.py "你的任务"
 # 系统自动选 Agent、调 API、返回结果、记录成本

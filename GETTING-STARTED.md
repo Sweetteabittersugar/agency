@@ -2,15 +2,17 @@
 
 > **Agent 层不需要任何密钥。** 下载 → 复制 → 能用。只有可选的 Maestro 调度引擎需要 API key。
 
-## 方式零：零依赖，直接跑（不装任何东西，不依赖 Claude Code）
+## 方式零：不装 Claude Code，直接跑（只需 Python + DeepSeek key）
 
 如果你只是想用一个 Agent 干活，不需要 Claude Code，不需要安装脚本——更不需要手动指定 Agent：
 
 ```bash
 # 1. 获取 DeepSeek API Key：https://platform.deepseek.com/api_keys
-# 2. 写到 .env
+# 2. 安装依赖
+pip install pyyaml requests
+# 3. 写到 .env
 echo "DEEPSEEK_API_KEY=sk-xxxx" > .env
-# 3. 直接说任务，系统自动选 Agent
+# 4. 直接说任务，系统自动选 Agent
 python maestro/main.py "写一个快排函数"
 python maestro/main.py "分析这个目录结构"
 python maestro/main.py --list-routes  # 看路由表
@@ -18,9 +20,8 @@ python maestro/main.py --list-routes  # 看路由表
 
 - 不需要 Claude Code
 - 不需要手动指定用哪个 Agent（自动路由）
-- 不需要安装 npm / pip
 - 不需要 install.sh
-- 只依赖 Python 3.10+ 和 `pip install requests pyyaml`
+- 只依赖 Python 3.10+ 和 `pip install pyyaml requests`
 - 自动记录成本到 cost.db
 
 可用 Agent：`coder`、`reviewer`、`explorer`、`planner`、`test-runner`、`general-worker` 等 19 个，全在 `agents/` 目录下。关键词匹配自动路由，无需手动选择。

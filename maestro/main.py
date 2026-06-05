@@ -68,19 +68,26 @@ ROUTING = {
 
 
 def route_task(task):
-    """根据任务关键词匹配最佳 Agent"""
+    """根据任务关键词匹配最佳 Agent，平局时优先更精确/更专业的 agent"""
     task_lower = task.lower()
     scores = {}
     for agent, keywords in ROUTING.items():
-        score = sum(1 for kw in keywords if kw.lower() in task_lower)
+        score = 0
+        total_kw_len = 0
+        for kw in keywords:
+            if kw.lower() in task_lower:
+                score += 1
+                total_kw_len += len(kw)
         if score > 0:
-            scores[agent] = score
+            # 三元组：(命中数, 命中关键词总长, -关键词总数)
+            # 数多 > 字长(精确) > 词少(专业)
+            scores[agent] = (score, total_kw_len, -len(keywords))
 
     if not scores:
         return "coder", 0  # 默认 coder
 
     best = max(scores, key=scores.get)
-    return best, scores[best]
+    return best, scores[best][0]
 
 
 # ── Agent 加载 ─────────────────────────────────
@@ -234,8 +241,9 @@ def record_cost(in_tokens, out_tokens, cost, model, elapsed):
         )
         conn.commit()
         conn.close()
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+        logging.warning(f"cost recording failed (non-fatal): {e}")
 
 
 # ── 全局变量（用于显示） ────────────────────────
@@ -261,6 +269,9 @@ def main():
     args = sys.argv[1:]
 
     if args[0] == "--model":
+        if len(args) < 3:
+            print("用法: python maestro/main.py --model <模型名> \"任务\"")
+            return
         model = args[1]
         args = args[2:]
 

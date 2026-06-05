@@ -163,5 +163,49 @@
     "output_type": "cleanup_result",
     "isolation": "none",
     "parallel_safe": false
+  },
+  "database-reviewer": {
+    "name": "database-reviewer",
+    "description": "数据库审查：SQL性能、Schema设计、索引策略",
+    "system_prompt_file": "agents/database-reviewer.md",
+    "allowed_tools": "Read,Grep,Glob,Bash",
+    "model": "sonnet",
+    "collaborates_with": ["reviewer"],
+    "output_type": "review_report",
+    "isolation": "none",
+    "parallel_safe": true
+  },
+  "e2e-runner": {
+    "name": "e2e-runner",
+    "description": "E2E测试：Playwright端到端用户流程验证",
+    "system_prompt_file": "agents/e2e-runner.md",
+    "allowed_tools": "Read,Write,Bash,Grep,Glob",
+    "model": "sonnet",
+    "collaborates_with": ["test"],
+    "output_type": "test_result",
+    "isolation": "none",
+    "parallel_safe": false
+  },
+  "performance-optimizer": {
+    "name": "performance-optimizer",
+    "description": "性能优化：瓶颈分析、优化方案、验证效果",
+    "system_prompt_file": "agents/performance-optimizer.md",
+    "allowed_tools": "Read,Bash,Grep,Glob,Edit,Write",
+    "model": "sonnet",
+    "collaborates_with": ["coder"],
+    "output_type": "optimization_report",
+    "isolation": "none",
+    "parallel_safe": true
+  },
+  "tdd-guide": {
+    "name": "tdd-guide",
+    "description": "TDD向导：写测试→看失败→写实现→看通过→重构",
+    "system_prompt_file": "agents/tdd-guide.md",
+    "allowed_tools": "Read,Write,Edit,Bash,Grep,Glob",
+    "model": "sonnet",
+    "collaborates_with": ["test", "coder"],
+    "output_type": "test_result",
+    "isolation": "none",
+    "parallel_safe": false
   }
 }
