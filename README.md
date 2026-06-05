@@ -27,6 +27,8 @@ cp agents/coder.md ~/.claude/agents/
 ```
 **Agent 层不需要任何 API key。** 装上就能用。只有 Maestro 调度引擎（可选）需要 DeepSeek key。
 
+> **[USAGE.md](USAGE.md)** -- 完整使用教程，面向新用户。从零开始，看完就会。
+
 ## 这是什么
 
 **agency-kit** 是一套 Claude Code 配置增强系统。它不是另一个 AI 工具——它是让你现有的 Claude Code 获得以下能力的**插件层**：
