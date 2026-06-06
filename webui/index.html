@@ -142,33 +142,19 @@ body{font:14px/1.55 "DM Sans","Segoe UI",system-ui,sans-serif;background:var(--b
 <nav class="sidebar">
 <div class="sidebar-tabs">
 <div class="sidebar-tab active" data-tab="agents">Agent</div>
-<div class="sidebar-tab" data-tab="settings">设置</div>
+<div class="sidebar-tab" data-tab="project">项目</div>
 <div class="sidebar-tab" data-tab="history">历史</div>
 </div>
 <div class="sidebar-panel active" id="panel-agents">
 <input class="agent-search" id="agent-search" placeholder="搜索 Agent…" autocomplete="off">
 <div class="agent-list" id="agent-list"></div>
 </div>
-<div class="sidebar-panel" id="panel-settings">
+<div class="sidebar-panel" id="panel-project">
 <div style="padding:4px 0">
-<div class="settings-section">
-<label class="proj-label">🔑 API Key</label>
-<p class="proj-hint">支持 DeepSeek / Anthropic / OpenAI 兼容</p>
-<input class="proj-input" id="api-key" type="password" placeholder="sk-…" autocomplete="off">
-<select class="proj-input" id="api-provider" style="margin-bottom:6px">
-<option value="deepseek">DeepSeek</option>
-<option value="anthropic">Anthropic</option>
-<option value="openai">OpenAI 兼容</option>
-</select>
-<button class="new-chat-btn" style="margin-bottom:12px;font-size:11px;padding:6px" onclick="saveApiKey()">💾 保存 Key</button>
-<span id="api-status" style="font-size:10px;color:var(--accent);display:block;text-align:center;margin-top:-8px;margin-bottom:8px"></span>
-</div>
-<div class="settings-section">
 <label class="proj-label">📁 工作目录</label>
 <p class="proj-hint">Agent 在此目录下工作</p>
 <input class="proj-input" id="proj-dir" placeholder="例: D:\ai">
 <div style="margin-top:6px"><button class="proj-btn" onclick="projDir='';document.getElementById('proj-dir').value='';localStorage.removeItem('agency_proj_dir')">清除</button></div>
-</div>
 </div>
 </div>
 <div class="sidebar-panel" id="panel-history">
@@ -208,15 +194,35 @@ body{font:14px/1.55 "DM Sans","Segoe UI",system-ui,sans-serif;background:var(--b
 </div>
 <div class="harness-overlay-content" id="harnessContent"></div>
 </div>
-<!-- 开发模式覆盖层 -->
+<!-- 设置覆盖层 -->
 <div class="harness-overlay" id="devOverlay">
 <div class="harness-overlay-tabs">
-<span style="font-weight:600;color:var(--accent);padding:10px 0">🔧 开发者工具</span>
+<span style="font-weight:600;color:var(--accent);padding:10px 0">⚙ 设置</span>
 <button class="btn" style="margin-left:auto;align-self:center" onclick="toggleDevOverlay()">✕</button>
 </div>
 <div class="harness-overlay-content">
-<div class="tools-section"><h3>💰 费用看板</h3><div id="cost-overview">加载中…</div></div>
-<div class="tools-section" style="margin-top:16px"><h3>🤖 Agent 工厂</h3><textarea id="agent-factory-input" placeholder="描述你需要的 Agent…" rows="2" style="width:100%;padding:7px 9px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:11px;outline:none;resize:vertical;min-height:40px;font-family:inherit"></textarea><button class="new-chat-btn" onclick="generateAgent()" style="margin-top:6px">生成 Agent</button><div id="agent-factory-output"></div></div>
+<div class="settings-section">
+<h3 style="font-size:12px;color:var(--text);margin-bottom:8px">🔑 API Key</h3>
+<p style="font-size:10px;color:var(--muted);margin-bottom:6px">支持 DeepSeek / Anthropic / OpenAI 兼容</p>
+<input class="proj-input" id="api-key" type="password" placeholder="sk-…" autocomplete="off" style="width:100%">
+<select class="proj-input" id="api-provider" style="width:100%;margin:4px 0">
+<option value="deepseek">DeepSeek</option>
+<option value="anthropic">Anthropic</option>
+<option value="openai">OpenAI 兼容</option>
+</select>
+<button class="new-chat-btn" style="margin-bottom:4px;font-size:11px;padding:6px" onclick="saveApiKey()">💾 保存</button>
+<span id="api-status" style="font-size:10px;color:var(--accent)"></span>
+</div>
+<div class="settings-section" style="margin-top:16px">
+<h3 style="font-size:12px;color:var(--text);margin-bottom:8px">💰 费用看板</h3>
+<div id="cost-overview">打开时加载…</div>
+</div>
+<div class="settings-section" style="margin-top:16px">
+<h3 style="font-size:12px;color:var(--text);margin-bottom:8px">🤖 Agent 工厂</h3>
+<textarea id="agent-factory-input" placeholder="描述你需要的 Agent…" rows="2" style="width:100%;padding:7px 9px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:11px;outline:none;resize:vertical;min-height:40px;font-family:inherit"></textarea>
+<button class="new-chat-btn" onclick="generateAgent()" style="margin-top:6px;font-size:11px;padding:6px">生成 Agent</button>
+<div id="agent-factory-output"></div>
+</div>
 </div>
 </div>
 </div>
@@ -230,7 +236,7 @@ if(apiKey){var ak=$('api-key');if(ak)ak.value=apiKey;var ap=$('api-provider');if
 function saveApiKey(){apiKey=$('api-key').value.trim();apiProvider=$('api-provider').value;localStorage.setItem('agency_api_key',apiKey);localStorage.setItem('agency_api_provider',apiProvider);$('api-status').textContent=apiKey?'已保存':'已清除';if(!apiKey){localStorage.removeItem('agency_api_key');localStorage.removeItem('agency_api_provider')}}
 function $(id){return document.getElementById(id)}
 var grid=$('grid'),pageBar=$('pageBar'),agentList=$('agent-list'),historyList=$('history-list');
-document.querySelectorAll('.sidebar-tab').forEach(function(tab){tab.addEventListener('click',function(){document.querySelectorAll('.sidebar-tab').forEach(function(t){t.classList.remove('active')});document.querySelectorAll('.sidebar-panel').forEach(function(p){p.classList.remove('active')});tab.classList.add('active');var p=$('panel-'+tab.dataset.tab);if(p)p.classList.add('active');if(tab.dataset.tab==='settings'){var ak=$('api-key');if(ak&&apiKey)ak.value=apiKey;var ap=$('api-provider');if(ap&&apiProvider)ap.value=apiProvider}})});
+document.querySelectorAll('.sidebar-tab').forEach(function(tab){tab.addEventListener('click',function(){document.querySelectorAll('.sidebar-tab').forEach(function(t){t.classList.remove('active')});document.querySelectorAll('.sidebar-panel').forEach(function(p){p.classList.remove('active')});tab.classList.add('active');var p=$('panel-'+tab.dataset.tab);if(p)p.classList.add('active');})});
 async function loadAgents(){try{agents=await(await fetch('/api/agents')).json();renderAgents(agents)}catch(e){agentList.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px">加载失败</div>'}}
 loadAgents();
 function renderAgents(list){agentList.innerHTML=list.map(function(a){return'<div class="agent-card" onclick="pickAgent(\''+a.name+'\')" oncontextmenu="pickAgentNew(\''+a.name+'\',event)"><div class="name">'+a.name+'<span class="model">'+(a.model||'auto')+'</span></div><div class="desc">'+escHtml(a.description||'')+'</div>'+(a.keywords&&a.keywords.length?'<div class="kw">'+a.keywords.slice(0,5).join(', ')+'</div>':'')+'</div>'}).join('')}
@@ -260,7 +266,7 @@ function renderHistory(){historyList.innerHTML=conversations.slice(0,30).map(fun
 renderHistory();
 function loadConvo(id){var c=conversations.find(function(x){return x.id===Number(id)});if(!c)return;var p=getFocusedPanel();p.currentConvo={id:c.id,title:c.title,messages:c.messages.slice(),sessionId:c.sessionId||''};p.dom.messages.innerHTML='';p.dom.route.innerHTML='';c.messages.forEach(function(m){addMsg(p,m.role,m.content)});p.dom.messages.scrollTop=p.dom.messages.scrollHeight}
 function delConvo(id,e){e.stopPropagation();conversations=conversations.filter(function(c){return c.id!==Number(id)});localStorage.setItem('agency_convos',JSON.stringify(conversations));renderHistory()}
-function toggleDevOverlay(){devMode=!devMode;var ov=$('devOverlay'),btn=$('devBtn');ov.classList.toggle('on',devMode);btn.classList.toggle('on',devMode);if(devMode)loadCostData()}
+function toggleDevOverlay(){devMode=!devMode;var ov=$('devOverlay'),btn=$('devBtn');ov.classList.toggle('on',devMode);btn.classList.toggle('on',devMode);if(devMode){var ak=$('api-key');if(ak&&apiKey)ak.value=apiKey;var ap=$('api-provider');if(ap&&apiProvider)ap.value=apiProvider;loadCostData()}}
 function loadCostData(){fetch('/api/cost?days=30').then(function(r){return r.json()}).then(function(d){var el=$('cost-overview');if(!d||!d.total){el.innerHTML='暂无数据';return}var t=d.total,td=d.today;var h='<div class="cost-kpis"><div class="cost-kpi"><span class="kpi-val">$'+(td.cost||0).toFixed(4)+'</span><span class="kpi-label">今日</span></div><div class="cost-kpi"><span class="kpi-val">$'+(t.cost||0).toFixed(4)+'</span><span class="kpi-label">30天</span></div><div class="cost-kpi"><span class="kpi-val">'+(t.calls||0)+'</span><span class="kpi-label">调用</span></div></div>';if(d.by_model&&d.by_model.length){var maxM=Math.max.apply(null,d.by_model.map(function(m){return m.cost}));h+='<div class="tools-section"><h3>按模型</h3>';d.by_model.forEach(function(m){h+='<div class="cost-row"><span>'+(m.model||'?')+'</span><span class="val">$'+m.cost.toFixed(4)+'</span></div><div class="cost-bar"><div class="cost-bar-fill" style="width:'+(m.cost/maxM*100)+'%"></div></div>'});h+='</div>'}if(d.by_agent&&d.by_agent.length){h+='<div class="tools-section"><h3>按 Agent</h3>';d.by_agent.forEach(function(m){h+='<div class="cost-row"><span>'+m.agent+'</span><span class="val">$'+m.cost.toFixed(4)+'</span></div>'});h+='</div>'}el.innerHTML=h}).catch(function(){$('cost-overview').innerHTML='加载失败'})}
 function generateAgent(){var input=$('agent-factory-input'),output=$('agent-factory-output');var req=input.value.trim();if(!req)return;output.innerHTML='生成中…';fetch('/api/agent-generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requirement:req})}).then(function(resp){var reader=resp.body.getReader(),decoder=new TextDecoder(),buf='',txt='';function read(){reader.read().then(function(result){if(result.done){finish();return}buf+=decoder.decode(result.value,{stream:!0});var lines=buf.split('\n');buf=lines.pop()||'';for(var i=0;i<lines.length;i++){if(lines[i].indexOf('data: ')!==0)continue;if(lines[i].indexOf('[DONE]')>=0){finish();return}try{var d=JSON.parse(lines[i].slice(6));if(d.content)txt+=d.content}catch(_){}}read()})}function finish(){output.innerHTML='<pre style="font-size:10px;max-height:200px;overflow:auto;background:var(--bg);padding:8px;border-radius:4px">'+escHtml(txt)+'</pre><button class="new-chat-btn" style="margin-top:4px" onclick="saveAgent()">保存此 Agent</button>';output._agentContent=txt}read()}).catch(function(){output.innerHTML='生成失败'})}
 function saveAgent(){var txt=$('agent-factory-output')._agentContent;if(!txt)return;var m=txt.match(/name:\s*"?([a-z0-9-]+)"?/i);var name=m?m[1]:('agent-'+Date.now().toString(36));fetch('/api/agent-create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,content:txt})}).then(function(r){return r.json()}).then(function(d){if(d.ok){showToast('Agent 已保存: '+name);loadAgents()}else{showToast(d.error||'保存失败',!0)}}).catch(function(){showToast('保存失败',!0)})}
