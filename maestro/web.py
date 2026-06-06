@@ -130,6 +130,21 @@ ROUTING_KEYWORDS = {
     "planner": ["规划", "设计", "架构", "方案"],
     "general-worker": ["整理", "配置", "杂务", "文件"],
 }
+def _extract_plan(text: str):
+    """从 orchestrator 输出中提取 JSON 计划"""
+    import re
+    # 匹配 ```json ... ``` 块
+    m = re.search(r'```json\s*\n(.*?)\n```', text, re.DOTALL)
+    if not m:
+        # 尝试匹配裸 JSON 对象
+        m = re.search(r'\{[^{}]*"phases"\s*:\s*\[.*?\]\s*[^{}]*\}', text, re.DOTALL)
+    if m:
+        try:
+            return json.loads(m.group(1) if '```' in text else m.group(0))
+        except Exception:
+            pass
+    return None
+
 def simple_route(task):
     """简单关键词匹配，返回 agent 名（供 Claude Code --agent 使用）"""
     tl = task.lower()
@@ -655,9 +670,11 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json({"agent": agent or "coder", "method": "keyword"})
 
         elif path == "/api/orchestrate":
-            # 透传给 Claude Code Workflow
+            # 智能调度：orchestrator 出计划 → 自动分窗执行
             task = body.get("task", "")
             proj_dir = body.get("proj_dir", "")
+            api_key = body.get("api_key", "")
+            api_provider = body.get("api_provider", "")
             if not task:
                 self.send_json({"error": "task required"})
                 return
@@ -672,13 +689,14 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
 
             proc = None
+            full_output = ""
             try:
                 safe_task = task.replace('\n', ' ').replace('\r', ' ')
                 cmd = ["cmd", "/c", CLAUDE_BIN, "-p", safe_task, "--bare", "--permission-mode", "auto", "--agent", "orchestrator"]
                 if proj_dir and os.path.isdir(proj_dir):
                     cmd += ["--add-dir", proj_dir]
 
-                self.wfile.write(f"event: phase\ndata: {json.dumps({'msg': 'orchestrator 分析中…'})}\n\n".encode())
+                self.wfile.write(f"event: phase\ndata: {json.dumps({'msg': '🧠 分析任务…'})}\n\n".encode())
                 self.wfile.flush()
 
                 iso_env = os.environ.copy()
@@ -687,36 +705,35 @@ class Handler(BaseHTTPRequestHandler):
                                         encoding='utf-8', errors='replace', bufsize=1,
                                         cwd=str(PROJECT_ROOT), env=iso_env)
                 _track_proc(proc)
-                out_chars = 0
                 for line in iter(proc.stdout.readline, ''):
                     if not line: break
                     stripped = line.rstrip('\n\r')
                     if not stripped: continue
-                    out_chars += len(stripped)
+                    full_output += stripped + "\n"
                     try:
                         self.wfile.write(f"data: {json.dumps({'content': stripped + chr(10)})}\n\n".encode())
                         self.wfile.flush()
                     except (BrokenPipeError, ConnectionResetError):
                         break
 
-                try:
-                    proc.wait(timeout=15)
-                except subprocess.TimeoutExpired:
-                    pass
-                try:
-                    self.wfile.write(f"event: done\ndata: {json.dumps({'summary': '调度完成'})}\n\n".encode())
+                try: proc.wait(timeout=15)
+                except subprocess.TimeoutExpired: pass
+
+                # 提取 JSON 计划
+                plan = _extract_plan(full_output)
+                if plan:
+                    self.wfile.write(f"event: plan\ndata: {json.dumps(plan, ensure_ascii=False)}\n\n".encode())
                     self.wfile.flush()
-                except Exception:
-                    pass
+                else:
+                    self.wfile.write(f"event: done\ndata: {json.dumps({'summary': '无法解析调度计划'})}\n\n".encode())
+                    self.wfile.flush()
             except Exception as e:
                 try:
                     self.wfile.write(f"event: error\ndata: {json.dumps({'msg': str(e)})}\n\n".encode())
                     self.wfile.flush()
-                except Exception:
-                    pass
+                except Exception: pass
             finally:
-                if proc:
-                    _kill_proc(proc)
+                if proc: _kill_proc(proc)
 
         # ── Harness POST 端点 ──
         elif path.startswith("/api/hooks/"):
