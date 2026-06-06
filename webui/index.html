@@ -362,7 +362,7 @@ function toggleMiniDashboard(){
 function toggleMiniOverlay(id){
   var ov=$(id);if(!ov)return;
   var isMini=ov.classList.contains('mini');
-  if(isMini){ov.classList.remove('mini')}else{ov.classList.add('mini')}
+  if(isMini){ov.classList.remove('mini');ov.classList.add('on')}else{ov.classList.add('mini');ov.classList.add('on')}
 }
 // 拖拽小窗
 (function(){
