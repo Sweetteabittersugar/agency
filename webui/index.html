@@ -391,17 +391,18 @@ function loadPermHistory(){
 // ═══════════════════════════════════════
 function loadContextDetail(){
   fetch('/api/harness/context').then(function(r){return r.json()}).then(function(d){
-    var pct=d.total_tokens>0?Math.min(100,Math.round(d.total_tokens/300000*100)):0;
+    var ttl=d.total_tokens||0,pct=ttl>0?Math.min(100,Math.round(ttl/300000*100)):0;
     var fill=$('hctx-fill'),text=$('hctx-text'),cache=$('hctx-cache'),detail=$('hctx-detail');
     if(fill){fill.style.width=pct+'%';fill.className='ctx-gauge-fill'+(pct>85?' danger':pct>60?' warn':'')}
-    if(text)text.textContent=(d.total_tokens||0).toLocaleString()+' / 300K ('+pct+'%)';
-    if(cache)cache.textContent='缓存命中: '+((d.cache_hit||0)>0?'✓ '+d.cache_hit:'—');
-    if(detail)detail.innerHTML='输入: '+(d.input_tokens||0).toLocaleString()+' · 输出: '+(d.output_tokens||0).toLocaleString()+(d.last_update?' · '+d.last_update:'');
-    // 也更新侧边栏
-    var sf=$('ctx-gauge-fill'),st=$('ctx-gauge-text'),sd=$('ctx-detail');
-    if(sf){sf.style.width=pct+'%';sf.className='ctx-gauge-fill'+(pct>85?' danger':pct>60?' warn':'')}
-    if(st)st.textContent=(d.total_tokens||0).toLocaleString()+' / 300K';
-    if(sd)sd.innerHTML='输入: '+(d.input_tokens||0).toLocaleString()+' · 输出: '+(d.output_tokens||0).toLocaleString();
+    if(text)text.textContent=ttl.toLocaleString()+' / 300K';
+    if(cache)cache.textContent='缓存命中: '+(d.cache_hit_rate||0)+'% · 省 $'+(d.cost_est?d.cost_est.cache_saved.toFixed(6):'0');
+    if(detail){
+      var comp=d.composition||{};
+      detail.innerHTML='输入 '+(d.input_tokens||0).toLocaleString()+' · 输出 '+(d.output_tokens||0).toLocaleString()+'<br>'+
+        '组成: 系统 ~'+comp.system_pct+'% · 对话 ~'+comp.conversation_pct+'% · 工具 ~'+comp.tool_pct+'%<br>'+
+        '会话: '+d.messages+'条消息 · '+d.tool_calls+'次工具 · 费用 $'+(d.cost_est?d.cost_est.total.toFixed(6):'0')+
+        (d.duration_s?' · '+d.duration_s+'s':'')+(d.last_update?' · '+d.last_update:'');
+    }
   }).catch(function(){var el=$('hctx-detail');if(el)el.innerHTML='加载失败'});
 }
 // ═══════════════════════════════════════

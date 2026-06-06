@@ -154,7 +154,7 @@ def estimate_cost(model, in_tokens, out_tokens):
 # ── Harness 模块 ──
 from maestro.harness.watcher import bus
 from maestro.harness.hooks_receiver import handle_hook_callback
-from maestro.harness.jsonl_parser import find_latest_session, parse_usage_from_line
+from maestro.harness.jsonl_parser import find_latest_session, parse_usage_from_line, analyze_session
 
 # ── 权限日志 ──
 _permission_log = []  # 最近 200 条权限决策
@@ -404,24 +404,21 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/harness/context":
             sid = parse_qs(parsed.query).get("session", [""])[0]
             proj = str(PROJECT_ROOT)
-            session_info = find_latest_session(proj)
-            context = {"total_tokens": 0, "session_id": sid or (session_info["session_id"] if session_info else ""), "last_update": ""}
-            if session_info:
-                # 读最后一行获取最新 usage
-                try:
-                    with open(session_info["path"], "r", encoding="utf-8", errors="replace") as f:
-                        lines = f.readlines()
-                        if lines:
-                            usage = parse_usage_from_line(lines[-1].strip())
-                            if usage:
-                                context["total_tokens"] = usage["total"]
-                                context["input_tokens"] = usage["input_tokens"]
-                                context["output_tokens"] = usage["output_tokens"]
-                                context["cache_hit"] = usage["cache_read_input_tokens"]
-                            context["last_update"] = time.strftime("%H:%M:%S")
-                except Exception:
-                    pass
-            self.send_json(context)
+            if sid:
+                # 查找指定 session 的 JSONL
+                home = Path.home()
+                slug = proj.replace(":\\", "--").replace("\\", "-").replace("/", "-").lstrip("-")
+                jsonl_path = home / ".claude" / "projects" / slug / f"{sid}.jsonl"
+                if jsonl_path.exists():
+                    self.send_json(analyze_session(str(jsonl_path)))
+                else:
+                    self.send_json({"total_tokens": 0, "session_id": sid, "error": "session not found"})
+            else:
+                session_info = find_latest_session(proj)
+                if session_info and os.path.exists(session_info["path"]):
+                    self.send_json(analyze_session(session_info["path"]))
+                else:
+                    self.send_json({"total_tokens": 0, "session_id": "", "last_update": time.strftime("%H:%M:%S")})
         elif path == "/api/harness/subagents":
             sid = parse_qs(parsed.query).get("session", [""])[0]
             proj = str(PROJECT_ROOT)

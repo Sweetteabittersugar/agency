@@ -97,9 +97,7 @@ def tail_session_jsonl(session_path: str, callback, stop_event: threading.Event)
         return
 
     with open(session_path, "r", encoding="utf-8", errors="replace") as f:
-        # 跳到文件末尾
         f.seek(0, 2)
-
         while not stop_event.is_set():
             line = f.readline()
             if line:
@@ -111,3 +109,102 @@ def tail_session_jsonl(session_path: str, callback, stop_event: threading.Event)
                     callback(line, {"usage": usage, "tool": tool, "subagent": sub})
             else:
                 time.sleep(0.5)
+
+
+def analyze_session(jsonl_path: str) -> dict:
+    """完整解析一个 session JSONL，返回上下文统计"""
+    if not os.path.exists(jsonl_path):
+        return {"total_tokens": 0, "messages": 0, "session_id": ""}
+
+    total_in = 0
+    total_out = 0
+    total_cache_read = 0
+    total_cache_write = 0
+    message_count = 0
+    tool_calls = 0
+    subagent_spawns = 0
+    lines = 0
+    first_ts = None
+    last_ts = None
+
+    try:
+        with open(jsonl_path, "r", encoding="utf-8", errors="replace") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                lines += 1
+                usage = parse_usage_from_line(line)
+                if usage:
+                    total_in += usage.get("input_tokens", 0)
+                    total_out += usage.get("output_tokens", 0)
+                    total_cache_read += usage.get("cache_read_input_tokens", 0)
+                    total_cache_write += usage.get("cache_creation_input_tokens", 0)
+                    message_count += 1
+
+                tool = parse_tool_use_from_line(line)
+                if tool:
+                    tool_calls += 1
+
+                if parse_subagent_spawn_from_line(line):
+                    subagent_spawns += 1
+
+                # 提取时间戳
+                try:
+                    obj = json.loads(line)
+                    ts = obj.get("timestamp")
+                    if ts:
+                        if first_ts is None:
+                            first_ts = ts
+                        last_ts = ts
+                except Exception:
+                    pass
+
+    except Exception:
+        pass
+
+    # 估算上下文组成
+    # 系统提示词 ≈ 首次调用的 input_tokens 的一部分（约 20-50K）
+    # 实际无法精确拆分，做合理估算
+    est_system = min(total_in * 0.3, 50000) if total_in > 0 else 0
+    est_conversation = total_in - est_system - total_cache_read if total_in > 0 else 0
+    est_tool = min(tool_calls * 500, total_in * 0.05) if tool_calls > 0 else 0
+
+    # 计算缓存命中率
+    cache_hit_rate = (total_cache_read / (total_in + 1)) * 100 if total_in > 0 else 0
+
+    # 费用估算 (DeepSeek 价格)
+    cost_in = (total_in / 1_000_000) * 0.28
+    cost_out = (total_out / 1_000_000) * 0.28
+    cost_cache = (total_cache_read / 1_000_000) * 0.28 * 0.01  # 缓存命中 99% 折扣
+    cost_total = cost_in + cost_out - cost_cache
+
+    # 会话时长
+    duration_s = (last_ts - first_ts) / 1000 if first_ts and last_ts else 0
+
+    return {
+        "session_id": Path(jsonl_path).stem,
+        "total_tokens": total_in + total_out,
+        "input_tokens": total_in,
+        "output_tokens": total_out,
+        "cache_read_tokens": total_cache_read,
+        "cache_write_tokens": total_cache_write,
+        "cache_hit_rate": round(cache_hit_rate, 1),
+        "messages": message_count,
+        "tool_calls": tool_calls,
+        "subagent_spawns": subagent_spawns,
+        "lines": lines,
+        "composition": {
+            "system_pct": round(est_system / (total_in + 1) * 100, 1) if total_in > 0 else 0,
+            "conversation_pct": round(max(0, est_conversation) / (total_in + 1) * 100, 1) if total_in > 0 else 0,
+            "tool_pct": round(est_tool / (total_in + 1) * 100, 1) if total_in > 0 else 0,
+        },
+        "cost_est": {
+            "input": round(cost_in, 6),
+            "output": round(cost_out, 6),
+            "cache_saved": round(cost_cache, 6),
+            "total": round(cost_total, 6),
+        },
+        "duration_s": round(duration_s, 1),
+        "last_update": time.strftime("%H:%M:%S"),
+    }
