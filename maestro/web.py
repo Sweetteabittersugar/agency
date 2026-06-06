@@ -533,6 +533,28 @@ class Handler(BaseHTTPRequestHandler):
                     self.send_json({"error": str(e)}, 500)
             else:
                 self.send_json({"error": "file not found"}, 404)
+        elif path == "/api/files":
+            # 文件浏览器 — 列出目录
+            target = parse_qs(parsed.query).get("path", [str(PROJECT_ROOT)])[0]
+            try:
+                p = Path(target)
+                if not p.exists():
+                    p = PROJECT_ROOT
+                entries = []
+                for child in sorted(p.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower())):
+                    try:
+                        entries.append({
+                            "name": child.name,
+                            "is_dir": child.is_dir(),
+                            "size": child.stat().st_size if child.is_file() else 0,
+                            "mtime": time.strftime("%m-%d %H:%M", time.localtime(child.stat().st_mtime)),
+                        })
+                    except Exception:
+                        pass
+                self.send_json({"path": str(p), "entries": entries, "parent": str(p.parent) if p.parent != p else ""})
+            except Exception as e:
+                self.send_json({"error": str(e)}, 500)
+
         elif path == "/api/mcp/status":
             # 读取多个 .mcp.json 并检测进程
             servers = []
