@@ -22,6 +22,10 @@ Thumbs.db
 # Secret files
 .env
 *.secret
+*.key
+*.pem
+credentials.*
+.env.*.local
 
 # Maestro runtime
 maestro/__pycache__/
@@ -37,3 +41,10 @@ maestro/_*.py
 # Claude
 .claude/settings.local.json
 .claude/*.log
+.claude-isolated/settings.local.json
+.claude-isolated/*.log
+
+# Memory — 含用户画像等隐私
+.claude/project.md
+memory/
+**/MEMORY.md
