@@ -553,16 +553,8 @@ class Handler(BaseHTTPRequestHandler):
                             continue
                         seen.add(name)
                         cmd = cfg.get("command", "")
-                        # 检测进程是否在跑（通过 tasklist）
-                        running = False
-                        try:
-                            check = subprocess.run(
-                                f'tasklist /FI "IMAGENAME eq node.exe" /FO CSV 2>nul | findstr /i "{cmd.split()[0] if cmd else "mcp"}"',
-                                shell=True, capture_output=True, text=True, timeout=2
-                            )
-                            running = check.returncode == 0
-                        except Exception:
-                            pass
+                        # MCP 服务由 Claude Code 管理，有配置即视为可用
+                        running = True
                         servers.append({
                             "name": name,
                             "command": cmd,
