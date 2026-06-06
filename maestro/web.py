@@ -626,7 +626,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.flush()
 
                 safe_task = actual_task.replace('"', '\\"').replace('\n', ' ').replace('\r', ' ')
-                flags = "--permission-mode auto"
+                flags = "--bare --permission-mode auto"
                 if session_id:
                     if is_new:
                         flags += f' --session-id "{session_id}"'
