@@ -66,6 +66,18 @@
 | | 超长输出折叠+工具标签样式 | ✅ |
 | | 验证脚本check-frontend.py | ✅ |
 
+## 2026-06-06 第二批修改 (2f1cc42→HEAD)
+
+| # | 修改项 | 说明 | 状态 |
+|---|------|------|------|
+| 44 | 仪表盘+设置只用小窗 | `.harness-overlay` 默认定死小窗(480x360)，删掉大窗CSS和mini切换。P图钉按钮改为关闭(×)，`toggleMiniDashboard`→`toggleDashboard`直接开关。拖拽和resize保留 | ✅ |
+| 45 | 历史清空按钮放进每个会话项里 | 删除侧边栏底部全局"清空全部"按钮；每个`.history-item`内已有`.del-btn`删除按钮，`delConvo()`无改动 | ✅ |
+| 46 | Skill去掉禁用功能 | 设置弹窗Skills区改为纯展示列表(名称+描述+触发词)；删除`toggleSkill()`/`loadSkills()`(harness版)；web.py `/api/skills/toggle`端点保留不删 | ✅ |
+| 47 | 去掉面板拖拽排序 | 删除`.panel`的`draggable`属性、dragstart/dragover/dragleave/drop事件监听、`rebuildAllDOM()`、`dragPid`变量、拖拽CSS | ✅ |
+| 48 | @agent设定注入model传递 | `simple_route()`返回dict含model字段(从`load_agents()`配置查)；`/api/route`返回model；`/api/chat`支持`--model`参数 | ✅ |
+| 49 | 上下文500K上限/300K触发压缩 | HTML: 300K→500K，warn阈值300K(60%)，danger阈值425K(85%)；web.py `/api/harness/context`: 返回`should_compact`字段，`total_tokens>300000`时为true | ✅ |
+| 50 | 文件浏览器→文件导入 | 侧边栏"文件"标签改为导入界面(input type=file multiple+导入按钮+预览列表)；删除旧文件树UI和`loadFileTree()`/`openFilePanel()`；新增`POST /api/import`端点(multipart解析+email.parser)，保留`/api/files` | ✅ |
+
 ---
 
 ## 功能完整性
@@ -78,15 +90,28 @@
 | 27 | 会话 ID 持久化 & 恢复 | ✅ |
 | 28 | 对话历史保存/加载/删除 | ✅ |
 | 29 | 开发者模式（成本看板 + Agent工厂）| ✅ |
-| 30 | Harness 仪表盘（权限/上下文/SubAgent/Hooks/Skills/MCP/记忆）| ✅ |
-| 31 | Skills 管理（浏览/启用/禁用）| ✅ |
+| 30 | Harness 仪表盘（权限/上下文/SubAgent/Hooks/MCP/记忆）| ✅ |
+| 31 | Skills 管理（纯列表展示，无禁用功能）| ✅ |
 | 32 | 记忆文件浏览器 & 编辑器 | ✅ |
 | 33 | MCP 服务器状态 | ✅ |
 | 34 | 权限 Toast（Allow/Deny/Always）| ✅ |
-| 35 | Token 窗口进度条 | ✅ |
+| 35 | Token 窗口进度条（500K上限，300K触发压缩）| ✅ |
 | 36 | 独立 API Key 配置 | ✅ |
+| 44 | 文件导入（替代旧文件浏览器）| ✅ |
 
 ---
+
+---
+
+## 2026-06-06 第三批修改
+
+| # | 修改项 | 说明 | 状态 |
+|---|------|------|------|
+| 51 | 文件导入→直接导入到项目目录 | 去掉预览步骤，选完文件点导入直接上传到项目目录；项目目录未设置时弹提示；导入成功显示"已导入 N 个文件到 [路径]"。web.py 校验 project 参数 | ✅ |
+| 52 | 历史删除按钮常显 | 移除 `.del-btn` 的 `opacity:0` 和 hover 显示规则，删除按钮始终可见可点击 | ✅ |
+| 53 | 去掉小窗拖拽 | 删除 `harness-overlay-tabs` 的 `cursor:move` + mousedown/mousemove/mouseup 拖拽 JS；改 `cursor:default`；resize 右下角缩放保留 | ✅ |
+| 54 | @agent 调用注入会话配置 | 新增 `read_agent_md()`；`/api/chat` 在 `force_agent` 时读取 .md frontmatter，提取 `model`/`tools` 并传入 `--model`/`--tools` CLI 参数；`--agent` 自动加载 system prompt | ✅ |
+| 55 | Agent 卡片增加"查看/编辑提示词"按钮 | `renderAgents()` 卡片加 📝 按钮；点击弹出 promptOverlay 含 textarea 编辑框；新增 GET `/api/agents/{name}`（读完整 .md）和 POST `/api/agent-update`（写回 .md + 同步 isolated）；保存后重载 agent 列表 | ✅ |
 
 ---
 

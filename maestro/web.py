@@ -172,15 +172,27 @@ def _extract_plan(text: str):
             pass
     return None
 
+# ── Agent model 映射 ──
+_agent_models = {}
+def _init_agent_models():
+    global _agent_models
+    for agent in load_agents():
+        if agent.get("model"):
+            _agent_models[agent["name"]] = agent["model"]
+_init_agent_models()
+
 def simple_route(task):
-    """简单关键词匹配，返回 agent 名（供 Claude Code --agent 使用）"""
+    """简单关键词匹配，返回 {"agent": name, "model": model} 或 None"""
     tl = task.lower()
     best, best_score = None, 0
     for name, keywords in ROUTING_KEYWORDS.items():
         score = sum(2 for kw in keywords if kw.lower() in tl)
         if score > best_score:
             best, best_score = name, score
-    return best if best_score >= 2 else None
+    if best_score < 2:
+        return None
+    model = _agent_models.get(best, "")
+    return {"agent": best, "model": model}
 
 # ── 费用估算 ──
 PRICING = {
@@ -388,6 +400,23 @@ class Handler(BaseHTTPRequestHandler):
 
         if path == "/api/agents":
             self.send_json(load_agents())
+        elif path.startswith("/api/agents/") and len(path) > len("/api/agents/"):
+            # 读取单个 Agent 的 .md 完整内容
+            name = path[len("/api/agents/"):]
+            agent_content = None
+            for search_dir in [
+                PROJECT_ROOT / "agents",
+                _claude_dir_path / "agents",
+                Path.home() / ".claude" / "agents",
+            ]:
+                candidate = search_dir / f"{name}.md"
+                if candidate.exists():
+                    agent_content = candidate.read_text(encoding="utf-8")
+                    break
+            if agent_content is not None:
+                self.send_json({"name": name, "content": agent_content})
+            else:
+                self.send_json({"error": f"agent '{name}' not found"}, 404)
         elif path == "/api/version":
             self.send_json({"version": AGENCY_VERSION})
         elif path == "/api/settings":
@@ -453,17 +482,21 @@ class Handler(BaseHTTPRequestHandler):
                     slug = proj.replace("\\", "/").rstrip("/").replace(":/", "--").replace("/", "-").lstrip("-")
                     jsonl_path = home / ".claude" / "projects" / slug / f"{sid}.jsonl"
                     if jsonl_path.exists():
-                        self.send_json(analyze_session(str(jsonl_path)))
+                        result = analyze_session(str(jsonl_path))
+                        result["should_compact"] = result.get("total_tokens", 0) > 300000
+                        self.send_json(result)
                     else:
-                        self.send_json({"total_tokens": 0, "session_id": sid, "error": "session not found"})
+                        self.send_json({"total_tokens": 0, "session_id": sid, "error": "session not found", "should_compact": False})
                 else:
                     session_info = find_latest_session(proj)
                     if session_info and os.path.exists(session_info["path"]):
-                        self.send_json(analyze_session(session_info["path"]))
+                        result = analyze_session(session_info["path"])
+                        result["should_compact"] = result.get("total_tokens", 0) > 300000
+                        self.send_json(result)
                     else:
-                        self.send_json({"total_tokens": 0, "session_id": "", "last_update": time.strftime("%H:%M:%S")})
+                        self.send_json({"total_tokens": 0, "session_id": "", "last_update": time.strftime("%H:%M:%S"), "should_compact": False})
             except Exception as e:
-                self.send_json({"total_tokens": 0, "error": str(e)[:100]})
+                self.send_json({"total_tokens": 0, "error": str(e)[:100], "should_compact": False})
         elif path == "/api/harness/subagents":
             sid = parse_qs(parsed.query).get("session", [""])[0]
             proj = str(PROJECT_ROOT)
@@ -610,12 +643,49 @@ class Handler(BaseHTTPRequestHandler):
                 return
 
             # 确定 Agent
-            agent_name = force_agent or simple_route(task) or ""
+            route_info = simple_route(task) if not force_agent else None
+            agent_name = force_agent or (route_info["agent"] if route_info else "")
+            model = body.get("model", "") or (route_info.get("model", "") if route_info else "")
             actual_task = task
             if force_agent:
                 m = task.strip().split(" ", 1)
                 if len(m) > 1 and m[0].startswith("@"):
                     actual_task = m[1]
+
+            # ── Agent 注入：显式读取 agent .md，注入 model / tools / system prompt ──
+            agent_model_override = ""
+            agent_tools_override = []
+            agent_system_prompt = ""
+            if force_agent:
+                for search_dir in [
+                    PROJECT_ROOT / "agents",
+                    _claude_dir_path / "agents",
+                    Path.home() / ".claude" / "agents",
+                ]:
+                    candidate = search_dir / f"{force_agent}.md"
+                    if candidate.exists():
+                        content = candidate.read_text(encoding="utf-8")
+                        fm = {}
+                        body = content
+                        if content.startswith("---"):
+                            parts = content.split("---", 2)
+                            if len(parts) >= 3:
+                                try:
+                                    fm = yaml.safe_load(parts[1]) or {}
+                                except Exception:
+                                    pass
+                                body = parts[2].strip() if len(parts) > 2 else ""
+                        agent_model_override = fm.get("model", "")
+                        agent_tools_override = fm.get("tools", [])
+                        agent_system_prompt = body
+                        log.info(f"CHAT agent injection: model={agent_model_override}, tools={agent_tools_override}, prompt_len={len(agent_system_prompt)}")
+                        break
+            # 注入 model
+            if agent_model_override and not model:
+                model = agent_model_override
+            # 注入系统提示词到消息开头
+            if agent_system_prompt:
+                actual_task = agent_system_prompt + "\n\n---\n\n" + actual_task
 
             if not CLAUDE_BIN:
                 self.send_json({"error": "Claude Code CLI 未安装。请安装后重试。"})
@@ -648,6 +718,10 @@ class Handler(BaseHTTPRequestHandler):
                         flags += f' --resume "{session_id}"'
                 if agent_name:
                     flags += f' --agent "{agent_name}"'
+                if model:
+                    flags += f' --model "{model}"'
+                if agent_tools_override:
+                    flags += f' --tools "{",".join(agent_tools_override)}"'
                 if proj_dir and os.path.isdir(proj_dir):
                     flags += f' --add-dir "{proj_dir}"'
                 cmd_str = f'"{CLAUDE_BIN}" -p "{safe_task}" {flags}'
@@ -730,8 +804,11 @@ class Handler(BaseHTTPRequestHandler):
 
         elif path == "/api/route":
             task = body.get("task", "")
-            agent = simple_route(task)
-            self.send_json({"agent": agent or "coder", "method": "keyword"})
+            route_info = simple_route(task)
+            if route_info:
+                self.send_json({"agent": route_info["agent"], "model": route_info["model"], "method": "keyword"})
+            else:
+                self.send_json({"agent": "coder", "model": "", "method": "keyword"})
 
         elif path == "/api/orchestrate":
             # 智能调度：orchestrator 出计划 → 自动分窗执行
@@ -882,6 +959,30 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 mcp_config_path.write_text(json.dumps(mcp_config, indent=2, ensure_ascii=False), encoding="utf-8")
                 self.send_json({"ok": True})
+            except Exception as e:
+                self.send_json({"error": str(e)}, 500)
+
+        elif path == "/api/agent-update":
+            # 保存 Agent .md 文件（PUT 语义）
+            name = body.get("name", "")
+            content = body.get("content", "")
+            if not name or not content:
+                self.send_json({"error": "name and content required"}, 400)
+                return
+            try:
+                # 优先写入 agents/ 目录
+                agent_file = PROJECT_ROOT / "agents" / f"{name}.md"
+                agent_file.parent.mkdir(parents=True, exist_ok=True)
+                agent_file.write_text(content, encoding="utf-8")
+                # 同步到 .claude/agents/
+                claude_agent = _claude_dir_path / "agents" / f"{name}.md"
+                claude_agent.parent.mkdir(parents=True, exist_ok=True)
+                claude_agent.write_text(content, encoding="utf-8")
+                # 同步到 .claude-isolated/
+                iso_agent = _isolated_path / "agents" / f"{name}.md"
+                iso_agent.parent.mkdir(parents=True, exist_ok=True)
+                iso_agent.write_text(content, encoding="utf-8")
+                self.send_json({"ok": True, "name": name})
             except Exception as e:
                 self.send_json({"error": str(e)}, 500)
 
