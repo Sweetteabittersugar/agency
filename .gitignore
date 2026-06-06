@@ -42,8 +42,9 @@ maestro/_*.py
 # Claude
 .claude/settings.local.json
 .claude/*.log
-.claude-isolated/settings.local.json
-.claude-isolated/*.log
+
+# Agency 运行时隔离配置（含合并后的 API key，严禁提交）
+.claude-isolated/
 
 # Memory — 含用户画像等隐私
 .claude/project.md
