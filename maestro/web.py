@@ -348,28 +348,9 @@ def get_cost_analytics(days=30):
         return None
 
 class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
-    """多线程 HTTP Server — 每个请求独立线程，SSE 不再阻塞"""
-    daemon_threads = True  # 线程随主进程退出
-    request_timeout = 60   # 单请求最多 60 秒超时
-    # 限制线程池防止耗尽 — 超过排队等待
-    _threads = 0
-    _thread_lock = threading.Lock()
-
-    def process_request(self, request, client_address):
-        with self._thread_lock:
-            if self._threads >= 16:
-                # 超过限制返回 503
-                try:
-                    request.sendall(b"HTTP/1.1 503 Busy\r\n\r\nServer busy")
-                except Exception:
-                    pass
-                return
-            self._threads += 1
-        try:
-            super().process_request(request, client_address)
-        finally:
-            with self._thread_lock:
-                self._threads -= 1
+    """多线程 HTTP Server"""
+    daemon_threads = True
+    request_queue_size = 32
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
