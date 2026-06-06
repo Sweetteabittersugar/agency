@@ -111,6 +111,10 @@ body{font:14px/1.55 "DM Sans","Segoe UI",system-ui,sans-serif;background:var(--b
 .perm-item .pdec{font-weight:600}
 .harness-overlay{position:absolute;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:50;display:none;flex-direction:column}
 .harness-overlay.on{display:flex}
+.harness-overlay.mini{position:fixed;top:auto;bottom:8px;right:8px;left:auto;width:420px;height:320px;border-radius:var(--radius);border:1px solid var(--border);box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:100}
+.harness-overlay.mini .harness-overlay-tabs{font-size:10px}
+.harness-overlay.mini .harness-overlay-tab{padding:6px 10px;font-size:10px}
+.harness-overlay.mini .harness-overlay-content{padding:8px}
 .harness-overlay-tabs{display:flex;border-bottom:1px solid var(--border);background:var(--surface);padding:0 12px;flex-shrink:0}
 .harness-overlay-tab{padding:10px 16px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;user-select:none}
 .harness-overlay-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
@@ -188,7 +192,8 @@ body{font:14px/1.55 "DM Sans","Segoe UI",system-ui,sans-serif;background:var(--b
 <div class="harness-overlay-tab" data-htab="subagents">SubAgent</div>
 <div class="harness-overlay-tab" data-htab="hooks">Hooks</div>
 <div class="harness-overlay-tab" data-htab="mcp">MCP</div>
-<button class="btn" style="margin-left:auto;align-self:center" onclick="toggleDashboard()">✕</button>
+<button class="btn" style="font-size:10px" onclick="toggleMiniDashboard()">📌</button>
+<button class="btn" style="align-self:center" onclick="toggleDashboard()">✕</button>
 </div>
 <div class="harness-overlay-content" id="harnessContent"></div>
 </div>
@@ -285,14 +290,20 @@ function showToast(m,err,level){var t=document.createElement('div');t.className=
 // ═══════════════════════════════════════
 // Harness: 仪表盘
 // ═══════════════════════════════════════
-var harnessActive=!1,harnessSSE=null;
+var harnessActive=!1,harnessMini=!1;
 function toggleDashboard(){
-  harnessActive=!harnessActive;
+  harnessActive=!harnessActive;harnessMini=!1;
   var ov=$('harnessOverlay'),btn=$('dashboardBtn');
-  ov.classList.toggle('on',harnessActive);
+  ov.classList.remove('mini');ov.classList.toggle('on',harnessActive);
   btn.classList.toggle('on',harnessActive);
-  if(harnessActive){renderHarnessTab('overview');connectHarnessSSE()}else{if(harnessSSE){harnessSSE.close();harnessSSE=null}}
-  btn.textContent=harnessActive?'📊 关闭':'📊 仪表盘';
+  if(harnessActive){renderHarnessTab('overview')}
+}
+function toggleMiniDashboard(){
+  harnessMini=!harnessMini;
+  var ov=$('harnessOverlay');
+  if(harnessMini){ov.classList.add('on');ov.classList.add('mini');harnessActive=!0;renderHarnessTab('overview')}
+  else{ov.classList.remove('mini');if(!harnessActive){ov.classList.remove('on')}}
+  $('dashboardBtn').classList.toggle('on',harnessActive||harnessMini);
 }
 // 仪表盘子标签切换
 document.querySelectorAll('.harness-overlay-tab').forEach(function(t){t.addEventListener('click',function(){document.querySelectorAll('.harness-overlay-tab').forEach(function(x){x.classList.remove('active')});t.classList.add('active');renderHarnessTab(t.dataset.htab)})});
@@ -316,32 +327,6 @@ function loadCostOverview(){
     if(el('hov-cost-30d'))el('hov-cost-30d').textContent='$'+(t.cost||0).toFixed(4);
     if(el('hov-calls'))el('hov-calls').textContent=t.calls||0;
   }).catch(function(){});
-}
-// ═══════════════════════════════════════
-// Harness SSE 消费者
-// ═══════════════════════════════════════
-function connectHarnessSSE(){
-  if(harnessSSE)harnessSSE.close();
-  fetch('/api/harness/stream').then(function(resp){
-    var reader=resp.body.getReader(),decoder=new TextDecoder(),buf='';
-    function read(){reader.read().then(function(r){if(r.done){read();return}
-      buf+=decoder.decode(r.value,{stream:!0});
-      var lines=buf.split('\n');buf=lines.pop()||'';
-      for(var i=0;i<lines.length;i++){
-        var line=lines[i];if(line.indexOf('data: ')!==0)continue;
-        try{var d=JSON.parse(line.slice(6));handleHarnessEvent(d.type,d.data)}catch(_){}
-      }read()})}read()}).catch(function(){harnessSSE=null;setTimeout(connectHarnessSSE,5000)});
-}
-function handleHarnessEvent(type,data){
-  if(type==='permission_request'){
-    if(data.risk&&data.risk.level!=='low')showPermToast(data);
-  }else if(type==='compaction'){
-    showToast('上下文压缩: '+data.event+' · '+data.timestamp,!1,'warn');
-  }
-  // 事件记入日志（仪表盘打开时显示）
-  if(window._hlogs===undefined)window._hlogs=[];
-  window._hlogs.unshift({type:type,data:data,ts:Date.now()});
-  if(window._hlogs.length>200)window._hlogs.length=200;
 }
 // ═══════════════════════════════════════
 // 权限 Toast（Allow/Deny/Always）
@@ -387,10 +372,6 @@ function loadContextDetail(){
     if(sd)sd.innerHTML='输入: '+(d.input_tokens||0).toLocaleString()+' · 输出: '+(d.output_tokens||0).toLocaleString();
   }).catch(function(){var el=$('hctx-detail');if(el)el.innerHTML='加载失败'});
 }
-var ctxPollTimer=null;
-function maybeStartCtxPoll(){if(!ctxPollTimer)ctxPollTimer=setInterval(function(){if(harnessActive||(document.querySelector('#panel-context')||{}).classList&&document.querySelector('#panel-context.active'))loadContextDetail()},8000)}
-function stopCtxPoll(){if(ctxPollTimer){clearInterval(ctxPollTimer);ctxPollTimer=null}}
-maybeStartCtxPoll();
 // ═══════════════════════════════════════
 // SubAgent 任务树
 // ═══════════════════════════════════════
