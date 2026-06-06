@@ -130,6 +130,33 @@ ROUTING_KEYWORDS = {
     "planner": ["规划", "设计", "架构", "方案"],
     "general-worker": ["整理", "配置", "杂务", "文件"],
 }
+def _scan_subagents(proj_root: str, session_id: str) -> list:
+    """扫描 session 下的子 Agent"""
+    home = Path.home()
+    slug = proj_root.replace(":\\", "--").replace("\\", "-").replace("/", "-").lstrip("-")
+    subs_dir = home / ".claude" / "projects" / slug / session_id / "subagents"
+    if not subs_dir.exists():
+        return []
+    agents = []
+    for meta_file in sorted(subs_dir.glob("*.meta.json")):
+        try:
+            meta = json.loads(meta_file.read_text(encoding="utf-8"))
+            agent_id = meta_file.stem.replace(".meta", "")
+            # 看同名的 jsonl 文件大小判断是否有输出
+            jsonl_file = subs_dir / f"{agent_id}.jsonl"
+            has_output = jsonl_file.exists() and jsonl_file.stat().st_size > 100
+            agents.append({
+                "id": agent_id,
+                "name": meta.get("name", agent_id[:12]),
+                "type": meta.get("agentType", ""),
+                "description": (meta.get("description", "") or "")[:120],
+                "hasOutput": has_output,
+                "project": Path(proj_root).name,
+            })
+        except Exception:
+            pass
+    return agents
+
 def _extract_plan(text: str):
     """从 orchestrator 输出中提取 JSON 计划"""
     import re
@@ -437,28 +464,19 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/harness/subagents":
             sid = parse_qs(parsed.query).get("session", [""])[0]
             proj = str(PROJECT_ROOT)
+            tree = []
+            # 扫描 Agency 的 sessions
             if not sid:
                 info = find_latest_session(proj)
                 sid = info["session_id"] if info else ""
-            # 扫描 subagents 目录
-            tree = []
             if sid:
-                home = Path.home()
-                slug = proj.replace(":\\", "--").replace("\\", "-").replace("/", "-").lstrip("-")
-                subs_dir = home / ".claude" / "projects" / slug / sid / "subagents"
-                if subs_dir.exists():
-                    for meta_file in sorted(subs_dir.glob("*.meta.json")):
-                        try:
-                            meta = json.loads(meta_file.read_text(encoding="utf-8"))
-                            tree.append({
-                                "id": meta.get("agentId", ""),
-                                "name": meta.get("name", "unknown"),
-                                "model": meta.get("model", ""),
-                                "task": meta.get("task", "")[:100],
-                                "startedAt": meta.get("startedAt", 0),
-                            })
-                        except Exception:
-                            pass
+                tree += _scan_subagents(proj, sid)
+            # 也扫描用户主项目 D:\ai 的最新 session（常有丰富子Agent数据）
+            user_proj = os.environ.get("AGENCY_USER_PROJ", "")
+            if user_proj and os.path.isdir(user_proj):
+                user_info = find_latest_session(user_proj)
+                if user_info:
+                    tree += _scan_subagents(user_proj, user_info["session_id"])
             self.send_json({"tree": tree, "stats": {"total": len(tree), "running": 0, "done": len(tree), "failed": 0}})
         elif path == "/api/harness/events":
             evt_type = parse_qs(parsed.query).get("type", [None])[0]

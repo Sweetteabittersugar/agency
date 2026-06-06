@@ -454,7 +454,20 @@ function loadContextDetail(){
 function loadSubagents(){
   fetch('/api/harness/subagents').then(function(r){return r.json()}).then(function(d){
     var el=$('hsub-tree');if(!el)return;
-    if(d.tree&&d.tree.length){el.innerHTML='<div style="margin-bottom:6px;color:var(--text2)">'+d.stats.total+' 个 Agent · '+d.stats.done+' 完成</div>'+d.tree.map(function(a){return'<div style="padding:4px 8px;margin:2px 0;background:var(--surface2);border-radius:4px;font-size:11px"><span style="color:var(--accent)">⬤</span> '+escHtml(a.name)+' <span style="color:var(--muted)">'+escHtml(a.model)+'</span><div style="font-size:10px;color:var(--text2);margin-left:16px">'+escHtml(a.task)+'</div></div>'}).join('')}else{el.innerHTML='暂无 SubAgent 记录'}
+    var tree=d.tree||[];
+    if(tree.length){
+      // 按 project 分组
+      var groups={};
+      tree.forEach(function(a){var p=a.project||'';if(!groups[p])groups[p]=[];groups[p].push(a)});
+      var h='<div style="margin-bottom:8px;color:var(--text2);font-size:12px"><strong>'+d.stats.total+' 个子Agent</strong></div>';
+      Object.keys(groups).forEach(function(p){
+        h+='<div style="font-size:10px;color:var(--muted);margin:8px 0 4px">📁 '+escHtml(p||'当前')+'</div>';
+        groups[p].forEach(function(a){
+          h+='<div style="padding:6px 8px;margin:2px 0;background:var(--surface2);border-radius:4px;font-size:11px;border-left:2px solid '+(a.hasOutput?'var(--accent)':'var(--warn)')+'"><div style="display:flex;justify-content:space-between"><span>'+escHtml(a.name)+'</span><span style="font-size:10px;color:var(--muted)">'+escHtml(a.type||'')+'</span></div><div style="font-size:10px;color:var(--text2)">'+escHtml(a.description)+'</div></div>';
+        });
+      });
+      el.innerHTML=h;
+    }else{el.innerHTML='<div style="color:var(--muted);font-size:12px">暂无 SubAgent 记录<br><br>子Agent 由 orchestrator/lead 等调度型 Agent 在任务执行中自动创建。<br>点击 🧠 启用智能调度即可触发。</div>'}
   }).catch(function(){var el=$('hsub-tree');if(el)el.innerHTML='加载失败'});
 }
 // ═══════════════════════════════════════
