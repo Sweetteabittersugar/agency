@@ -158,6 +158,42 @@ def list_memory_files():
                 pass
     return files
 
+# ── 子进程追踪（防止泄漏）──
+_proc_lock = threading.Lock()
+_running_procs: set = set()
+MAX_PROCS = 8
+
+def _track_proc(proc):
+    with _proc_lock:
+        _running_procs.add(proc)
+        if len(_running_procs) > MAX_PROCS:
+            # 清理已结束的
+            dead = {p for p in _running_procs if p.poll() is not None}
+            _running_procs -= dead
+
+def _untrack_proc(proc):
+    with _proc_lock:
+        _running_procs.discard(proc)
+
+def _kill_proc(proc):
+    """强制终止子进程并清理"""
+    try:
+        if proc.poll() is None:
+            proc.kill()
+            proc.wait(timeout=5)
+    except Exception:
+        try:
+            proc.kill()
+        except Exception:
+            pass
+    _untrack_proc(proc)
+
+def _cleanup_all_procs():
+    with _proc_lock:
+        for p in list(_running_procs):
+            _kill_proc(p)
+        _running_procs.clear()
+
 # ── 费用记录（多维：项目 / Agent / 模型 / 日期）──
 _cost_db_lock = threading.Lock()
 def record_cost(time_str, model, in_tokens, out_tokens, cost_usd, duration_s, agent="", project=""):
@@ -485,39 +521,50 @@ class Handler(BaseHTTPRequestHandler):
                 cmd_str = f'"{CLAUDE_BIN}" -p "{safe_task}" {flags}'
 
                 start_time = time.time()
-                proc = subprocess.Popen(cmd_str, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                        encoding='utf-8', errors='replace', bufsize=1,
-                                        cwd=str(PROJECT_ROOT), shell=True)
+                proc = None
                 out_chars = 0
-                for line in iter(proc.stdout.readline, ''):
-                    if not line: break
-                    stripped = line.rstrip('\n\r')
-                    if not stripped: continue
-                    out_chars += len(stripped)
+                try:
+                    proc = subprocess.Popen(cmd_str, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                            encoding='utf-8', errors='replace', bufsize=1,
+                                            cwd=str(PROJECT_ROOT), shell=True)
+                    _track_proc(proc)
+                    for line in iter(proc.stdout.readline, ''):
+                        if not line: break
+                        stripped = line.rstrip('\n\r')
+                        if not stripped: continue
+                        out_chars += len(stripped)
+                        try:
+                            self.wfile.write(f"data: {json.dumps({'content': stripped + chr(10)})}\n\n".encode())
+                            self.wfile.flush()
+                        except (BrokenPipeError, ConnectionResetError):
+                            break  # 客户端断开
+
+                    # 正常结束：等待进程退出
                     try:
-                        self.wfile.write(f"data: {json.dumps({'content': stripped + chr(10)})}\n\n".encode())
+                        proc.wait(timeout=15)
+                    except subprocess.TimeoutExpired:
+                        pass
+
+                    elapsed = time.time() - start_time
+                    in_tokens = len(task) // 4
+                    out_tokens = out_chars // 2
+                    cost = estimate_cost("deepseek-v4-pro", in_tokens, out_tokens)
+                    try:
+                        self.wfile.write(f"event: done\ndata: {json.dumps({'elapsed': round(elapsed,1), 'cost': round(cost,6), 'in_tokens': in_tokens, 'out_tokens': out_tokens})}\n\n".encode())
                         self.wfile.flush()
-                    except (BrokenPipeError, ConnectionResetError):
-                        proc.kill()
-                        break
+                    except Exception:
+                        pass
+                    record_cost(time.strftime("%Y-%m-%d %H:%M:%S"), "deepseek-v4-pro", in_tokens, out_tokens, cost, elapsed, agent_name, proj_dir or "")
+                finally:
+                    if proc:
+                        _kill_proc(proc)
 
-                proc.wait(timeout=10)
-                elapsed = time.time() - start_time
-                in_tokens = len(task) // 4
-                out_tokens = out_chars // 2
-                cost = estimate_cost("deepseek-v4-pro", in_tokens, out_tokens)
-                self.wfile.write(f"event: done\ndata: {json.dumps({'elapsed': round(elapsed,1), 'cost': round(cost,6), 'in_tokens': in_tokens, 'out_tokens': out_tokens})}\n\n".encode())
-                self.wfile.flush()
-
-                record_cost(time.strftime("%Y-%m-%d %H:%M:%S"), "deepseek-v4-pro", in_tokens, out_tokens, cost, elapsed, agent_name, proj_dir or "")
-
-            except (BrokenPipeError, ConnectionResetError):
-                pass
             except Exception as e:
                 try:
                     self.wfile.write(f"data: {json.dumps({'error': str(e)})}\n\n".encode())
                     self.wfile.flush()
-                except: pass
+                except Exception:
+                    pass
 
         elif path == "/api/route":
             task = body.get("task", "")
@@ -541,6 +588,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Connection", "close")
             self.end_headers()
 
+            proc = None
             try:
                 safe_task = task.replace('\n', ' ').replace('\r', ' ')
                 cmd = ["cmd", "/c", CLAUDE_BIN, "-p", safe_task, "--bare", "--permission-mode", "auto", "--agent", "orchestrator"]
@@ -553,6 +601,7 @@ class Handler(BaseHTTPRequestHandler):
                 proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                         encoding='utf-8', errors='replace', bufsize=1,
                                         cwd=str(PROJECT_ROOT))
+                _track_proc(proc)
                 out_chars = 0
                 for line in iter(proc.stdout.readline, ''):
                     if not line: break
@@ -563,19 +612,26 @@ class Handler(BaseHTTPRequestHandler):
                         self.wfile.write(f"data: {json.dumps({'content': stripped + chr(10)})}\n\n".encode())
                         self.wfile.flush()
                     except (BrokenPipeError, ConnectionResetError):
-                        proc.kill()
                         break
 
-                proc.wait(timeout=10)
-                self.wfile.write(f"event: done\ndata: {json.dumps({'summary': '调度完成'})}\n\n".encode())
-                self.wfile.flush()
-            except (BrokenPipeError, ConnectionResetError):
-                pass
+                try:
+                    proc.wait(timeout=15)
+                except subprocess.TimeoutExpired:
+                    pass
+                try:
+                    self.wfile.write(f"event: done\ndata: {json.dumps({'summary': '调度完成'})}\n\n".encode())
+                    self.wfile.flush()
+                except Exception:
+                    pass
             except Exception as e:
                 try:
                     self.wfile.write(f"event: error\ndata: {json.dumps({'msg': str(e)})}\n\n".encode())
                     self.wfile.flush()
-                except: pass
+                except Exception:
+                    pass
+            finally:
+                if proc:
+                    _kill_proc(proc)
 
         # ── Harness POST 端点 ──
         elif path.startswith("/api/hooks/"):
@@ -718,4 +774,5 @@ if __name__ == "__main__":
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
+        _cleanup_all_procs()
         httpd.shutdown()
