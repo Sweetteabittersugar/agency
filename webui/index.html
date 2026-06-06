@@ -111,10 +111,12 @@ body{font:14px/1.55 "DM Sans","Segoe UI",system-ui,sans-serif;background:var(--b
 .perm-item .pdec{font-weight:600}
 .harness-overlay{position:absolute;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:50;display:none;flex-direction:column}
 .harness-overlay.on{display:flex}
-.harness-overlay.mini{position:fixed;top:auto;bottom:8px;right:8px;left:auto;width:420px;height:320px;border-radius:var(--radius);border:1px solid var(--border);box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:100}
-.harness-overlay.mini .harness-overlay-tabs{font-size:10px}
+.harness-overlay.mini{position:fixed;top:80px;left:300px;right:auto;bottom:auto;width:480px;height:360px;border-radius:var(--radius);border:1px solid var(--border);box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:100;resize:both;overflow:hidden;min-width:320px;min-height:240px}
+.harness-overlay.mini .harness-overlay-tabs{cursor:move;font-size:10px}
 .harness-overlay.mini .harness-overlay-tab{padding:6px 10px;font-size:10px}
 .harness-overlay.mini .harness-overlay-content{padding:8px}
+.resize-handle{position:absolute;bottom:0;right:0;width:16px;height:16px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 50%,var(--border) 50%);border-radius:0 0 var(--radius) 0;display:none}
+.harness-overlay.mini .resize-handle{display:block}
 .harness-overlay-tabs{display:flex;border-bottom:1px solid var(--border);background:var(--surface);padding:0 12px;flex-shrink:0}
 .harness-overlay-tab{padding:10px 16px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;user-select:none}
 .harness-overlay-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
@@ -196,12 +198,14 @@ body{font:14px/1.55 "DM Sans","Segoe UI",system-ui,sans-serif;background:var(--b
 <button class="btn" style="align-self:center" onclick="toggleDashboard()">✕</button>
 </div>
 <div class="harness-overlay-content" id="harnessContent"></div>
+<div class="resize-handle"></div>
 </div>
 <!-- 设置覆盖层 -->
 <div class="harness-overlay" id="devOverlay">
 <div class="harness-overlay-tabs">
 <span style="font-weight:600;color:var(--accent);padding:10px 0">⚙ 设置</span>
-<button class="btn" style="margin-left:auto;align-self:center" onclick="toggleDevOverlay()">✕</button>
+<button class="btn" style="font-size:10px" onclick="toggleMiniOverlay('devOverlay')">📌</button>
+<button class="btn" style="align-self:center" onclick="toggleDevOverlay()">✕</button>
 </div>
 <div class="harness-overlay-content">
 <div class="settings-section">
@@ -231,6 +235,7 @@ body{font:14px/1.55 "DM Sans","Segoe UI",system-ui,sans-serif;background:var(--b
 <div id="mem-list" style="font-size:11px;color:var(--muted)">加载中…</div>
 <div id="mem-editor" style="margin-top:8px"></div>
 </div>
+<div class="resize-handle"></div>
 </div>
 </div>
 </div>
@@ -305,6 +310,32 @@ function toggleMiniDashboard(){
   else{ov.classList.remove('mini');if(!harnessActive){ov.classList.remove('on')}}
   $('dashboardBtn').classList.toggle('on',harnessActive||harnessMini);
 }
+// 通用小窗切换
+function toggleMiniOverlay(id){
+  var ov=$(id);if(!ov)return;
+  var isMini=ov.classList.contains('mini');
+  if(isMini){ov.classList.remove('mini')}else{ov.classList.add('mini')}
+}
+// 拖拽小窗
+(function(){
+  var dragEl=null,startX=0,startY=0,origX=0,origY=0;
+  document.addEventListener('mousedown',function(e){
+    var tabs=e.target.closest('.harness-overlay-tabs');
+    if(!tabs)return;var ov=tabs.closest('.harness-overlay.mini');
+    if(!ov)return;if(e.target.tagName==='BUTTON')return;
+    dragEl=ov;startX=e.clientX;startY=e.clientY;
+    origX=ov.offsetLeft;origY=ov.offsetTop;
+    ov.style.cursor='grabbing';e.preventDefault();
+  });
+  document.addEventListener('mousemove',function(e){
+    if(!dragEl)return;
+    dragEl.style.left=(origX+e.clientX-startX)+'px';
+    dragEl.style.top=(origY+e.clientY-startY)+'px';
+  });
+  document.addEventListener('mouseup',function(){
+    if(dragEl){dragEl.style.cursor='';dragEl=null}
+  });
+})();
 // 仪表盘子标签切换
 document.querySelectorAll('.harness-overlay-tab').forEach(function(t){t.addEventListener('click',function(){document.querySelectorAll('.harness-overlay-tab').forEach(function(x){x.classList.remove('active')});t.classList.add('active');renderHarnessTab(t.dataset.htab)})});
 function renderHarnessTab(tab){
