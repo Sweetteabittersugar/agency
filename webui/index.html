@@ -15,7 +15,8 @@ body{font:14px/1.55 "DM Sans","Segoe UI",system-ui,sans-serif;background:var(--b
 .sidebar-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
 .sidebar-tab{flex:1;padding:10px;text-align:center;cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;transition:all .15s;user-select:none}
 .sidebar-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
-.sidebar-panel{flex:1;overflow-y:auto;display:none;padding:8px}
+.sidebar-panel{flex:1;overflow-y:auto;display:none;padding:8px;scrollbar-width:none;-ms-overflow-style:none}
+.sidebar-panel::-webkit-scrollbar{display:none}
 .sidebar-panel.active{display:flex;flex-direction:column}
 .agent-card{background:var(--surface2);border-radius:var(--radius);padding:10px 12px;margin-bottom:6px;cursor:pointer;border:1px solid transparent;transition:all .15s}
 .agent-card:hover{border-color:var(--accent);background:rgba(34,211,160,.06)}

@@ -219,17 +219,21 @@ _proc_lock = threading.Lock()
 _running_procs: set = set()
 MAX_PROCS = 8
 
+# 用 list 包装避免 global 声明问题 — Python 的 set -= 是赋值操作
+_proc_registry = []  # list of subprocess.Popen
+
 def _track_proc(proc):
     with _proc_lock:
-        _running_procs.add(proc)
-        if len(_running_procs) > MAX_PROCS:
-            # 清理已结束的
-            dead = {p for p in _running_procs if p.poll() is not None}
-            _running_procs -= dead
+        _proc_registry.append(proc)
+        if len(_proc_registry) > MAX_PROCS:
+            _proc_registry[:] = [p for p in _proc_registry if p.poll() is None]
 
 def _untrack_proc(proc):
     with _proc_lock:
-        _running_procs.discard(proc)
+        try:
+            _proc_registry.remove(proc)
+        except ValueError:
+            pass
 
 def _kill_proc(proc):
     """强制终止子进程并清理"""
@@ -246,9 +250,9 @@ def _kill_proc(proc):
 
 def _cleanup_all_procs():
     with _proc_lock:
-        for p in list(_running_procs):
+        for p in list(_proc_registry):
             _kill_proc(p)
-        _running_procs.clear()
+        _proc_registry.clear()
 
 # ── 费用记录（多维：项目 / Agent / 模型 / 日期）──
 _cost_db_lock = threading.Lock()
