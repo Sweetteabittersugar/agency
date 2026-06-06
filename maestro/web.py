@@ -3,7 +3,7 @@
 Agency — Claude Code Web 前端
   python maestro/web.py   →   http://localhost:8800
 """
-import os, sys, json, time, yaml, sqlite3, threading, subprocess, shutil
+import os, sys, json, time, yaml, sqlite3, threading, subprocess, shutil, logging
 from pathlib import Path
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingMixIn
@@ -44,6 +44,18 @@ if env_file.exists():
             os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
 
 PORT = 8800
+
+# ── 诊断日志 ──
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s [%(thread)d] %(levelname)s %(message)s',
+    datefmt='%H:%M:%S',
+    handlers=[
+        logging.FileHandler(str(PROJECT_ROOT / 'maestro' / 'agency.log'), encoding='utf-8'),
+        logging.StreamHandler(sys.stderr),
+    ]
+)
+log = logging.getLogger('agency')
 AGENCY_VERSION = (PROJECT_ROOT / "VERSION").read_text().strip() if (PROJECT_ROOT / "VERSION").exists() else "0.1.0"
 
 # ── 检测 Claude CLI ──
@@ -532,6 +544,7 @@ class Handler(BaseHTTPRequestHandler):
                     flags += f' --add-dir "{proj_dir}"'
                 cmd_str = f'"{CLAUDE_BIN}" -p "{safe_task}" {flags}'
 
+                log.info(f'CHAT start agent={agent_name or "auto"} task="{actual_task[:40]}…"')
                 start_time = time.time()
                 proc = None
                 out_chars = 0
@@ -539,11 +552,17 @@ class Handler(BaseHTTPRequestHandler):
                     # 隔离 env — 不和用户主 Claude Code 抢资源
                     iso_env = os.environ.copy()
                     iso_env["CLAUDE_CODE_CONFIG_DIR"] = ISOLATED_CONFIG
+                    t0 = time.time()
                     proc = subprocess.Popen(cmd_str, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                             encoding='utf-8', errors='replace', bufsize=1,
                                             cwd=str(PROJECT_ROOT), shell=True, env=iso_env)
+                    log.info(f'CHAT proc spawn {(time.time()-t0)*1000:.0f}ms PID={proc.pid}')
                     _track_proc(proc)
+                    first_line = True
                     for line in iter(proc.stdout.readline, ''):
+                        if first_line:
+                            log.info(f'CHAT first output after {(time.time()-start_time)*1000:.0f}ms')
+                            first_line = False
                         if not line: break
                         stripped = line.rstrip('\n\r')
                         if not stripped: continue
@@ -552,6 +571,7 @@ class Handler(BaseHTTPRequestHandler):
                             self.wfile.write(f"data: {json.dumps({'content': stripped + chr(10)})}\n\n".encode())
                             self.wfile.flush()
                         except (BrokenPipeError, ConnectionResetError):
+                            log.info(f'CHAT client disconnected, killing proc')
                             break  # 客户端断开
 
                     # 正常结束：等待进程退出
@@ -570,9 +590,11 @@ class Handler(BaseHTTPRequestHandler):
                     except Exception:
                         pass
                     record_cost(time.strftime("%Y-%m-%d %H:%M:%S"), "deepseek-v4-pro", in_tokens, out_tokens, cost, elapsed, agent_name, proj_dir or "")
+                    log.info(f'CHAT done elapsed={elapsed:.1f}s cost=${cost:.4f}')
                 finally:
                     if proc:
                         _kill_proc(proc)
+                        log.info(f'CHAT proc cleaned')
 
             except Exception as e:
                 try:
