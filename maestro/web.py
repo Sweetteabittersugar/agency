@@ -6,9 +6,13 @@ Agency — Claude Code Web 前端
 import os, sys, json, time, yaml, sqlite3, threading, subprocess, shutil
 from pathlib import Path
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
+from queue import Empty
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+# 确保 maestro/ 的父目录在 sys.path 中
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 # ── Claude Code 配置 ──
 # 项目 .claude/ 目录用于存放 Agent 定义等配置文件
@@ -89,6 +93,69 @@ PRICING = {
 def estimate_cost(model, in_tokens, out_tokens):
     p = PRICING.get(model, (0, 0))
     return (in_tokens / 1_000_000 * p[0]) + (out_tokens / 1_000_000 * p[1])
+
+# ── Harness 模块 ──
+from maestro.harness.watcher import bus
+from maestro.harness.hooks_receiver import handle_hook_callback
+from maestro.harness.jsonl_parser import find_latest_session, parse_usage_from_line
+
+# ── 权限日志 ──
+_permission_log = []  # 最近 200 条权限决策
+_permission_log_lock = threading.Lock()
+
+def record_permission(tool_name, decision, risk, reason=""):
+    entry = {"time": time.strftime("%H:%M:%S"), "tool": tool_name, "decision": decision, "risk": risk, "reason": reason}
+    with _permission_log_lock:
+        _permission_log.append(entry)
+        if len(_permission_log) > 200:
+            _permission_log[:] = _permission_log[-200:]
+
+def get_permission_stats():
+    with _permission_log_lock:
+        total = len(_permission_log)
+        allowed = sum(1 for e in _permission_log if e["decision"] == "allow")
+        denied = sum(1 for e in _permission_log if e["decision"] == "deny")
+        blocked = sum(1 for e in _permission_log if e["decision"] == "block")
+    return {"total": total, "allowed": allowed, "denied": denied, "blocked": blocked}
+
+# ── 记忆文件辅助 ──
+def list_memory_files():
+    """列出项目的记忆体系文件"""
+    files = []
+    project_root = PROJECT_ROOT
+    candidates = [
+        project_root / "CLAUDE.md",
+        project_root / "AGENTS.md",
+        project_root / "MEMORY.md",
+        project_root / ".claude" / "project.md",
+        project_root / ".claude" / "global.md",
+        project_root / ".claude" / "context.md",
+    ]
+    # rules
+    rules_dir = project_root / ".claude" / "rules"
+    if rules_dir.exists():
+        candidates.extend(sorted(rules_dir.glob("*.md")))
+    # memory
+    mem_dir = project_root / "memory"
+    if not mem_dir.exists():
+        mem_dir = Path.home() / ".claude" / "projects" / "D--agency" / "memory"
+    if mem_dir.exists():
+        candidates.extend(sorted(mem_dir.glob("*.md")))
+
+    for f in candidates:
+        if f.exists() and f.is_file():
+            try:
+                content = f.read_text(encoding="utf-8")
+                files.append({
+                    "path": str(f.resolve()),
+                    "name": f.name,
+                    "size": len(content),
+                    "preview": content[:200],
+                    "type": f.suffix.lstrip("."),
+                })
+            except Exception:
+                pass
+    return files
 
 # ── 费用记录（多维：项目 / Agent / 模型 / 日期）──
 _cost_db_lock = threading.Lock()
@@ -197,6 +264,165 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json(data)
             else:
                 self.send_json({"total": {"calls":0,"cost":0}, "today": {"calls":0,"cost":0}, "by_date":[], "by_model":[], "by_agent":[], "by_project":[]})
+        # ── Harness GET 端点 ──
+        elif path == "/api/harness/stream":
+            # SSE 长连接 — 聚合所有 Harness 事件
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream")
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("Connection", "close")
+            self.end_headers()
+            q = bus.listen()
+            try:
+                while True:
+                    payload = q.get(timeout=30)
+                    try:
+                        self.wfile.write(f"event: harness\ndata: {payload}\n\n".encode())
+                        self.wfile.flush()
+                    except (BrokenPipeError, ConnectionResetError):
+                        break
+            except Empty:
+                pass
+            finally:
+                bus.unlisten(q)
+        elif path == "/api/permissions/allowlist":
+            # 从 settings.json 读取 allow 规则
+            settings_path = _claude_dir_path / "settings.json"
+            rules = []
+            if settings_path.exists():
+                try:
+                    s = json.loads(settings_path.read_text(encoding="utf-8"))
+                    rules = s.get("permissions", {}).get("allow", [])
+                except Exception:
+                    pass
+            self.send_json({"rules": rules})
+        elif path == "/api/permissions/history":
+            limit = int(parse_qs(parsed.query).get("limit", ["50"])[0])
+            with _permission_log_lock:
+                hist = _permission_log[-limit:]
+            stats = get_permission_stats()
+            self.send_json({"history": list(reversed(hist)), "stats": stats})
+        elif path == "/api/permissions/stats":
+            self.send_json(get_permission_stats())
+        elif path == "/api/harness/context":
+            sid = parse_qs(parsed.query).get("session", [""])[0]
+            proj = str(PROJECT_ROOT)
+            session_info = find_latest_session(proj)
+            context = {"total_tokens": 0, "session_id": sid or (session_info["session_id"] if session_info else ""), "last_update": ""}
+            if session_info:
+                # 读最后一行获取最新 usage
+                try:
+                    with open(session_info["path"], "r", encoding="utf-8", errors="replace") as f:
+                        lines = f.readlines()
+                        if lines:
+                            usage = parse_usage_from_line(lines[-1].strip())
+                            if usage:
+                                context["total_tokens"] = usage["total"]
+                                context["input_tokens"] = usage["input_tokens"]
+                                context["output_tokens"] = usage["output_tokens"]
+                                context["cache_hit"] = usage["cache_read_input_tokens"]
+                            context["last_update"] = time.strftime("%H:%M:%S")
+                except Exception:
+                    pass
+            self.send_json(context)
+        elif path == "/api/harness/subagents":
+            sid = parse_qs(parsed.query).get("session", [""])[0]
+            proj = str(PROJECT_ROOT)
+            if not sid:
+                info = find_latest_session(proj)
+                sid = info["session_id"] if info else ""
+            # 扫描 subagents 目录
+            tree = []
+            if sid:
+                home = Path.home()
+                slug = proj.replace(":\\", "--").replace("\\", "-").replace("/", "-").lstrip("-")
+                subs_dir = home / ".claude" / "projects" / slug / sid / "subagents"
+                if subs_dir.exists():
+                    for meta_file in sorted(subs_dir.glob("*.meta.json")):
+                        try:
+                            meta = json.loads(meta_file.read_text(encoding="utf-8"))
+                            tree.append({
+                                "id": meta.get("agentId", ""),
+                                "name": meta.get("name", "unknown"),
+                                "model": meta.get("model", ""),
+                                "task": meta.get("task", "")[:100],
+                                "startedAt": meta.get("startedAt", 0),
+                            })
+                        except Exception:
+                            pass
+            self.send_json({"tree": tree, "stats": {"total": len(tree), "running": 0, "done": len(tree), "failed": 0}})
+        elif path == "/api/harness/events":
+            evt_type = parse_qs(parsed.query).get("type", [None])[0]
+            limit = int(parse_qs(parsed.query).get("limit", ["50"])[0])
+            events = bus.recent_events(evt_type, limit)
+            self.send_json({"events": events})
+        elif path == "/api/skills":
+            skills = []
+            for skills_dir in [_claude_dir_path / "skills", Path.home() / ".claude" / "skills"]:
+                if not skills_dir.exists():
+                    continue
+                for skill_dir in skills_dir.iterdir():
+                    if not skill_dir.is_dir():
+                        continue
+                    skmd = skill_dir / "SKILL.md"
+                    if skmd.exists():
+                        try:
+                            content = skmd.read_text(encoding="utf-8")
+                            fm = {}
+                            if content.startswith("---"):
+                                parts = content.split("---", 2)
+                                if len(parts) >= 3:
+                                    try:
+                                        fm = yaml.safe_load(parts[1]) or {}
+                                    except Exception:
+                                        pass
+                            skills.append({
+                                "name": skill_dir.name,
+                                "description": fm.get("description", ""),
+                                "triggers": fm.get("triggers", fm.get("trigger", [])),
+                                "model": fm.get("model", ""),
+                                "enabled": True,
+                                "path": str(skmd.resolve()),
+                            })
+                        except Exception:
+                            pass
+            self.send_json(skills)
+        elif path == "/api/memory":
+            self.send_json({"files": list_memory_files()})
+        elif path.startswith("/api/memory/"):
+            # 读取单个记忆文件
+            rel = path[len("/api/memory/"):]
+            fpath = PROJECT_ROOT / rel
+            if not fpath.exists():
+                fpath = Path(rel) if Path(rel).exists() else None
+            if fpath and fpath.exists() and fpath.is_file():
+                try:
+                    content = fpath.read_text(encoding="utf-8")
+                    self.send_json({"path": str(fpath), "name": fpath.name, "content": content, "size": len(content)})
+                except Exception as e:
+                    self.send_json({"error": str(e)}, 500)
+            else:
+                self.send_json({"error": "file not found"}, 404)
+        elif path == "/api/mcp/status":
+            # 读取 .mcp.json 并检测进程
+            mcp_config_path = PROJECT_ROOT / ".mcp.json"
+            servers = []
+            if mcp_config_path.exists():
+                try:
+                    mcp = json.loads(mcp_config_path.read_text(encoding="utf-8"))
+                    for name, cfg in mcp.get("mcpServers", {}).items():
+                        servers.append({
+                            "name": name,
+                            "command": cfg.get("command", ""),
+                            "args": cfg.get("args", []),
+                            "env": list(cfg.get("env", {}).keys()) if cfg.get("env") else [],
+                            "running": False,  # 进程检测待实现
+                            "tools": [],
+                            "callCount": 0,
+                        })
+                except Exception:
+                    pass
+            self.send_json({"servers": servers})
         else:
             self.send_json({"error": "not found"}, 404)
 
@@ -237,15 +463,20 @@ class Handler(BaseHTTPRequestHandler):
                 # 上下文：首条消息不用 --continue，后续自动加
                 is_first = body.get("is_first_message", True)
 
-                meta = json.dumps({"agent": agent_name or "auto", "model": "auto", "is_first": is_first, "continue": not is_first})
+                # 会话管理：--session-id 创建命名会话，--resume 续接
+                session_id = body.get("session_id", "")
+                is_new = body.get("is_new_session", True)
+                meta = json.dumps({"agent": agent_name or "auto", "model": "auto", "session": session_id[:8] if session_id else "new"})
                 self.wfile.write(f"event: meta\ndata: {meta}\n\n".encode())
                 self.wfile.flush()
 
-                # shell=True → cmd.exe 自动处理 .CMD + 引号
                 safe_task = actual_task.replace('"', '\\"').replace('\n', ' ').replace('\r', ' ')
                 flags = "--bare --permission-mode auto"
-                if not is_first:
-                    flags += " --continue"
+                if session_id:
+                    if is_new:
+                        flags += f' --session-id "{session_id}"'
+                    else:
+                        flags += f' --resume "{session_id}"'
                 if agent_name:
                     flags += f' --agent "{agent_name}"'
                 if proj_dir and os.path.isdir(proj_dir):
@@ -344,6 +575,107 @@ class Handler(BaseHTTPRequestHandler):
                     self.wfile.write(f"event: error\ndata: {json.dumps({'msg': str(e)})}\n\n".encode())
                     self.wfile.flush()
                 except: pass
+
+        # ── Harness POST 端点 ──
+        elif path.startswith("/api/hooks/"):
+            # Claude Code Hook HTTP 回调接收
+            event = path[len("/api/hooks/"):]
+            result = handle_hook_callback(event, body)
+            self.send_json(result)
+
+        elif path == "/api/permissions/allowlist":
+            # 添加 allow 规则到 settings.json
+            rule = body.get("rule", "")
+            if not rule:
+                self.send_json({"error": "rule required"}, 400)
+                return
+            settings_path = _claude_dir_path / "settings.json"
+            settings = {}
+            if settings_path.exists():
+                try:
+                    settings = json.loads(settings_path.read_text(encoding="utf-8"))
+                except Exception:
+                    pass
+            perms = settings.setdefault("permissions", {})
+            allow_list = perms.setdefault("allow", [])
+            if rule not in allow_list:
+                allow_list.append(rule)
+            settings_path.write_text(json.dumps(settings, indent=2, ensure_ascii=False), encoding="utf-8")
+            self.send_json({"ok": True, "rule": rule})
+
+        elif path == "/api/permissions/decision":
+            # 前端返回权限决策
+            decision = body.get("decision", "deny")
+            tool_name = body.get("tool_name", "")
+            risk = body.get("risk", {})
+            reason = body.get("reason", "")
+            record_permission(tool_name, decision, risk, reason)
+            # 广播给其他连接的 Harness 客户端
+            bus.broadcast("permission_decision", {
+                "tool_name": tool_name, "decision": decision, "reason": reason,
+                "timestamp": time.strftime("%H:%M:%S"),
+            })
+            self.send_json({"ok": True})
+
+        elif path.startswith("/api/memory/"):
+            # 编辑记忆文件
+            rel = path[len("/api/memory/"):]
+            fpath = PROJECT_ROOT / rel
+            if not fpath.exists():
+                self.send_json({"error": "file not found"}, 404)
+                return
+            content = body.get("content", "")
+            if not content:
+                self.send_json({"error": "content required"}, 400)
+                return
+            try:
+                fpath.write_text(content, encoding="utf-8")
+                self.send_json({"ok": True, "path": str(fpath), "size": len(content)})
+            except Exception as e:
+                self.send_json({"error": str(e)}, 500)
+
+        elif path == "/api/skills/toggle":
+            # 启用/禁用 Skill
+            name = body.get("name", "")
+            enabled = body.get("enabled", True)
+            if not name:
+                self.send_json({"error": "name required"}, 400)
+                return
+            skill_path = _claude_dir_path / "skills" / name / "SKILL.md"
+            disabled_path = _claude_dir_path / "skills" / name / "SKILL.md.disabled"
+            try:
+                if enabled and disabled_path.exists():
+                    disabled_path.rename(skill_path)
+                elif not enabled and skill_path.exists():
+                    skill_path.rename(disabled_path)
+                self.send_json({"ok": True, "name": name, "enabled": enabled})
+            except Exception as e:
+                self.send_json({"error": str(e)}, 500)
+
+        elif path == "/api/mcp/config":
+            # 保存 MCP 配置
+            mcp_config = body.get("config", body)
+            mcp_config_path = PROJECT_ROOT / ".mcp.json"
+            try:
+                mcp_config_path.write_text(json.dumps(mcp_config, indent=2, ensure_ascii=False), encoding="utf-8")
+                self.send_json({"ok": True})
+            except Exception as e:
+                self.send_json({"error": str(e)}, 500)
+
+        elif path == "/api/settings":
+            # PATCH settings.json
+            patch = body.get("patch", body)
+            settings_path = _claude_dir_path / "settings.json"
+            current = {}
+            if settings_path.exists():
+                try:
+                    current = json.loads(settings_path.read_text(encoding="utf-8"))
+                except Exception:
+                    pass
+            # 浅合并
+            current.update(patch)
+            settings_path.write_text(json.dumps(current, indent=2, ensure_ascii=False), encoding="utf-8")
+            self.send_json({"ok": True})
 
         else:
             self.send_json({"error": "not found"}, 404)
