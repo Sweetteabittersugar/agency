@@ -15,9 +15,11 @@ body{font:14px/1.55 "DM Sans","Segoe UI",system-ui,sans-serif;background:var(--b
 .sidebar-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
 .sidebar-tab{flex:1;padding:10px;text-align:center;cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;transition:all .15s;user-select:none}
 .sidebar-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
-.sidebar-panel{flex:1;overflow-y:auto;display:none;padding:8px;scrollbar-width:none;-ms-overflow-style:none}
-.sidebar-panel::-webkit-scrollbar{display:none}
+.sidebar-panel{flex:1;overflow-y:auto;display:none;padding:8px}
 .sidebar-panel.active{display:flex;flex-direction:column}
+/* 全局隐藏侧边栏所有滚动条 — 保留滚轮 */
+.sidebar *{scrollbar-width:none;-ms-overflow-style:none}
+.sidebar *::-webkit-scrollbar{display:none}
 .agent-card{background:var(--surface2);border-radius:var(--radius);padding:10px 12px;margin-bottom:6px;cursor:pointer;border:1px solid transparent;transition:all .15s}
 .agent-card:hover{border-color:var(--accent);background:rgba(34,211,160,.06)}
 .agent-card .name{font-weight:600;font-size:13px;color:#fff}
@@ -140,10 +142,6 @@ body{font:14px/1.55 "DM Sans","Segoe UI",system-ui,sans-serif;background:var(--b
 <div class="sidebar-tab active" data-tab="agents">Agent</div>
 <div class="sidebar-tab" data-tab="project">项目</div>
 <div class="sidebar-tab" data-tab="history">历史</div>
-<div class="sidebar-tab" data-tab="harness">仪表盘</div>
-<div class="sidebar-tab" data-tab="permission">权限</div>
-<div class="sidebar-tab" data-tab="context">上下文</div>
-<div class="sidebar-tab" data-tab="mcp">MCP</div>
 <div class="sidebar-tab" data-tab="tools" style="display:none">工具</div>
 </div>
 <div class="sidebar-panel active" id="panel-agents">
@@ -174,32 +172,6 @@ body{font:14px/1.55 "DM Sans","Segoe UI",system-ui,sans-serif;background:var(--b
 <div class="sidebar-panel" id="panel-history">
 <button class="new-chat-btn" onclick="clearAllPanels()">+ 清空全部</button>
 <div style="flex:1;overflow-y:auto" id="history-list"></div>
-</div>
-<!-- Harness: 仪表盘缩影 -->
-<div class="sidebar-panel" id="panel-harness">
-<div id="harness-kpi" style="font-size:11px;color:var(--muted);padding:4px 0">连接中…</div>
-</div>
-<!-- Harness: 权限管线 -->
-<div class="sidebar-panel" id="panel-permission">
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-<span style="font-size:11px;color:var(--text2);font-weight:600">权限日志</span>
-<span id="perm-stats" style="font-size:10px;color:var(--muted)"></span>
-</div>
-<div style="flex:1;overflow-y:auto;font-size:10px" id="perm-log"></div>
-</div>
-<!-- Harness: 上下文工程 -->
-<div class="sidebar-panel" id="panel-context">
-<div style="margin-bottom:8px">
-<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:2px">
-<span>Token 窗口</span><span id="ctx-gauge-text">0 / 300K</span>
-</div>
-<div class="ctx-gauge"><div class="ctx-gauge-fill" id="ctx-gauge-fill" style="width:0%"></div></div>
-</div>
-<div id="ctx-detail" style="font-size:10px;color:var(--muted)"></div>
-</div>
-<!-- Harness: MCP 状态 -->
-<div class="sidebar-panel" id="panel-mcp">
-<div style="font-size:11px;color:var(--muted)" id="mcp-status">加载中…</div>
 </div>
 </nav>
 <div class="main">
@@ -277,18 +249,6 @@ renderHistory();
 function loadConvo(id){var c=conversations.find(function(x){return x.id===Number(id)});if(!c)return;var p=getFocusedPanel();p.currentConvo={id:c.id,title:c.title,messages:c.messages.slice(),sessionId:c.sessionId||''};p.dom.messages.innerHTML='';p.dom.route.innerHTML='';c.messages.forEach(function(m){addMsg(p,m.role,m.content)});p.dom.messages.scrollTop=p.dom.messages.scrollHeight}
 function delConvo(id,e){e.stopPropagation();conversations=conversations.filter(function(c){return c.id!==Number(id)});localStorage.setItem('agency_convos',JSON.stringify(conversations));renderHistory()}
 function toggleDevMode(){devMode=!devMode;var btn=$('devBtn');btn.classList.toggle('on',devMode);btn.textContent=devMode?'🔧 关闭':'🔧 开发';var t=document.querySelector('.sidebar-tab[data-tab="tools"]');if(t)t.style.display=devMode?'flex':'none';if(!devMode){var tp=$('panel-tools');if(tp&&tp.classList.contains('active')){var at=document.querySelector('.sidebar-tab[data-tab="agents"]');if(at)at.click()}}if(devMode)loadCostData()}
-// 侧边栏 Harness 标签点击时加载对应数据
-document.querySelector('.sidebar-tab[data-tab="harness"]')&&document.querySelector('.sidebar-tab[data-tab="harness"]').addEventListener('click',function(){$('harness-kpi').textContent='Harness 运行中 · 事件数: '+(window._hlogs||[]).length});
-document.querySelector('.sidebar-tab[data-tab="permission"]')&&document.querySelector('.sidebar-tab[data-tab="permission"]').addEventListener('click',function(){loadPermHistorySidebar()});
-document.querySelector('.sidebar-tab[data-tab="context"]')&&document.querySelector('.sidebar-tab[data-tab="context"]').addEventListener('click',function(){loadContextDetail()});
-document.querySelector('.sidebar-tab[data-tab="mcp"]')&&document.querySelector('.sidebar-tab[data-tab="mcp"]').addEventListener('click',function(){loadMCPDetail()});
-function loadPermHistorySidebar(){
-  fetch('/api/permissions/history?limit=30').then(function(r){return r.json()}).then(function(d){
-    var log=$('perm-log'),statsEl=$('perm-stats');if(!log)return;
-    if(d.history&&d.history.length){log.innerHTML=d.history.map(function(e){return'<div class="perm-item '+e.decision+'"><span class="pdec">'+(e.decision==='allow'?'✓':e.decision==='deny'?'✗':'⚠')+'</span> '+escHtml(e.tool||'?')+' <span style="font-size:9px;color:var(--muted)">'+e.time+'</span></div>'}).join('')}else{log.innerHTML='暂无权限记录'}
-    if(statsEl&&d.stats)statsEl.textContent='✓'+d.stats.allowed+' ✗'+d.stats.denied
-  }).catch(function(){var log=$('perm-log');if(log)log.innerHTML='加载失败'});
-}
 function loadCostData(){fetch('/api/cost?days=30').then(function(r){return r.json()}).then(function(d){var el=$('cost-overview');if(!d||!d.total){el.innerHTML='暂无数据';return}var t=d.total,td=d.today;var h='<div class="cost-kpis"><div class="cost-kpi"><span class="kpi-val">$'+(td.cost||0).toFixed(4)+'</span><span class="kpi-label">今日</span></div><div class="cost-kpi"><span class="kpi-val">$'+(t.cost||0).toFixed(4)+'</span><span class="kpi-label">30天</span></div><div class="cost-kpi"><span class="kpi-val">'+(t.calls||0)+'</span><span class="kpi-label">调用</span></div></div>';if(d.by_model&&d.by_model.length){var maxM=Math.max.apply(null,d.by_model.map(function(m){return m.cost}));h+='<div class="tools-section"><h3>按模型</h3>';d.by_model.forEach(function(m){h+='<div class="cost-row"><span>'+(m.model||'?')+'</span><span class="val">$'+m.cost.toFixed(4)+'</span></div><div class="cost-bar"><div class="cost-bar-fill" style="width:'+(m.cost/maxM*100)+'%"></div></div>'});h+='</div>'}if(d.by_agent&&d.by_agent.length){h+='<div class="tools-section"><h3>按 Agent</h3>';d.by_agent.forEach(function(m){h+='<div class="cost-row"><span>'+m.agent+'</span><span class="val">$'+m.cost.toFixed(4)+'</span></div>'});h+='</div>'}el.innerHTML=h}).catch(function(){$('cost-overview').innerHTML='加载失败'})}
 function generateAgent(){var input=$('agent-factory-input'),output=$('agent-factory-output');var req=input.value.trim();if(!req)return;output.innerHTML='生成中…';fetch('/api/agent-generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requirement:req})}).then(function(resp){var reader=resp.body.getReader(),decoder=new TextDecoder(),buf='',txt='';function read(){reader.read().then(function(result){if(result.done){finish();return}buf+=decoder.decode(result.value,{stream:!0});var lines=buf.split('\n');buf=lines.pop()||'';for(var i=0;i<lines.length;i++){if(lines[i].indexOf('data: ')!==0)continue;if(lines[i].indexOf('[DONE]')>=0){finish();return}try{var d=JSON.parse(lines[i].slice(6));if(d.content)txt+=d.content}catch(_){}}read()})}function finish(){output.innerHTML='<pre style="font-size:10px;max-height:200px;overflow:auto;background:var(--bg);padding:8px;border-radius:4px">'+escHtml(txt)+'</pre><button class="new-chat-btn" style="margin-top:4px" onclick="saveAgent()">保存此 Agent</button>';output._agentContent=txt}read()}).catch(function(){output.innerHTML='生成失败'})}
 function saveAgent(){var txt=$('agent-factory-output')._agentContent;if(!txt)return;var m=txt.match(/name:\s*"?([a-z0-9-]+)"?/i);var name=m?m[1]:('agent-'+Date.now().toString(36));fetch('/api/agent-create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,content:txt})}).then(function(r){return r.json()}).then(function(d){if(d.ok){showToast('Agent 已保存: '+name);loadAgents()}else{showToast(d.error||'保存失败',!0)}}).catch(function(){showToast('保存失败',!0)})}
@@ -338,21 +298,11 @@ function connectHarnessSSE(){
 }
 function handleHarnessEvent(type,data){
   if(type==='permission_request'){
-    // 更新左侧栏权限日志
-    addPermLogEntry({tool:data.tool_name,decision:'ask',risk:data.risk});
-    // 中高风险弹出 toast
     if(data.risk&&data.risk.level!=='low')showPermToast(data);
-  }else if(type==='permission_decision'){
-    addPermLogEntry({tool:data.tool_name,decision:data.decision,risk:{},reason:data.reason});
-  }else if(type==='tool_use'){
-    addPermLogEntry({tool:data.tool_name,decision:'allow',risk:data.risk||{},reason:'auto'});
-  }else if(type==='lifecycle'){
-    // 更新仪表盘 KPI
-    var kpi=$('harness-kpi');if(kpi)kpi.textContent='事件: '+data.event+' · '+data.timestamp;
   }else if(type==='compaction'){
     showToast('上下文压缩: '+data.event+' · '+data.timestamp,!1,'warn');
   }
-  // 所有事件推入 hooks 日志
+  // 事件记入日志（仪表盘打开时显示）
   if(window._hlogs===undefined)window._hlogs=[];
   window._hlogs.unshift({type:type,data:data,ts:Date.now()});
   if(window._hlogs.length>200)window._hlogs.length=200;
@@ -377,18 +327,6 @@ function addAllowRule(data){
   fetch('/api/permissions/allowlist',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rule:data.tool_name})});
   showToast('已添加规则: '+data.tool_name);
 }
-// ═══════════════════════════════════════
-// 权限日志
-// ═══════════════════════════════════════
-function addPermLogEntry(e){
-  var log=$('perm-log'),statsEl=$('perm-stats');if(!log)return;
-  var cls=e.decision==='allow'?'allow':(e.decision==='deny'?'deny':'block');
-  var d=document.createElement('div');d.className='perm-item '+cls;
-  d.innerHTML='<span class="pdec">'+(e.decision==='allow'?'✓':e.decision==='deny'?'✗':'⚠')+'</span> '+escHtml(e.tool)+(e.reason?' <span style="color:var(--muted)">'+escHtml(e.reason)+'</span>':'');
-  log.insertBefore(d,log.firstChild);
-  if(log.children.length>100)log.lastChild.remove();
-  // 更新统计
-  if(statsEl){var a=log.querySelectorAll('.allow').length,d=log.querySelectorAll('.deny').length;statsEl.textContent='✓'+a+' ✗'+d}}
 function loadPermHistory(){
   fetch('/api/permissions/history?limit=100').then(function(r){return r.json()}).then(function(d){
     var el=$('hperm-log');if(!el)return;
