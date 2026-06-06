@@ -626,7 +626,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.flush()
 
                 safe_task = actual_task.replace('"', '\\"').replace('\n', ' ').replace('\r', ' ')
-                flags = "--bare --permission-mode auto"
+                flags = "--permission-mode auto"
                 if session_id:
                     if is_new:
                         flags += f' --session-id "{session_id}"'
@@ -672,8 +672,14 @@ class Handler(BaseHTTPRequestHandler):
                         stripped = line.rstrip('\n\r')
                         if not stripped: continue
                         out_chars += len(stripped)
+                        # 折叠超长工具输出 / 标记工具调用
+                        display = stripped
+                        if len(stripped) > 500:
+                            display = '<details><summary>📄 展开 (' + str(len(stripped)) + '字符)</summary><pre>' + stripped.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;') + '</pre></details>'
+                        elif stripped.startswith('[Tool:') or stripped.startswith('Tool:'):
+                            display = '<div class="tool-tag">🔧 ' + stripped.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;') + '</div>'
                         try:
-                            self.wfile.write(f"data: {json.dumps({'content': stripped + chr(10)})}\n\n".encode())
+                            self.wfile.write(f"data: {json.dumps({'content': display + chr(10)})}\n\n".encode())
                             self.wfile.flush()
                         except (BrokenPipeError, ConnectionResetError):
                             log.info(f'CHAT client disconnected, killing proc')
