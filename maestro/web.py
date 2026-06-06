@@ -444,23 +444,25 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/permissions/stats":
             self.send_json(get_permission_stats())
         elif path == "/api/harness/context":
-            sid = parse_qs(parsed.query).get("session", [""])[0]
-            proj = str(PROJECT_ROOT)
-            if sid:
-                # 查找指定 session 的 JSONL
-                home = Path.home()
-                slug = proj.replace(":\\", "--").replace("\\", "-").replace("/", "-").lstrip("-")
-                jsonl_path = home / ".claude" / "projects" / slug / f"{sid}.jsonl"
-                if jsonl_path.exists():
-                    self.send_json(analyze_session(str(jsonl_path)))
+            try:
+                sid = parse_qs(parsed.query).get("session", [""])[0]
+                proj = str(PROJECT_ROOT)
+                if sid:
+                    home = Path.home()
+                    slug = proj.replace(":\\", "--").replace("\\", "-").replace("/", "-").lstrip("-")
+                    jsonl_path = home / ".claude" / "projects" / slug / f"{sid}.jsonl"
+                    if jsonl_path.exists():
+                        self.send_json(analyze_session(str(jsonl_path)))
+                    else:
+                        self.send_json({"total_tokens": 0, "session_id": sid, "error": "session not found"})
                 else:
-                    self.send_json({"total_tokens": 0, "session_id": sid, "error": "session not found"})
-            else:
-                session_info = find_latest_session(proj)
-                if session_info and os.path.exists(session_info["path"]):
-                    self.send_json(analyze_session(session_info["path"]))
-                else:
-                    self.send_json({"total_tokens": 0, "session_id": "", "last_update": time.strftime("%H:%M:%S")})
+                    session_info = find_latest_session(proj)
+                    if session_info and os.path.exists(session_info["path"]):
+                        self.send_json(analyze_session(session_info["path"]))
+                    else:
+                        self.send_json({"total_tokens": 0, "session_id": "", "last_update": time.strftime("%H:%M:%S")})
+            except Exception as e:
+                self.send_json({"total_tokens": 0, "error": str(e)[:100]})
         elif path == "/api/harness/subagents":
             sid = parse_qs(parsed.query).get("session", [""])[0]
             proj = str(PROJECT_ROOT)
@@ -531,19 +533,42 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 self.send_json({"error": "file not found"}, 404)
         elif path == "/api/mcp/status":
-            # 读取 .mcp.json 并检测进程
-            mcp_config_path = PROJECT_ROOT / ".mcp.json"
+            # 读取多个 .mcp.json 并检测进程
             servers = []
-            if mcp_config_path.exists():
+            seen = set()
+            # 扫描多个来源
+            mcp_sources = [
+                PROJECT_ROOT / ".mcp.json",
+                Path.home() / ".claude" / ".mcp.json",
+                PROJECT_ROOT / ".." / ".mcp.json",  # 上级目录（如 D:\ai）
+            ]
+            for src in mcp_sources:
+                if not src.exists():
+                    continue
                 try:
-                    mcp = json.loads(mcp_config_path.read_text(encoding="utf-8"))
+                    mcp = json.loads(src.read_text(encoding="utf-8"))
                     for name, cfg in mcp.get("mcpServers", {}).items():
+                        if name in seen:
+                            continue
+                        seen.add(name)
+                        cmd = cfg.get("command", "")
+                        # 检测进程是否在跑（通过 tasklist）
+                        running = False
+                        try:
+                            check = subprocess.run(
+                                f'tasklist /FI "IMAGENAME eq node.exe" /FO CSV 2>nul | findstr /i "{cmd.split()[0] if cmd else "mcp"}"',
+                                shell=True, capture_output=True, text=True, timeout=2
+                            )
+                            running = check.returncode == 0
+                        except Exception:
+                            pass
                         servers.append({
                             "name": name,
-                            "command": cfg.get("command", ""),
+                            "command": cmd,
                             "args": cfg.get("args", []),
                             "env": list(cfg.get("env", {}).keys()) if cfg.get("env") else [],
-                            "running": False,  # 进程检测待实现
+                            "running": running,
+                            "source": str(src),
                             "tools": [],
                             "callCount": 0,
                         })
