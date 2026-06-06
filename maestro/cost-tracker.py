@@ -61,9 +61,9 @@ def get_conn() -> sqlite3.Connection:
 
 
 def _table_exists(conn: sqlite3.Connection) -> bool:
-    """检查 cost_logs 表是否存在。"""
+    """检查 costs 表是否存在。"""
     row = conn.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='cost_logs'"
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='costs'"
     ).fetchone()
     return row is not None
 
@@ -75,13 +75,13 @@ def query_range(conn: sqlite3.Connection, days: int | None) -> list[sqlite3.Row]
     if days is None:
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         rows = conn.execute(
-            "SELECT * FROM cost_logs WHERE time >= ? AND time < ? ORDER BY time",
+            "SELECT * FROM costs WHERE time >= ? AND time < ? ORDER BY time",
             (today, f"{today}T99"),
         ).fetchall()
     else:
         since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
         rows = conn.execute(
-            "SELECT * FROM cost_logs WHERE time >= ? ORDER BY time",
+            "SELECT * FROM costs WHERE time >= ? ORDER BY time",
             (since,),
         ).fetchall()
     return rows
@@ -91,16 +91,16 @@ def query_all(conn: sqlite3.Connection) -> list[sqlite3.Row]:
     """查询全部记录。"""
     if not _table_exists(conn):
         return []
-    return conn.execute("SELECT * FROM cost_logs ORDER BY time").fetchall()
+    return conn.execute("SELECT * FROM costs ORDER BY time").fetchall()
 
 
 # ── 聚合计算 ──────────────────────────────────────────────────────────────
 
 def aggregate(rows: list[sqlite3.Row]) -> dict:
-    """按 channel 聚合费用、token 等。"""
+    """按 agent 聚合费用、token 等。"""
     channels: dict[str, dict] = {}
     for r in rows:
-        ch = r["channel"]
+        ch = r["agent"] or "unknown"
         if ch not in channels:
             channels[ch] = {
                 "channel": ch,
@@ -152,7 +152,7 @@ def anomaly_check(rows: list[sqlite3.Row]) -> list[dict]:
                 "level": "red",
                 "id": r["id"],
                 "time": r["time"],
-                "channel": r["channel"],
+                "channel": r["agent"] or "unknown",
                 "model": r["model"],
                 "cost": r["cost_usd"],
                 "msg": f"单次 ${r['cost_usd']:.4f} 超过 ${ENTRY_RED_USD:.2f}",

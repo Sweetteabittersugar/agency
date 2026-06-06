@@ -194,16 +194,8 @@ def simple_route(task):
     model = _agent_models.get(best, "")
     return {"agent": best, "model": model}
 
-# ── 费用估算 ──
-PRICING = {
-    "deepseek-v4-pro": (0.28, 0.28),
-    "deepseek-v4-flash": (0.14, 0.14),
-    "claude-sonnet-4-6": (3.0, 15.0),
-    "claude-haiku-4-5": (0.80, 4.0),
-}
-def estimate_cost(model, in_tokens, out_tokens):
-    p = PRICING.get(model, (0, 0))
-    return (in_tokens / 1_000_000 * p[0]) + (out_tokens / 1_000_000 * p[1])
+# ── 费用估算 ── 统一使用 models.py 的定价表
+from maestro.models import estimate_cost
 
 # ── Harness 模块 ──
 from maestro.harness.watcher import bus
@@ -310,54 +302,125 @@ def _cleanup_all_procs():
 
 # ── 费用记录（多维：项目 / Agent / 模型 / 日期）──
 _cost_db_lock = threading.Lock()
-def record_cost(time_str, model, in_tokens, out_tokens, cost_usd, duration_s, agent="", project=""):
-    try:
-        db = PROJECT_ROOT / "maestro" / "cost.db"
-        date_str = time_str[:10]  # YYYY-MM-DD
-        with _cost_db_lock:
-            conn = sqlite3.connect(str(db))
+def record_cost(time_str, model, in_tokens, out_tokens, cost_usd, duration_s, agent="", project="",
+                cache_read=0, cache_write=0, cache_saved=0.0, is_estimated=False, session_id=""):
+    db = PROJECT_ROOT / "maestro" / "cost.db"
+    date_str = time_str[:10]  # YYYY-MM-DD
+    with _cost_db_lock:
+        conn = sqlite3.connect(str(db))
+        try:
             conn.execute("""CREATE TABLE IF NOT EXISTS costs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 time TEXT, date TEXT, project TEXT, agent TEXT, model TEXT,
                 in_tokens INTEGER, out_tokens INTEGER, cost_usd REAL,
-                duration_s REAL, task_preview TEXT
+                duration_s REAL, task_preview TEXT,
+                cache_read_tokens INTEGER DEFAULT 0,
+                cache_write_tokens INTEGER DEFAULT 0,
+                cache_saved_usd REAL DEFAULT 0.0,
+                is_estimated INTEGER DEFAULT 0,
+                session_id TEXT DEFAULT ''
             )""")
+            # 迁移：为旧表（main.py / 早期 schema）添加缺失列
+            _migrate = [
+                "date TEXT DEFAULT ''",
+                "project TEXT DEFAULT ''",
+                "task_preview TEXT DEFAULT ''",
+                "agent TEXT DEFAULT ''",
+                "cache_read_tokens INTEGER DEFAULT 0",
+                "cache_write_tokens INTEGER DEFAULT 0",
+                "cache_saved_usd REAL DEFAULT 0.0",
+                "is_estimated INTEGER DEFAULT 0",
+                "session_id TEXT DEFAULT ''",
+            ]
+            for col_def in _migrate:
+                try:
+                    conn.execute(f"ALTER TABLE costs ADD COLUMN {col_def}")
+                except sqlite3.OperationalError:
+                    pass
+            # 回填 date：从 time 列的前10位提取
+            conn.execute("UPDATE costs SET date = substr(time, 1, 10) WHERE date = '' OR date IS NULL")
             conn.execute(
-                "INSERT INTO costs (time, date, project, agent, model, in_tokens, out_tokens, cost_usd, duration_s) VALUES (?,?,?,?,?,?,?,?,?)",
-                (time_str, date_str, project or "", agent or "", model, in_tokens, out_tokens, round(cost_usd, 8), duration_s)
+                "INSERT INTO costs (time, date, project, agent, model, in_tokens, out_tokens, cost_usd, duration_s, cache_read_tokens, cache_write_tokens, cache_saved_usd, is_estimated, session_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (time_str, date_str, project or "", agent or "", model, in_tokens, out_tokens, round(cost_usd, 8), duration_s,
+                 cache_read, cache_write, round(cache_saved, 8), 1 if is_estimated else 0, session_id or "")
             )
             conn.commit()
+        except Exception as e:
+            log.warning(f"record_cost 写入失败: {e}")
+        finally:
             conn.close()
-    except Exception:
-        pass
 
 def get_cost_analytics(days=30):
     """多维度费用分析"""
+    db = PROJECT_ROOT / "maestro" / "cost.db"
+    if not db.exists():
+        return None
+    conn = sqlite3.connect(str(db))
     try:
-        db = PROJECT_ROOT / "maestro" / "cost.db"
-        if not db.exists(): return None
-        conn = sqlite3.connect(str(db))
         conn.row_factory = sqlite3.Row
+        # 兼容旧表无 date 列：退到 time 列
+        has_date = any(c[1] == 'date' for c in conn.execute("PRAGMA table_info(costs)").fetchall())
+        date_col = "date" if has_date else "substr(time, 1, 10)"
         # 总览
-        total = conn.execute("SELECT COUNT(*) as calls, COALESCE(SUM(cost_usd),0) as cost, COALESCE(SUM(in_tokens),0) as in_tok, COALESCE(SUM(out_tokens),0) as out_tok FROM costs WHERE date >= date('now','-'||?||' days')", (days,)).fetchone()
+        total = conn.execute(f"SELECT COUNT(*) as calls, COALESCE(SUM(cost_usd),0) as cost, COALESCE(SUM(in_tokens),0) as in_tok, COALESCE(SUM(out_tokens),0) as out_tok FROM costs WHERE {date_col} >= date('now','-'||?||' days')", (days,)).fetchone()
         # 按日期
-        by_date = [dict(r) for r in conn.execute("SELECT date, COUNT(*) as calls, ROUND(COALESCE(SUM(cost_usd),0),6) as cost FROM costs WHERE date >= date('now','-'||?||' days') GROUP BY date ORDER BY date", (days,))]
+        by_date = [dict(r) for r in conn.execute(f"SELECT {date_col} as date, COUNT(*) as calls, ROUND(COALESCE(SUM(cost_usd),0),6) as cost FROM costs WHERE {date_col} >= date('now','-'||?||' days') GROUP BY {date_col} ORDER BY date", (days,))]
         # 按模型
-        by_model = [dict(r) for r in conn.execute("SELECT model, COUNT(*) as calls, ROUND(COALESCE(SUM(cost_usd),0),6) as cost, SUM(in_tokens) as in_tok, SUM(out_tokens) as out_tok FROM costs WHERE date >= date('now','-'||?||' days') GROUP BY model ORDER BY cost DESC", (days,))]
+        by_model = [dict(r) for r in conn.execute(f"SELECT model, COUNT(*) as calls, ROUND(COALESCE(SUM(cost_usd),0),6) as cost, SUM(in_tokens) as in_tok, SUM(out_tokens) as out_tok FROM costs WHERE {date_col} >= date('now','-'||?||' days') GROUP BY model ORDER BY cost DESC", (days,))]
         # 按 Agent
-        by_agent = [dict(r) for r in conn.execute("SELECT agent, COUNT(*) as calls, ROUND(COALESCE(SUM(cost_usd),0),6) as cost FROM costs WHERE date >= date('now','-'||?||' days') AND agent != '' GROUP BY agent ORDER BY cost DESC", (days,))]
+        by_agent = [dict(r) for r in conn.execute(f"SELECT agent, COUNT(*) as calls, ROUND(COALESCE(SUM(cost_usd),0),6) as cost FROM costs WHERE {date_col} >= date('now','-'||?||' days') AND agent != '' GROUP BY agent ORDER BY cost DESC", (days,))]
         # 按项目
-        by_project = [dict(r) for r in conn.execute("SELECT project, COUNT(*) as calls, ROUND(COALESCE(SUM(cost_usd),0),6) as cost FROM costs WHERE date >= date('now','-'||?||' days') AND project != '' GROUP BY project ORDER BY cost DESC", (days,))]
+        by_project = [dict(r) for r in conn.execute(f"SELECT project, COUNT(*) as calls, ROUND(COALESCE(SUM(cost_usd),0),6) as cost FROM costs WHERE {date_col} >= date('now','-'||?||' days') AND project != '' GROUP BY project ORDER BY cost DESC", (days,))]
         # 今日
-        today = conn.execute("SELECT COUNT(*) as calls, COALESCE(SUM(cost_usd),0) as cost FROM costs WHERE date = date('now')").fetchone()
+        today = conn.execute(f"SELECT COUNT(*) as calls, COALESCE(SUM(cost_usd),0) as cost FROM costs WHERE {date_col} = date('now')").fetchone()
+        # 缓存节省汇总
+        try:
+            cache = conn.execute(f"SELECT COALESCE(SUM(cache_read_tokens),0) as read_tok, COALESCE(SUM(cache_write_tokens),0) as write_tok, COALESCE(SUM(cache_saved_usd),0) as saved FROM costs WHERE {date_col} >= date('now','-'||?||' days')", (days,)).fetchone()
+        except sqlite3.OperationalError:
+            cache = {"read_tok": 0, "write_tok": 0, "saved": 0}
+        # 告警数据
+        alerts = _build_alerts(conn) if has_date else []
         conn.close()
         return {
             "total": dict(total), "today": dict(today),
             "by_date": by_date, "by_model": by_model,
             "by_agent": by_agent, "by_project": by_project,
+            "cache": dict(cache) if cache else {"read_tok": 0, "write_tok": 0, "saved": 0},
+            "alerts": alerts,
         }
-    except Exception:
+    except Exception as e:
+        log.warning(f"get_cost_analytics 查询失败: {e}")
+        conn.close()
         return None
+
+def _build_alerts(conn: sqlite3.Connection) -> list:
+    """生成费用告警列表"""
+    alerts = []
+    DAILY_WARN = 5.0
+    ENTRY_RED = 0.50
+    try:
+        # 日超 $5 警告
+        daily = conn.execute(
+            "SELECT date, ROUND(COALESCE(SUM(cost_usd),0),6) as cost FROM costs GROUP BY date ORDER BY date DESC LIMIT 14"
+        ).fetchall()
+        for r in daily:
+            if r["cost"] > DAILY_WARN:
+                level = "warn" if r["cost"] < DAILY_WARN * 3 else "danger"
+                alerts.append({"level": level, "type": "daily_budget", "date": r["date"], "cost": r["cost"],
+                                "msg": f'{r["date"]} 单日费用 ${r["cost"]:.4f} 超过 ${DAILY_WARN:.2f} 告警线'})
+        # 单次超 $0.50 标红
+        big = conn.execute(
+            "SELECT id, time, model, cost_usd FROM costs WHERE cost_usd > ? AND date >= date('now','-7 days') ORDER BY cost_usd DESC LIMIT 10",
+            (ENTRY_RED,)
+        ).fetchall()
+        for r in big:
+            alerts.append({"level": "danger", "type": "single_high", "id": r["id"], "time": r["time"],
+                            "model": r["model"], "cost": r["cost_usd"],
+                            "msg": f'单次调用 ${r["cost_usd"]:.4f} ({r["model"]} @ {r["time"]})'})
+    except Exception:
+        pass
+    return alerts
+
 
 class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
     """多线程 HTTP Server"""
@@ -432,7 +495,19 @@ class Handler(BaseHTTPRequestHandler):
             if data:
                 self.send_json(data)
             else:
-                self.send_json({"total": {"calls":0,"cost":0}, "today": {"calls":0,"cost":0}, "by_date":[], "by_model":[], "by_agent":[], "by_project":[]})
+                self.send_json({"total": {"calls":0,"cost":0}, "today": {"calls":0,"cost":0}, "by_date":[], "by_model":[], "by_agent":[], "by_project":[], "alerts":[]})
+        elif path == "/api/cost/history":
+            days = int(parse_qs(parsed.query).get("days", ["30"])[0])
+            data = get_cost_analytics(days)
+            if data:
+                self.send_json({"by_date": data.get("by_date", []), "by_model": data.get("by_model", []),
+                                "cache": data.get("cache", {"read_tok":0,"write_tok":0,"saved":0})})
+            else:
+                self.send_json({"by_date": [], "by_model": [], "cache": {"read_tok":0,"write_tok":0,"saved":0}})
+        elif path == "/api/cost/alerts":
+            data = get_cost_analytics(7)
+            alerts = data.get("alerts", []) if data else []
+            self.send_json({"alerts": alerts})
         # ── Harness GET 端点 ──
         elif path == "/api/harness/stream":
             # SSE 长连接 — 聚合所有 Harness 事件
@@ -780,16 +855,43 @@ class Handler(BaseHTTPRequestHandler):
                         pass
 
                     elapsed = time.time() - start_time
+
+                    # 尝试从 JSONL 获取真实 token 数
+                    detected_model = model or "deepseek-v4-pro"
+                    is_estimated = True
                     in_tokens = len(task) // 4
                     out_tokens = out_chars // 2
-                    cost = estimate_cost("deepseek-v4-pro", in_tokens, out_tokens)
+                    cache_read = 0
+                    cache_write = 0
+                    cache_saved = 0.0
+
+                    if session_id:
+                        home = Path.home()
+                        proj_slug = str(PROJECT_ROOT).replace("\\", "/").rstrip("/").replace(":/", "--").replace("/", "-").lstrip("-")
+                        jsonl_path = home / ".claude" / "projects" / proj_slug / f"{session_id}.jsonl"
+                        if jsonl_path.exists() and jsonl_path.stat().st_size > 100:
+                            try:
+                                analysis = analyze_session(str(jsonl_path), model or "")
+                                in_tokens = analysis.get("input_tokens", 0) or in_tokens
+                                out_tokens = analysis.get("output_tokens", 0) or out_tokens
+                                cache_read = analysis.get("cache_read_tokens", 0)
+                                cache_write = analysis.get("cache_write_tokens", 0)
+                                cache_saved = analysis.get("cost_est", {}).get("cache_saved", 0.0)
+                                if analysis.get("model"):
+                                    detected_model = analysis["model"]
+                                is_estimated = False
+                            except Exception:
+                                pass
+
+                    cost = estimate_cost(detected_model, in_tokens, out_tokens)
                     try:
                         self.wfile.write(f"event: done\ndata: {json.dumps({'elapsed': round(elapsed,1), 'cost': round(cost,6), 'in_tokens': in_tokens, 'out_tokens': out_tokens})}\n\n".encode())
                         self.wfile.flush()
                     except Exception:
                         pass
-                    record_cost(time.strftime("%Y-%m-%d %H:%M:%S"), "deepseek-v4-pro", in_tokens, out_tokens, cost, elapsed, agent_name, proj_dir or "")
-                    log.info(f'CHAT done elapsed={elapsed:.1f}s cost=${cost:.4f}')
+                    record_cost(time.strftime("%Y-%m-%d %H:%M:%S"), detected_model, in_tokens, out_tokens, cost, elapsed, agent_name, proj_dir or "",
+                                cache_read, cache_write, cache_saved, is_estimated, session_id or "")
+                    log.info(f'CHAT done elapsed={elapsed:.1f}s cost=${cost:.4f} model={detected_model} estimated={is_estimated}')
                 finally:
                     if proc:
                         _kill_proc(proc)
@@ -831,6 +933,7 @@ class Handler(BaseHTTPRequestHandler):
 
             proc = None
             full_output = ""
+            start_time = time.time()
             try:
                 safe_task = task.replace('\n', ' ').replace('\r', ' ')
                 cmd = ["cmd", "/c", CLAUDE_BIN, "-p", safe_task, "--bare", "--permission-mode", "auto", "--agent", "orchestrator"]
@@ -859,6 +962,14 @@ class Handler(BaseHTTPRequestHandler):
 
                 try: proc.wait(timeout=15)
                 except subprocess.TimeoutExpired: pass
+
+                # 记录 orchestrator 调用费用
+                elapsed = time.time() - start_time
+                in_tokens = len(task) // 4
+                out_tokens = len(full_output) // 2
+                orchestrator_model = "deepseek-v4-pro"
+                cost = estimate_cost(orchestrator_model, in_tokens, out_tokens)
+                record_cost(time.strftime("%Y-%m-%d %H:%M:%S"), orchestrator_model, in_tokens, out_tokens, cost, elapsed, "orchestrator", proj_dir or "")
 
                 # 提取 JSON 计划
                 plan = _extract_plan(full_output)

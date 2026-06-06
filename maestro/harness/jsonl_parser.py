@@ -35,13 +35,13 @@ def find_latest_session(project_root: str = None) -> Optional[dict]:
 
 
 def parse_usage_from_line(line: str) -> Optional[dict]:
-    """从单行 JSONL 中提取 token usage"""
+    """从单行 JSONL 中提取 token usage 和 model"""
     try:
         obj = json.loads(line)
     except json.JSONDecodeError:
         return None
 
-    # Claude Code JSONL 结构: {message: {..., usage: {input_tokens, output_tokens, ...}}}
+    # Claude Code JSONL 结构: {message: {model, usage: {input_tokens, output_tokens, ...}}}
     msg = obj.get("message", obj)
     usage = msg.get("usage", None)
     if not usage:
@@ -53,6 +53,7 @@ def parse_usage_from_line(line: str) -> Optional[dict]:
         "cache_read_input_tokens": usage.get("cache_read_input_tokens", 0),
         "cache_creation_input_tokens": usage.get("cache_creation_input_tokens", 0),
         "total": usage.get("input_tokens", 0) + usage.get("output_tokens", 0),
+        "model": msg.get("model", ""),
     }
 
 
@@ -114,8 +115,12 @@ def tail_session_jsonl(session_path: str, callback, stop_event: threading.Event)
                 time.sleep(0.5)
 
 
-def analyze_session(jsonl_path: str) -> dict:
-    """完整解析一个 session JSONL，返回上下文统计"""
+def analyze_session(jsonl_path: str, model: str = "") -> dict:
+    """完整解析一个 session JSONL，返回上下文统计。
+
+    model 参数可选：如果提供且在 PRICING 中，用实际定价；否则保守估算。
+    优先使用 JSONL 中检测到的实际模型。
+    """
     if not os.path.exists(jsonl_path):
         return {"total_tokens": 0, "messages": 0, "session_id": ""}
 
@@ -129,6 +134,7 @@ def analyze_session(jsonl_path: str) -> dict:
     lines = 0
     first_ts = None
     last_ts = None
+    model_counter: dict[str, int] = {}
 
     try:
         with open(jsonl_path, "r", encoding="utf-8", errors="replace") as f:
@@ -144,6 +150,9 @@ def analyze_session(jsonl_path: str) -> dict:
                     total_cache_read += usage.get("cache_read_input_tokens", 0)
                     total_cache_write += usage.get("cache_creation_input_tokens", 0)
                     message_count += 1
+                    m = usage.get("model", "")
+                    if m:
+                        model_counter[m] = model_counter.get(m, 0) + 1
 
                 tool = parse_tool_use_from_line(line)
                 if tool:
@@ -157,7 +166,6 @@ def analyze_session(jsonl_path: str) -> dict:
                     obj = json.loads(line)
                     ts = obj.get("timestamp")
                     if ts:
-                        # 解析 ISO 8601 时间戳
                         try:
                             dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
                             epoch = dt.timestamp()
@@ -172,9 +180,29 @@ def analyze_session(jsonl_path: str) -> dict:
     except Exception:
         pass
 
+    # 检测实际使用的模型：优先 JSONL 中频率最高的模型，其次传入的 model 参数
+    detected_model = model
+    if model_counter:
+        detected_model = sorted(model_counter.items(), key=lambda x: x[1], reverse=True)[0][0]
+    if not detected_model and model:
+        detected_model = model
+
+    # 费用估算 — 使用 models.py 的定价表
+    from maestro.models import estimate_cost, PRICING
+    cache_saved = 0.0
+    if detected_model and detected_model in PRICING:
+        in_price, out_price = PRICING[detected_model]
+        cost_in = (total_in / 1_000_000) * in_price
+        cost_out = (total_out / 1_000_000) * out_price
+        cache_saved = (total_cache_read / 1_000_000) * in_price  # 缓存命中共节省的输入费用
+    else:
+        # 保守估算：未知模型按 $1.00/$3.00 每百万 token
+        cost_in = (total_in / 1_000_000) * 1.0
+        cost_out = (total_out / 1_000_000) * 3.0
+        cache_saved = (total_cache_read / 1_000_000) * 1.0
+    cost_total = cost_in + cost_out
+
     # 估算上下文组成
-    # 系统提示词 ≈ 首次调用的 input_tokens 的一部分（约 20-50K）
-    # 实际无法精确拆分，做合理估算
     est_system = min(total_in * 0.3, 50000) if total_in > 0 else 0
     est_conversation = total_in - est_system - total_cache_read if total_in > 0 else 0
     est_tool = min(tool_calls * 500, total_in * 0.05) if tool_calls > 0 else 0
@@ -182,17 +210,12 @@ def analyze_session(jsonl_path: str) -> dict:
     # 计算缓存命中率
     cache_hit_rate = (total_cache_read / (total_in + 1)) * 100 if total_in > 0 else 0
 
-    # 费用估算 (DeepSeek 价格)
-    cost_in = (total_in / 1_000_000) * 0.28
-    cost_out = (total_out / 1_000_000) * 0.28
-    cost_cache = (total_cache_read / 1_000_000) * 0.28 * 0.01  # 缓存命中 99% 折扣
-    cost_total = cost_in + cost_out - cost_cache
-
     # 会话时长
     duration_s = (last_ts - first_ts) / 1000 if first_ts and last_ts else 0
 
     return {
         "session_id": Path(jsonl_path).stem,
+        "model": detected_model,
         "total_tokens": total_in + total_out,
         "input_tokens": total_in,
         "output_tokens": total_out,
@@ -211,7 +234,7 @@ def analyze_session(jsonl_path: str) -> dict:
         "cost_est": {
             "input": round(cost_in, 6),
             "output": round(cost_out, 6),
-            "cache_saved": round(cost_cache, 6),
+            "cache_saved": round(cache_saved, 6),
             "total": round(cost_total, 6),
         },
         "duration_s": round(duration_s, 1),

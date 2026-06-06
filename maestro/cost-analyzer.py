@@ -30,18 +30,18 @@ AGENT_MODEL_MAP: dict[str, str] = {}
 # 模型层次：越靠前越便宜
 MODEL_TIER = ["haiku", "sonnet", "opus", "deepseek-v4-pro", "deepseek-v4-flash"]
 
-# 模型定价参考（每 1M tokens 美元，input/output）
-# DeepSeek V4 官方定价（2026年5月31日起永久降价75%）
-MODEL_PRICE: dict[str, tuple[float, float]] = {
-    "haiku":             (0.25, 1.25),
-    "sonnet":            (3.00, 15.00),
-    "opus":              (15.00, 75.00),
-    "deepseek-v4-pro":   (0.435, 0.87),
-    "deepseek-v4-flash": (0.14,  0.28),
-    "deepseek-v3":       (0.27,  1.10),
-    "deepseek-r1":       (0.55,  2.19),
-    "mimo-v2-pro":       (1.00, 3.00),
-}
+# ── 定价统一从 models.py 导入 ──
+def _model_price(model: str) -> tuple[float, float]:
+    """返回模型的 (input_price_per_1M, output_price_per_1M)。"""
+    from maestro.models import PRICING
+    if model in PRICING:
+        return PRICING[model]
+    # 模糊匹配
+    for key, price in PRICING.items():
+        if key in model.lower() or model.lower() in key:
+            return price
+    # 未知模型按 sonnet 算
+    return (3.00, 15.00)
 
 
 def _load_agent_model_map() -> dict[str, str]:
@@ -58,36 +58,27 @@ def _load_agent_model_map() -> dict[str, str]:
         return {}
 
 
-def _model_price(model: str) -> tuple[float, float]:
-    """返回模型的 (input_price_per_1M, output_price_per_1M)。"""
-    for key, price in MODEL_PRICE.items():
-        if key in model.lower():
-            return price
-    # 未知模型按 sonnet 算
-    return (3.00, 15.00)
-
-
 # ── 数据查询 ────────────────────────────────────────────────────────────
 
 def query_today(conn: sqlite3.Connection, today_str: str) -> list[dict]:
-    """查询 cost_logs 中今日的所有记录。"""
+    """查询 costs 中今日的所有记录。"""
     rows: list[dict] = []
 
-    # cost_logs 表
+    # costs 表
     try:
         cur = conn.execute(
-            """SELECT time, channel, model, in_tokens, out_tokens, cost_usd
-               FROM cost_logs
+            """SELECT time, agent, model, in_tokens, out_tokens, cost_usd
+               FROM costs
                WHERE time >= ? AND time < ?
                ORDER BY time""",
             (today_str, _next_day(today_str)),
         )
         for r in cur:
             rows.append({
-                "source": "cost_logs",
+                "source": "costs",
                 "time": r[0],
-                "channel": r[1],
-                "model": r[2],
+                "channel": r[1] or "unknown",
+                "model": r[2] or "unknown",
                 "in_tokens": r[3],
                 "out_tokens": r[4],
                 "cost_usd": r[5],
@@ -105,18 +96,18 @@ def query_day(conn: sqlite3.Connection, day_str: str) -> list[dict]:
 
     try:
         cur = conn.execute(
-            """SELECT time, channel, model, in_tokens, out_tokens, cost_usd
-               FROM cost_logs
+            """SELECT time, agent, model, in_tokens, out_tokens, cost_usd
+               FROM costs
                WHERE time >= ? AND time < ?
                ORDER BY time""",
             (day_str, _next_day(day_str)),
         )
         for r in cur:
             row = {
-                "source": "cost_logs",
+                "source": "costs",
                 "time": r[0],
-                "channel": r[1],
-                "model": r[2],
+                "channel": r[1] or "unknown",
+                "model": r[2] or "unknown",
                 "in_tokens": r[3],
                 "out_tokens": r[4],
                 "cost_usd": r[5],
