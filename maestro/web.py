@@ -6,6 +6,7 @@ Agency — Claude Code Web 前端
 import os, sys, json, time, yaml, sqlite3, threading, subprocess, shutil
 from pathlib import Path
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from socketserver import ThreadingMixIn
 from urllib.parse import urlparse, parse_qs
 from queue import Empty
 
@@ -208,9 +209,9 @@ def get_cost_analytics(days=30):
     except Exception:
         return None
 
-# ═══════════════════════════════════════
-# HTTP Handler
-# ═══════════════════════════════════════
+class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
+    """多线程 HTTP Server — 每个请求独立线程，SSE 不再阻塞"""
+    daemon_threads = True  # 线程随主进程退出
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
@@ -708,10 +709,13 @@ def _kill_old():
 if __name__ == "__main__":
     import webbrowser, socket
     _kill_old()
-    httpd = HTTPServer(("127.0.0.1", PORT), Handler)
+    httpd = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
     httpd.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     threading.Timer(1.0, lambda: webbrowser.open(f"http://127.0.0.1:{PORT}")).start()
-    print(f"\n  Agency v{AGENCY_VERSION}")
+    print(f"\n  Agency v{AGENCY_VERSION}  [多线程模式]")
     print(f"  Claude Code config: {_claude_dir}")
     print(f"  http://localhost:{PORT}\n")
-    httpd.serve_forever()
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        httpd.shutdown()
