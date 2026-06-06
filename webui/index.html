@@ -183,14 +183,12 @@ body{font:14px/1.55 "DM Sans","Segoe UI",system-ui,sans-serif;background:var(--b
 <!-- Harness 仪表盘覆盖层 -->
 <div class="harness-overlay" id="harnessOverlay">
 <div class="harness-overlay-tabs" id="harnessTabs">
-<div class="harness-overlay-tab active" data-htab="permission">权限管线</div>
-<div class="harness-overlay-tab" data-htab="context">上下文工程</div>
+<div class="harness-overlay-tab active" data-htab="overview">概览</div>
+<div class="harness-overlay-tab" data-htab="permission">权限</div>
 <div class="harness-overlay-tab" data-htab="subagents">SubAgent</div>
 <div class="harness-overlay-tab" data-htab="hooks">Hooks</div>
-<div class="harness-overlay-tab" data-htab="skills">Skills</div>
 <div class="harness-overlay-tab" data-htab="mcp">MCP</div>
-<div class="harness-overlay-tab" data-htab="memory">记忆</div>
-<button class="btn" style="margin-left:auto;align-self:center" onclick="toggleDashboard()">✕ 关闭</button>
+<button class="btn" style="margin-left:auto;align-self:center" onclick="toggleDashboard()">✕</button>
 </div>
 <div class="harness-overlay-content" id="harnessContent"></div>
 </div>
@@ -214,14 +212,19 @@ body{font:14px/1.55 "DM Sans","Segoe UI",system-ui,sans-serif;background:var(--b
 <span id="api-status" style="font-size:10px;color:var(--accent)"></span>
 </div>
 <div class="settings-section" style="margin-top:16px">
-<h3 style="font-size:12px;color:var(--text);margin-bottom:8px">💰 费用看板</h3>
-<div id="cost-overview">打开时加载…</div>
-</div>
-<div class="settings-section" style="margin-top:16px">
 <h3 style="font-size:12px;color:var(--text);margin-bottom:8px">🤖 Agent 工厂</h3>
 <textarea id="agent-factory-input" placeholder="描述你需要的 Agent…" rows="2" style="width:100%;padding:7px 9px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:11px;outline:none;resize:vertical;min-height:40px;font-family:inherit"></textarea>
 <button class="new-chat-btn" onclick="generateAgent()" style="margin-top:6px;font-size:11px;padding:6px">生成 Agent</button>
 <div id="agent-factory-output"></div>
+</div>
+<div class="settings-section" style="margin-top:16px">
+<h3 style="font-size:12px;color:var(--text);margin-bottom:8px">🧩 Skills</h3>
+<div id="skills-list" style="font-size:11px;color:var(--muted)">加载中…</div>
+</div>
+<div class="settings-section" style="margin-top:16px">
+<h3 style="font-size:12px;color:var(--text);margin-bottom:8px">📝 记忆</h3>
+<div id="mem-list" style="font-size:11px;color:var(--muted)">加载中…</div>
+<div id="mem-editor" style="margin-top:8px"></div>
 </div>
 </div>
 </div>
@@ -266,8 +269,12 @@ function renderHistory(){historyList.innerHTML=conversations.slice(0,30).map(fun
 renderHistory();
 function loadConvo(id){var c=conversations.find(function(x){return x.id===Number(id)});if(!c)return;var p=getFocusedPanel();p.currentConvo={id:c.id,title:c.title,messages:c.messages.slice(),sessionId:c.sessionId||''};p.dom.messages.innerHTML='';p.dom.route.innerHTML='';c.messages.forEach(function(m){addMsg(p,m.role,m.content)});p.dom.messages.scrollTop=p.dom.messages.scrollHeight}
 function delConvo(id,e){e.stopPropagation();conversations=conversations.filter(function(c){return c.id!==Number(id)});localStorage.setItem('agency_convos',JSON.stringify(conversations));renderHistory()}
-function toggleDevOverlay(){devMode=!devMode;var ov=$('devOverlay'),btn=$('devBtn');ov.classList.toggle('on',devMode);btn.classList.toggle('on',devMode);if(devMode){var ak=$('api-key');if(ak&&apiKey)ak.value=apiKey;var ap=$('api-provider');if(ap&&apiProvider)ap.value=apiProvider;loadCostData()}}
-function loadCostData(){fetch('/api/cost?days=30').then(function(r){return r.json()}).then(function(d){var el=$('cost-overview');if(!d||!d.total){el.innerHTML='暂无数据';return}var t=d.total,td=d.today;var h='<div class="cost-kpis"><div class="cost-kpi"><span class="kpi-val">$'+(td.cost||0).toFixed(4)+'</span><span class="kpi-label">今日</span></div><div class="cost-kpi"><span class="kpi-val">$'+(t.cost||0).toFixed(4)+'</span><span class="kpi-label">30天</span></div><div class="cost-kpi"><span class="kpi-val">'+(t.calls||0)+'</span><span class="kpi-label">调用</span></div></div>';if(d.by_model&&d.by_model.length){var maxM=Math.max.apply(null,d.by_model.map(function(m){return m.cost}));h+='<div class="tools-section"><h3>按模型</h3>';d.by_model.forEach(function(m){h+='<div class="cost-row"><span>'+(m.model||'?')+'</span><span class="val">$'+m.cost.toFixed(4)+'</span></div><div class="cost-bar"><div class="cost-bar-fill" style="width:'+(m.cost/maxM*100)+'%"></div></div>'});h+='</div>'}if(d.by_agent&&d.by_agent.length){h+='<div class="tools-section"><h3>按 Agent</h3>';d.by_agent.forEach(function(m){h+='<div class="cost-row"><span>'+m.agent+'</span><span class="val">$'+m.cost.toFixed(4)+'</span></div>'});h+='</div>'}el.innerHTML=h}).catch(function(){$('cost-overview').innerHTML='加载失败'})}
+function toggleDevOverlay(){devMode=!devMode;var ov=$('devOverlay'),btn=$('devBtn');ov.classList.toggle('on',devMode);btn.classList.toggle('on',devMode);if(devMode){var ak=$('api-key');if(ak&&apiKey)ak.value=apiKey;var ap=$('api-provider');if(ap&&apiProvider)ap.value=apiProvider;loadSkillsList();loadMemList()}}
+// Skills 列表（设置弹窗用）
+function loadSkillsList(){var el=$('skills-list');if(!el)return;fetch('/api/skills').then(function(r){return r.json()}).then(function(skills){el.innerHTML=skills.length?skills.map(function(s){return'<div style="padding:4px 0;font-size:11px;display:flex;justify-content:space-between"><span>'+escHtml(s.name)+' <span style="color:var(--muted);font-size:10px">'+escHtml(s.description||'').slice(0,40)+'</span></span><button class="proj-btn" onclick="toggleSkill(\''+escHtml(s.name)+'\','+(s.enabled?!1:!0)+');loadSkillsList()">'+(s.enabled?'禁用':'启用')+'</button></div>'}).join(''):'暂无 Skills'}).catch(function(){el.innerHTML='加载失败'})}
+// 记忆列表（设置弹窗用）
+function loadMemList(){var el=$('mem-list');if(!el)return;fetch('/api/memory').then(function(r){return r.json()}).then(function(d){var files=d.files||[];el.innerHTML=files.length?files.map(function(f){return'<div class="mem-file" onclick="openMemEditor(\''+escHtml(f.path)+'\',\''+escHtml(f.name)+'\')"><span class="icon">📄</span><span>'+escHtml(f.name)+'</span><span style="color:var(--muted);font-size:10px;margin-left:auto">'+(f.size||0)+'B</span></div>'}).join(''):'暂无记忆文件'}).catch(function(){el.innerHTML='加载失败'})}
+function loadCostData(){loadCostOverview()}
 function generateAgent(){var input=$('agent-factory-input'),output=$('agent-factory-output');var req=input.value.trim();if(!req)return;output.innerHTML='生成中…';fetch('/api/agent-generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requirement:req})}).then(function(resp){var reader=resp.body.getReader(),decoder=new TextDecoder(),buf='',txt='';function read(){reader.read().then(function(result){if(result.done){finish();return}buf+=decoder.decode(result.value,{stream:!0});var lines=buf.split('\n');buf=lines.pop()||'';for(var i=0;i<lines.length;i++){if(lines[i].indexOf('data: ')!==0)continue;if(lines[i].indexOf('[DONE]')>=0){finish();return}try{var d=JSON.parse(lines[i].slice(6));if(d.content)txt+=d.content}catch(_){}}read()})}function finish(){output.innerHTML='<pre style="font-size:10px;max-height:200px;overflow:auto;background:var(--bg);padding:8px;border-radius:4px">'+escHtml(txt)+'</pre><button class="new-chat-btn" style="margin-top:4px" onclick="saveAgent()">保存此 Agent</button>';output._agentContent=txt}read()}).catch(function(){output.innerHTML='生成失败'})}
 function saveAgent(){var txt=$('agent-factory-output')._agentContent;if(!txt)return;var m=txt.match(/name:\s*"?([a-z0-9-]+)"?/i);var name=m?m[1]:('agent-'+Date.now().toString(36));fetch('/api/agent-create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,content:txt})}).then(function(r){return r.json()}).then(function(d){if(d.ok){showToast('Agent 已保存: '+name);loadAgents()}else{showToast(d.error||'保存失败',!0)}}).catch(function(){showToast('保存失败',!0)})}
 function toggleOrchMode(){orchMode=!orchMode;var btn=$('orchBtn');btn.classList.toggle('on',orchMode);btn.textContent=orchMode?'🧠 调度中':'🧠 调度';if(orchMode&&perPage<4){perPage=4;refreshUI()}}
@@ -284,20 +291,31 @@ function toggleDashboard(){
   var ov=$('harnessOverlay'),btn=$('dashboardBtn');
   ov.classList.toggle('on',harnessActive);
   btn.classList.toggle('on',harnessActive);
-  if(harnessActive){renderHarnessTab('permission');connectHarnessSSE()}else{if(harnessSSE){harnessSSE.close();harnessSSE=null}}
+  if(harnessActive){renderHarnessTab('overview');connectHarnessSSE()}else{if(harnessSSE){harnessSSE.close();harnessSSE=null}}
   btn.textContent=harnessActive?'📊 关闭':'📊 仪表盘';
 }
 // 仪表盘子标签切换
 document.querySelectorAll('.harness-overlay-tab').forEach(function(t){t.addEventListener('click',function(){document.querySelectorAll('.harness-overlay-tab').forEach(function(x){x.classList.remove('active')});t.classList.add('active');renderHarnessTab(t.dataset.htab)})});
 function renderHarnessTab(tab){
   var el=$('harnessContent');if(!el)return;
-  if(tab==='permission'){el.innerHTML='<h3 style="margin-bottom:8px">权限管线</h3><div id="hperm-log" style="font-size:11px">加载中…</div>';loadPermHistory()}
-  else if(tab==='context'){el.innerHTML='<h3 style="margin-bottom:8px">上下文工程</h3><div style="margin-bottom:10px"><div class="ctx-gauge" style="height:14px"><div class="ctx-gauge-fill" id="hctx-fill" style="width:0%"></div></div><div style="font-size:11px;margin-top:4px;display:flex;justify-content:space-between"><span id="hctx-text">0 / 300K</span><span id="hctx-cache" style="color:var(--muted)">缓存: —</span></div></div><div id="hctx-detail" style="font-size:11px;color:var(--muted)"></div>';loadContextDetail()}
+  if(tab==='overview'){
+    el.innerHTML='<div class="cost-kpis" style="margin-bottom:10px"><div class="cost-kpi"><span class="kpi-val" id="hov-cost-today">—</span><span class="kpi-label">今日费用</span></div><div class="cost-kpi"><span class="kpi-val" id="hov-cost-30d">—</span><span class="kpi-label">30天</span></div><div class="cost-kpi"><span class="kpi-val" id="hov-calls">—</span><span class="kpi-label">调用</span></div></div><h4 style="font-size:11px;color:var(--muted);margin-bottom:6px">上下文窗口</h4><div class="ctx-gauge" style="height:14px;margin-bottom:4px"><div class="ctx-gauge-fill" id="hctx-fill" style="width:0%"></div></div><div style="font-size:11px;display:flex;justify-content:space-between"><span id="hctx-text">0 / 300K</span><span id="hctx-cache" style="color:var(--muted)">缓存: —</span></div><div id="hctx-detail" style="font-size:10px;color:var(--muted);margin-top:4px"></div>';
+    loadContextDetail();loadCostOverview();
+  }
+  else if(tab==='permission'){el.innerHTML='<h3 style="margin-bottom:8px">权限管线</h3><div id="hperm-log" style="font-size:11px">加载中…</div>';loadPermHistory()}
   else if(tab==='subagents'){el.innerHTML='<h3 style="margin-bottom:8px">SubAgent 任务树</h3><div id="hsub-tree" style="font-size:11px;color:var(--muted)">加载中…</div>';loadSubagents()}
   else if(tab==='hooks'){el.innerHTML='<h3 style="margin-bottom:8px">Hooks 生命周期</h3><div id="hhooks-log" style="font-size:11px;color:var(--muted)">从事件日志中加载…</div>';loadHooksLog()}
-  else if(tab==='skills'){el.innerHTML='<h3 style="margin-bottom:8px">Skills 管理</h3><div id="hskills-list" style="font-size:11px;color:var(--muted)">加载中…</div>';loadSkills()}
   else if(tab==='mcp'){el.innerHTML='<h3 style="margin-bottom:8px">MCP 集成</h3><div id="hmcp-list" style="font-size:11px;color:var(--muted)">加载中…</div>';loadMCPDetail()}
-  else if(tab==='memory'){el.innerHTML='<h3 style="margin-bottom:8px">记忆层</h3><div id="hmem-list" style="font-size:11px;color:var(--muted)">加载中…</div><div id="hmem-editor" style="margin-top:10px"></div>';loadMemoryFiles()}
+}
+function loadCostOverview(){
+  fetch('/api/cost?days=30').then(function(r){return r.json()}).then(function(d){
+    if(!d||!d.total)return;
+    var t=d.total,td=d.today;
+    var el=function(id){return document.getElementById(id)};
+    if(el('hov-cost-today'))el('hov-cost-today').textContent='$'+(td.cost||0).toFixed(4);
+    if(el('hov-cost-30d'))el('hov-cost-30d').textContent='$'+(t.cost||0).toFixed(4);
+    if(el('hov-calls'))el('hov-calls').textContent=t.calls||0;
+  }).catch(function(){});
 }
 // ═══════════════════════════════════════
 // Harness SSE 消费者
@@ -426,15 +444,16 @@ function loadMemoryFiles(){
   }).catch(function(){var el=$('hmem-list');if(el)el.innerHTML='加载失败'});
 }
 function openMemEditor(path,name){
-  fetch('/api/memory/'+encodeURIComponent(path.split('\\').pop().split('/').pop())).then(function(r){return r.json()}).then(function(d){
+  var fname=name.split('\\').pop().split('/').pop();
+  fetch('/api/memory/'+encodeURIComponent(fname)).then(function(r){return r.json()}).then(function(d){
     if(d.error){showToast(d.error,!0);return}
-    var ed=$('hmem-editor');
-    ed.innerHTML='<div style="margin-bottom:4px;font-size:11px;color:var(--text2)">编辑: '+escHtml(d.name)+'</div><textarea class="mem-editor" id="mem-edit-area">'+escHtml(d.content)+'</textarea><div style="margin-top:6px;display:flex;gap:6px"><button class="btn" onclick="saveMemFile(\''+escHtml(d.name)+'\')">💾 保存</button><button class="btn" onclick="document.getElementById(\'hmem-editor\').innerHTML=\'\'">取消</button></div>';
+    var ed=$('mem-editor');
+    ed.innerHTML='<div style="margin-bottom:4px;font-size:11px;color:var(--text2)">编辑: '+escHtml(d.name)+'</div><textarea class="mem-editor" id="mem-edit-area">'+escHtml(d.content)+'</textarea><div style="margin-top:6px;display:flex;gap:6px"><button class="btn" onclick="saveMemFile(\''+escHtml(fname)+'\')">💾 保存</button><button class="btn" onclick="document.getElementById(\'mem-editor\').innerHTML=\'\';loadMemList()">取消</button></div>';
   }).catch(function(){showToast('加载文件失败',!0)});
 }
 function saveMemFile(name){
   var content=document.getElementById('mem-edit-area');if(!content)return;
-  fetch('/api/memory/'+encodeURIComponent(name.split('\\').pop().split('/').pop()),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:content.value})}).then(function(r){return r.json()}).then(function(d){if(d.ok){showToast('已保存: '+d.name);document.getElementById('hmem-editor').innerHTML='';loadMemoryFiles()}else{showToast(d.error||'保存失败',!0)}});
+  fetch('/api/memory/'+encodeURIComponent(name),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:content.value})}).then(function(r){return r.json()}).then(function(d){if(d.ok){showToast('已保存: '+d.name);document.getElementById('mem-editor').innerHTML='';loadMemList()}else{showToast(d.error||'保存失败',!0)}});
 }
 // 仅仪表盘打开时连接，页面加载不自动连
 addPanel();
