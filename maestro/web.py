@@ -22,6 +22,18 @@ _claude_dir = str(PROJECT_ROOT / ".claude")
 _claude_dir_path = Path(_claude_dir)
 _claude_dir_path.mkdir(parents=True, exist_ok=True)
 
+# Agency 独立沙箱 — 避免和用户主 Claude Code 会话冲突
+ISOLATED_CONFIG = str(PROJECT_ROOT / ".claude-isolated")
+_isolated_path = Path(ISOLATED_CONFIG)
+_isolated_path.mkdir(parents=True, exist_ok=True)
+# 确保有 settings.json
+if not (_isolated_path / "settings.json").exists():
+    src_settings = _claude_dir_path / "settings.json"
+    if src_settings.exists():
+        shutil.copy2(str(src_settings), str(_isolated_path / "settings.json"))
+    else:
+        (_isolated_path / "settings.json").write_text('{"env":{"CLAUDE_CODE_ATTRIBUTION_HEADER":"0"}}', encoding="utf-8")
+
 # ── 加载 .env ──
 env_file = PROJECT_ROOT / ".env"
 if env_file.exists():
@@ -524,9 +536,12 @@ class Handler(BaseHTTPRequestHandler):
                 proc = None
                 out_chars = 0
                 try:
+                    # 隔离 env — 不和用户主 Claude Code 抢资源
+                    iso_env = os.environ.copy()
+                    iso_env["CLAUDE_CODE_CONFIG_DIR"] = ISOLATED_CONFIG
                     proc = subprocess.Popen(cmd_str, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                             encoding='utf-8', errors='replace', bufsize=1,
-                                            cwd=str(PROJECT_ROOT), shell=True)
+                                            cwd=str(PROJECT_ROOT), shell=True, env=iso_env)
                     _track_proc(proc)
                     for line in iter(proc.stdout.readline, ''):
                         if not line: break
@@ -598,9 +613,11 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(f"event: phase\ndata: {json.dumps({'msg': 'orchestrator 分析中…'})}\n\n".encode())
                 self.wfile.flush()
 
+                iso_env = os.environ.copy()
+                iso_env["CLAUDE_CODE_CONFIG_DIR"] = ISOLATED_CONFIG
                 proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                         encoding='utf-8', errors='replace', bufsize=1,
-                                        cwd=str(PROJECT_ROOT))
+                                        cwd=str(PROJECT_ROOT), env=iso_env)
                 _track_proc(proc)
                 out_chars = 0
                 for line in iter(proc.stdout.readline, ''):
