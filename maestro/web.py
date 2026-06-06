@@ -133,7 +133,7 @@ ROUTING_KEYWORDS = {
 def _scan_subagents(proj_root: str, session_id: str) -> list:
     """扫描 session 下的子 Agent"""
     home = Path.home()
-    slug = proj_root.replace(":\\", "--").replace("\\", "-").replace("/", "-").lstrip("-")
+    slug = proj_root.replace("\\", "/").rstrip("/").replace(":/", "--").replace("/", "-").lstrip("-")
     subs_dir = home / ".claude" / "projects" / slug / session_id / "subagents"
     if not subs_dir.exists():
         return []
@@ -450,7 +450,7 @@ class Handler(BaseHTTPRequestHandler):
                 proj = str(PROJECT_ROOT)
                 if sid:
                     home = Path.home()
-                    slug = proj.replace(":\\", "--").replace("\\", "-").replace("/", "-").lstrip("-")
+                    slug = proj.replace("\\", "/").rstrip("/").replace(":/", "--").replace("/", "-").lstrip("-")
                     jsonl_path = home / ".claude" / "projects" / slug / f"{sid}.jsonl"
                     if jsonl_path.exists():
                         self.send_json(analyze_session(str(jsonl_path)))

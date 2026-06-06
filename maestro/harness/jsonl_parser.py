@@ -3,6 +3,7 @@ JSONL 解析器 — 从 Claude Code session JSONL 中提取结构化数据
 复用 transcript-parser.py 的解析逻辑，精简为 Harness 所需字段
 """
 import json, os, time, threading
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -14,7 +15,9 @@ def find_latest_session(project_root: str = None) -> Optional[dict]:
     # Claude Code sessions 存储在 ~/.claude/projects/<slug>/
     import os as _os
     home = Path.home()
-    slug = project_root.replace(":\\", "--").replace("\\", "-").replace("/", "-").lstrip("-")
+    # 统一路径分隔符后计算 slug
+    normalized = project_root.replace("\\", "/").rstrip("/")
+    slug = normalized.replace(":/", "--").replace("/", "-").lstrip("-")
     proj_dir = home / ".claude" / "projects" / slug
     if not proj_dir.exists():
         return None
@@ -154,9 +157,15 @@ def analyze_session(jsonl_path: str) -> dict:
                     obj = json.loads(line)
                     ts = obj.get("timestamp")
                     if ts:
+                        # 解析 ISO 8601 时间戳
+                        try:
+                            dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                            epoch = dt.timestamp()
+                        except Exception:
+                            epoch = 0
                         if first_ts is None:
-                            first_ts = ts
-                        last_ts = ts
+                            first_ts = epoch
+                        last_ts = epoch
                 except Exception:
                     pass
 
