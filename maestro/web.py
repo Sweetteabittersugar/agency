@@ -528,6 +528,8 @@ class Handler(BaseHTTPRequestHandler):
             task = body.get("task", "")
             force_agent = body.get("force_agent", "")
             proj_dir = body.get("proj_dir", "")
+            api_key = body.get("api_key", "")
+            api_provider = body.get("api_provider", "")
 
             if not task:
                 self.send_json({"error": "Empty request"})
@@ -584,6 +586,17 @@ class Handler(BaseHTTPRequestHandler):
                     # 隔离 env — 不和用户主 Claude Code 抢资源
                     iso_env = os.environ.copy()
                     iso_env["CLAUDE_CODE_CONFIG_DIR"] = ISOLATED_CONFIG
+                    # 用户自配 API Key — 新手只需填 Key
+                    if api_key:
+                        provider_map = {
+                            "deepseek": {"ANTHROPIC_BASE_URL": "https://api.deepseek.com/anthropic", "ANTHROPIC_DEFAULT_SONNET_MODEL": "deepseek-v4-pro", "ANTHROPIC_DEFAULT_HAIKU_MODEL": "deepseek-v4-flash", "ANTHROPIC_MODEL": "deepseek-v4-pro"},
+                            "anthropic": {},
+                            "openai": {"ANTHROPIC_BASE_URL": "https://api.openai.com/v1"},
+                        }
+                        iso_env["ANTHROPIC_AUTH_TOKEN"] = api_key
+                        for k, v in provider_map.get(api_provider, provider_map["deepseek"]).items():
+                            iso_env[k] = v
+                        log.info(f'CHAT using user API key provider={api_provider}')
                     t0 = time.time()
                     proc = subprocess.Popen(cmd_str, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                             encoding='utf-8', errors='replace', bufsize=1,
