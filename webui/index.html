@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
 <style>
 :root{--bg:#080c14;--surface:#0f1520;--surface2:#161d2b;--text:#e6e8ed;--text2:#9ca3b4;--muted:#5f6877;--accent:#22d3a0;--danger:#f87171;--warn:#fbbf20;--border:#1e293b;--radius:10px;--radius-sm:6px}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -289,7 +290,7 @@ function generateAgent(){var input=$('agent-factory-input'),output=$('agent-fact
 function saveAgent(){var txt=$('agent-factory-output')._agentContent;if(!txt)return;var m=txt.match(/name:\s*"?([a-z0-9-]+)"?/i);var name=m?m[1]:('agent-'+Date.now().toString(36));fetch('/api/agent-create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,content:txt})}).then(function(r){return r.json()}).then(function(d){if(d.ok){showToast('Agent 已保存: '+name);loadAgents()}else{showToast(d.error||'保存失败',!0)}}).catch(function(){showToast('保存失败',!0)})}
 function toggleOrchMode(){orchMode=!orchMode;var btn=$('orchBtn');btn.classList.toggle('on',orchMode);btn.textContent=orchMode?'🧠 调度中':'🧠 调度';if(orchMode&&perPage<4){perPage=4;refreshUI()}}
 document.addEventListener('keydown',function(e){if(e.key==='Escape'){panels.forEach(function(p){if(p.isStreaming)stopStream(p.id)})}if(e.ctrlKey&&e.key==='n'){e.preventDefault();addPanel()}if(e.ctrlKey&&e.key==='ArrowLeft'){e.preventDefault();prevPage()}if(e.ctrlKey&&e.key==='ArrowRight'){e.preventDefault();nextPage()}if(e.ctrlKey&&e.key==='g'){e.preventDefault();cycleGrid()}});
-function renderMD(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/```(\w*)\n([\s\S]*?)```/g,'<pre><code>$2</code></pre>').replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\*(.+?)\*/g,'<em>$1</em>').replace(/^- (.+)$/gm,'<li>$1</li>').replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^# (.+)$/gm,'<h1>$1</h1>').replace(/\n/g,'<br>')}
+function renderMD(t){if(!t)return'';var html=t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');var codeBlocks=[];html=html.replace(/```(\w*)\n([\s\S]*?)```/g,function(_,lang,code){var i=codeBlocks.length;codeBlocks.push({lang:lang||'',code:code.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')});return'%%CODEBLOCK'+i+'%%'});html=html.replace(/`([^`]+)`/g,'<code>$1</code>');html=html.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');html=html.replace(/\*(.+?)\*/g,'<em>$1</em>');html=html.replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank" style="color:var(--accent)">$1</a>');html=html.replace(/^### (.+)$/gm,'<h3>$1</h3>');html=html.replace(/^## (.+)$/gm,'<h2>$1</h2>');html=html.replace(/^# (.+)$/gm,'<h1>$1</h1>');html=html.replace(/^- (.+)$/gm,'<li style="margin-left:16px">$1</li>');html=html.replace(/^\d+\. (.+)$/gm,'<li style="margin-left:16px">$1</li>');html=html.replace(/\|(.+)\|/g,function(m){if(m.indexOf('---')>=0)return'';var cells=m.split('|').filter(function(c){return c.trim()});return'<div style="display:flex;gap:4px;margin:4px 0">'+cells.map(function(c){return'<span style="background:var(--surface2);padding:2px 8px;border-radius:3px;font-size:11px">'+c.trim()+'</span>'}).join('')+'</div>'});html=html.replace(/\n/g,'<br>');codeBlocks.forEach(function(b,i){var highlighted='';if(typeof hljs!=='undefined'){try{highlighted=b.lang?hljs.highlight(b.code,{language:b.lang}).value:hljs.highlightAuto(b.code).value}catch(e){highlighted=escHtml(b.code)}}else{highlighted=escHtml(b.code)}html=html.replace('%%CODEBLOCK'+i+'%%','<pre><code class="hljs'+(b.lang?' language-'+b.lang:'')+'">'+highlighted+'</code></pre>')});return html}
 function escHtml(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function showToast(m,err,level){var t=document.createElement('div');t.className='toast'+(err?' error':'')+(level==='warn'?' warn':'');t.textContent=m;document.body.appendChild(t);setTimeout(function(){t.style.opacity='0';t.style.transition='opacity .3s'},2500);setTimeout(function(){t.remove()},3000)}
 // ═══════════════════════════════════════
@@ -470,5 +471,6 @@ function saveMemFile(name){
 // 仅仪表盘打开时连接，页面加载不自动连
 addPanel();
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 </body>
 </html>
