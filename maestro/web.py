@@ -26,13 +26,45 @@ _claude_dir_path.mkdir(parents=True, exist_ok=True)
 ISOLATED_CONFIG = str(PROJECT_ROOT / ".claude-isolated")
 _isolated_path = Path(ISOLATED_CONFIG)
 _isolated_path.mkdir(parents=True, exist_ok=True)
-# 确保有 settings.json
-if not (_isolated_path / "settings.json").exists():
-    src_settings = _claude_dir_path / "settings.json"
-    if src_settings.exists():
-        shutil.copy2(str(src_settings), str(_isolated_path / "settings.json"))
-    else:
-        (_isolated_path / "settings.json").write_text('{"env":{"CLAUDE_CODE_ATTRIBUTION_HEADER":"0"}}', encoding="utf-8")
+# 确保有 settings.json（始终从全局合并，保证 API key 等配置最新）
+src_settings = _claude_dir_path / "settings.json"
+global_settings = Path.home() / ".claude" / "settings.json"
+_merged = {}
+for src in [global_settings, src_settings]:
+    if src.exists():
+        try:
+            for k, v in json.loads(src.read_text(encoding="utf-8")).items():
+                if isinstance(v, dict) and k in _merged:
+                    _merged[k].update(v)
+                else:
+                    _merged[k] = v
+        except Exception:
+            pass
+(_isolated_path / "settings.json").write_text(json.dumps(_merged, indent=2, ensure_ascii=False), encoding="utf-8")
+# 同步 agents
+_src_agents = PROJECT_ROOT / "agents"
+if _src_agents.exists():
+    _dst_agents = _isolated_path / "agents"
+    _dst_agents.mkdir(exist_ok=True)
+    for f in _src_agents.glob("*.md"):
+        shutil.copy2(str(f), str(_dst_agents / f.name))
+# 同步 .claude/agents
+_claude_agents = _claude_dir_path / "agents"
+if _claude_agents.exists():
+    _dst_agents = _isolated_path / "agents"
+    _dst_agents.mkdir(exist_ok=True)
+    for f in _claude_agents.glob("*.md"):
+        shutil.copy2(str(f), str(_dst_agents / f.name))
+# 同步 skills
+for _src_skills in [_claude_dir_path / "skills", Path.home() / ".claude" / "skills"]:
+    if _src_skills.exists():
+        _dst_skills = _isolated_path / "skills"
+        _dst_skills.mkdir(exist_ok=True)
+        for _sd in _src_skills.iterdir():
+            if _sd.is_dir():
+                _dest = _dst_skills / _sd.name
+                if not _dest.exists():
+                    shutil.copytree(str(_sd), str(_dest))
 
 # ── 加载 .env ──
 env_file = PROJECT_ROOT / ".env"
