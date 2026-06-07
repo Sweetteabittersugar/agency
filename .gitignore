@@ -46,6 +46,9 @@ maestro/_*.py
 .claude/settings.local.json
 .claude/*.log
 
+# Agency 运行时标记
+.agency-installed
+
 # Agency 运行时隔离配置（含合并后的 API key，严禁提交）
 .claude-isolated/
 server.log
