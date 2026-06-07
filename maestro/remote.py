@@ -10,14 +10,14 @@ log = logging.getLogger(__name__)
 PORT = int(os.environ.get("AGENCY_PORT", "8800"))
 BIND_ADDR = "0.0.0.0"  # 始终监听所有网卡，安全靠 token 控制
 
-# 内存中的 token（优先级最高，运行时修改即时生效）
-_token = ""
+# 内存中的 token（None=未初始化，\"\"=已显式关闭，其他=密码）
+_token = None
 
 
 def _load_env_token():
     """从 .env 加载 token，首次启动自动生成"""
     global _token
-    if _token:
+    if _token is not None:
         return
     env_file = Path(__file__).resolve().parent.parent / ".env"
     if env_file.exists():
@@ -28,14 +28,23 @@ def _load_env_token():
                 if val:
                     _token = val
                     break
+                else:
+                    _token = ""  # 显式设为空=已关闭
+                    break
     # 环境变量覆盖
-    if not _token:
+    if _token is None:
         _token = os.environ.get("AGENCY_TOKEN", "")
-    # 首次启动自动生成 token（写在 .env，用户从控制台获取）
-    if not _token:
+    # 首次启动自动生成 token
+    if not _token and _token is not None:
+        pass  # 已显式关闭，不自动生成
+    elif not _token:
         _token = generate_token()
         _save_env_token(_token)
         log.info(f"Auto-generated remote token (see .env or startup log)")
+
+    # 统一：None → ""
+    if _token is None:
+        _token = ""
 
 
 def _save_env_token(token: str):
@@ -63,17 +72,18 @@ def generate_token():
 def get_token():
     """获取当前 token（首次调用时从 .env 加载）"""
     global _token
-    if not _token:
+    if _token is None:
         _load_env_token()
-    return _token
+    return _token or ""
 
 
 def set_token(token: str):
     """运行时设置 token — 即时生效 + 持久化"""
     global _token
-    _token = token
-    _save_env_token(token)
-    log.info(f"Remote token updated (len={len(token)})")
+    _token = token or ""
+    _save_env_token(token or "")
+    if token:
+        log.info(f"Remote token updated (len={len(token)})")
 
 
 def clear_token():
@@ -81,6 +91,7 @@ def clear_token():
     global _token
     _token = ""
     _save_env_token("")
+    os.environ.pop("AGENCY_TOKEN", None)
     log.info("Remote auth disabled")
 
 
