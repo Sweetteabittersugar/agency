@@ -3,7 +3,7 @@
 Agency — Claude Code Web 前端
   python maestro/web.py   →   http://localhost:8800
 """
-import os, sys, json, time, yaml, sqlite3, threading, subprocess, shutil, logging
+import os, sys, json, time, yaml, sqlite3, threading, subprocess, shutil, logging, re
 from pathlib import Path
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingMixIn
@@ -466,6 +466,9 @@ class Handler(BaseHTTPRequestHandler):
         elif path.startswith("/api/agents/") and len(path) > len("/api/agents/"):
             # 读取单个 Agent 的 .md 完整内容
             name = path[len("/api/agents/"):]
+            if not re.match(r'^[a-zA-Z0-9_-]+$', name):
+                self.send_json({"error": "invalid name"}, 400)
+                return
             agent_content = None
             for search_dir in [
                 PROJECT_ROOT / "agents",
@@ -645,9 +648,15 @@ class Handler(BaseHTTPRequestHandler):
             # 文件浏览器 — 列出目录
             target = parse_qs(parsed.query).get("path", [str(PROJECT_ROOT)])[0]
             try:
-                p = Path(target)
+                p = Path(target).resolve()
                 if not p.exists():
-                    p = PROJECT_ROOT
+                    p = PROJECT_ROOT.resolve()
+                else:
+                    try:
+                        p.relative_to(PROJECT_ROOT.resolve())
+                    except ValueError:
+                        self.send_json({"error": "forbidden"}, 403)
+                        return
                 entries = []
                 for child in sorted(p.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower())):
                     try:
@@ -784,7 +793,9 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(f"event: meta\ndata: {meta}\n\n".encode())
                 self.wfile.flush()
 
-                safe_task = actual_task.replace('"', '\\"').replace('\n', ' ').replace('\r', ' ')
+                safe_task = actual_task.replace('\n', ' ').replace('\r', ' ')
+                safe_task = re.sub(r'[\$\`\(\)\{\}\;\&\|\<\>]', '', safe_task)
+                safe_task = safe_task.replace('"', '\\"')
                 flags = "--bare --permission-mode auto"
                 if session_id:
                     if is_new:
@@ -1031,7 +1042,19 @@ class Handler(BaseHTTPRequestHandler):
         elif path.startswith("/api/memory/"):
             # 编辑记忆文件
             rel = path[len("/api/memory/"):]
-            fpath = PROJECT_ROOT / rel
+            fpath = (PROJECT_ROOT / rel).resolve()
+            allowed_mem_dirs = [PROJECT_ROOT.resolve(), (Path.home() / ".claude").resolve()]
+            in_allowed = False
+            for d in allowed_mem_dirs:
+                try:
+                    fpath.relative_to(d)
+                    in_allowed = True
+                    break
+                except ValueError:
+                    continue
+            if not in_allowed:
+                self.send_json({"error": "forbidden"}, 403)
+                return
             if not fpath.exists():
                 self.send_json({"error": "file not found"}, 404)
                 return
@@ -1076,6 +1099,9 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/agent-update":
             # 保存 Agent .md 文件（PUT 语义）
             name = body.get("name", "")
+            if not re.match(r'^[a-zA-Z0-9_-]+$', name):
+                self.send_json({"error": "invalid name"}, 400)
+                return
             content = body.get("content", "")
             if not name or not content:
                 self.send_json({"error": "name and content required"}, 400)
