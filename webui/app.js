@@ -134,6 +134,7 @@ function loadCostOverview(){
     drawModelBars(d.by_model||[]);
     renderCostAlerts(d.alerts||[]);
   }).catch(function(e){console.debug('loadCostOverview failed',e)});
+}
 function drawCostTrend(byDate){
   var c=document.getElementById('cost-trend-canvas');if(!c)return;
   var ctx=c.getContext('2d'),W=c.width,H=c.height,pad=28;
