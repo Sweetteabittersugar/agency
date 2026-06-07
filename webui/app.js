@@ -397,38 +397,25 @@ function copyText(text){
 }
 /* ── 远端访问面板 ── */
 function loadRemotePanel(){
-  var el=$('remote-panel');if(!el)return;
-  fetch('/api/remote/status').then(function(r){return r.json()}).then(function(d){
+  var el=$('remote-panel');if(!el){console.debug('remote-panel not found');return}
+  fetch('/api/remote/status').then(function(r){
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    return r.json();
+  }).then(function(d){
     var html='';
     if(d.enabled){
       html+='<div style=\"background:rgba(34,211,160,.08);border:1px solid var(--accent);border-radius:6px;padding:8px 10px;margin-bottom:8px\">';
-      html+='<div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:4px\">';
-      html+='<span style=\"color:var(--accent);font-weight:600\">已启用</span>';
-      html+='<button class=\"btn\" onclick=\"toggleRemote(false)\" style=\"font-size:10px\">关闭</button>';
-      html+='</div>';
+      html+='<div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:4px\"><span style=\"color:var(--accent);font-weight:600\">已启用</span><button class=\"btn\" onclick=\"toggleRemote(false)\" style=\"font-size:10px\">关闭</button></div>';
       html+='<div style=\"font-size:10px;color:var(--text2);margin-bottom:6px\">连接地址</div>';
-      html+='<div style=\"display:flex;gap:4px;align-items:center\">';
-      html+='<input class=\"proj-input\" value=\"'+escHtml(d.url||'')+'\" readonly style=\"flex:1;margin:0;font-size:11px;cursor:text\" id=\"remote-url\">';
-      html+='<button class=\"btn\" onclick=\"copyRemoteUrl()\" style=\"font-size:10px;white-space:nowrap\">复制</button>';
-      html+='</div>';
+      html+='<div style=\"display:flex;gap:4px;align-items:center\"><input class=\"proj-input\" value=\"'+escHtml(d.url||'')+'\" readonly style=\"flex:1;margin:0;font-size:11px\" id=\"remote-url\"><button class=\"btn\" onclick=\"copyRemoteUrl()\" style=\"font-size:10px;white-space:nowrap\">复制</button></div>';
       html+='<div style=\"margin-top:6px;font-size:10px;color:var(--text2)\">访问密码</div>';
-      html+='<div style=\"display:flex;gap:4px;align-items:center;margin-top:2px\">';
-      html+='<input class=\"proj-input\" id=\"remote-token-input\" style=\"flex:1;margin:0;font-size:11px;font-family:monospace\" placeholder=\"输入密码…\">';
-      html+='<button class=\"btn\" onclick=\"setRemoteToken()\" style=\"font-size:10px;white-space:nowrap\">更新</button>';
-      html+='<button class=\"btn\" onclick=\"genRemoteToken()\" style=\"font-size:10px\">随机</button>';
-      html+='</div>';
+      html+='<div style=\"display:flex;gap:4px;align-items:center;margin-top:2px\"><input class=\"proj-input\" id=\"remote-token-input\" style=\"flex:1;margin:0;font-size:11px;font-family:monospace\" placeholder=\"输入新密码…\"><button class=\"btn\" onclick=\"setRemoteToken()\" style=\"font-size:10px;white-space:nowrap\">更新</button><button class=\"btn\" onclick=\"genRemoteToken()\" style=\"font-size:10px\">随机</button></div>';
       html+='</div>';
     } else {
-      html+='<div style=\"background:var(--surface2);border-radius:6px;padding:8px 10px;margin-bottom:8px\">';
-      html+='<div style=\"display:flex;justify-content:space-between;align-items:center\">';
-      html+='<span style=\"color:var(--muted)\">未启用</span>';
-      html+='<button class=\"btn\" onclick=\"toggleRemote(true)\" style=\"font-size:10px;background:var(--accent);color:#000;border-color:var(--accent)\">开启</button>';
-      html+='</div>';
-      html+='<div style=\"font-size:10px;color:var(--muted);margin-top:4px\">开启后可从手机/其他设备访问</div>';
-      html+='</div>';
+      html+='<div style=\"background:var(--surface2);border-radius:6px;padding:8px 10px;margin-bottom:8px\"><div style=\"display:flex;justify-content:space-between;align-items:center\"><span style=\"color:var(--muted)\">未启用</span><button class=\"btn\" onclick=\"toggleRemote(true)\" style=\"font-size:10px;background:var(--accent);color:#000;border-color:var(--accent)\">开启</button></div><div style=\"font-size:10px;color:var(--muted);margin-top:4px\">开启后可从手机/其他设备访问</div></div>';
     }
     el.innerHTML=html;
-  }).catch(function(){el.innerHTML='加载失败'});
+  }).catch(function(e){console.error('loadRemotePanel:',e);el.innerHTML='加载失败: '+escHtml(e.message)});
 }
 function toggleRemote(on){
   fetch('/api/remote/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:on})}).then(function(r){return r.json()}).then(function(d){
