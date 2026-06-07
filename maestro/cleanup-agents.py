@@ -60,7 +60,7 @@ def get_claude_processes() -> list[dict]:
             # CreationDate 格式: "2026/6/1 17:57:54"（本地时间）
             created = datetime.strptime(created_str.strip(), "%Y/%m/%d %H:%M:%S")
         except (ValueError, IndexError):
-            created = datetime(2000, 1, 1)  # 解析失败用极早时间，确保被清理
+            created = datetime.now()  # 解析失败用当前时间，避免误杀
 
         processes.append({"pid": pid, "memory_kb": mem // 1024, "created": created, "raw_created": created_str})
 

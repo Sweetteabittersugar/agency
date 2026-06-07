@@ -256,26 +256,27 @@ def route_with_fallback(task, force_agent=None):
 
 
 # 简单 LRU 缓存：最近 100 条路由结果
+import threading
 _route_cache = {}  # {task_hash: (agent, score, confidence, method)}
+_route_lock = threading.Lock()
 
 
 def route_with_cache(task, force_agent=None):
     """带缓存的路由入口"""
     task_hash = hashlib.md5(task.encode()).hexdigest()[:8]
 
-    # 检查缓存
-    if task_hash in _route_cache and not force_agent:
-        agent, score, confidence, method = _route_cache[task_hash]
-        return agent, score, confidence, "cache"
+    with _route_lock:
+        if task_hash in _route_cache and not force_agent:
+            agent, score, confidence, method = _route_cache[task_hash]
+            return agent, score, confidence, "cache"
 
-    # 正常路由
     agent, score, confidence, method = route_with_fallback(task, force_agent)
 
-    # 存入缓存
-    if len(_route_cache) > 100:
-        oldest = next(iter(_route_cache))
-        del _route_cache[oldest]
-    _route_cache[task_hash] = (agent, score, confidence, method)
+    with _route_lock:
+        if len(_route_cache) > 100:
+            oldest = next(iter(_route_cache))
+            del _route_cache[oldest]
+        _route_cache[task_hash] = (agent, score, confidence, method)
 
     return agent, score, confidence, method
 
@@ -499,19 +500,21 @@ _agent_stats = {}  # {agent: {"success": N, "total": N}}
 
 def record_agent_result(agent, success):
     """记录 Agent 执行结果，用于未来路由优化"""
-    if agent not in _agent_stats:
-        _agent_stats[agent] = {"success": 0, "total": 0}
-    _agent_stats[agent]["total"] += 1
-    if success:
-        _agent_stats[agent]["success"] += 1
+    with _route_lock:
+        if agent not in _agent_stats:
+            _agent_stats[agent] = {"success": 0, "total": 0}
+        _agent_stats[agent]["total"] += 1
+        if success:
+            _agent_stats[agent]["success"] += 1
 
 def get_agent_stats():
     """返回 Agent 成功率统计"""
-    result = {}
-    for agent, stats in _agent_stats.items():
-        rate = stats["success"] / stats["total"] if stats["total"] > 0 else 0
-        result[agent] = {"success_rate": round(rate, 2), "total": stats["total"]}
-    return result
+    with _route_lock:
+        result = {}
+        for agent, stats in _agent_stats.items():
+            rate = stats["success"] / stats["total"] if stats["total"] > 0 else 0
+            result[agent] = {"success_rate": round(rate, 2), "total": stats["total"]}
+        return result
 
 
 if __name__ == "__main__":

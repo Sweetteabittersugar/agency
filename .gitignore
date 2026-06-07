@@ -14,6 +14,9 @@ node_modules/
 # IDE
 .vscode/
 .idea/
+.codex/
+.cursor/
+.gemini/
 
 # OS
 .DS_Store
@@ -46,6 +49,7 @@ maestro/_*.py
 # Agency 运行时隔离配置（含合并后的 API key，严禁提交）
 .claude-isolated/
 server.log
+*.log
 
 # Memory — 含用户画像等隐私
 .claude/project.md

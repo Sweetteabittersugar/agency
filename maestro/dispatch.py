@@ -197,11 +197,9 @@ def _dispatch_reasonix(agent_cfg, agent_name, task_desc, context, model):
         env["REASONIX_ENDPOINT"] = endpoint
     env["REASONIX_MODEL"] = reasonix_model
 
-    rx_cmd = f'reasonix run --model {reasonix_model} "{full_prompt}"'
-
     try:
         proc = subprocess.run(
-            rx_cmd,
+            ["reasonix", "run", "--model", reasonix_model, full_prompt],
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -209,7 +207,6 @@ def _dispatch_reasonix(agent_cfg, agent_name, task_desc, context, model):
             timeout=600,
             cwd=work_dir,
             env=env,
-            shell=True,
         )
 
         raw_out = proc.stdout.strip() if proc.stdout else ""

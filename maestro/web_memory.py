@@ -43,10 +43,19 @@ def list_memory_files(project_root):
 
 def get_memory_file(project_root, rel):
     """读取单个记忆文件。返回 (data_dict, http_status)"""
-    fpath = project_root / rel
-    if not fpath.exists():
-        fpath = Path(rel) if Path(rel).exists() else None
-    if fpath and fpath.exists() and fpath.is_file():
+    fpath = (project_root / rel).resolve()
+    allowed_dirs = [project_root.resolve(), (Path.home() / ".claude").resolve()]
+    in_allowed = False
+    for d in allowed_dirs:
+        try:
+            fpath.relative_to(d)
+            in_allowed = True
+            break
+        except ValueError:
+            continue
+    if not in_allowed:
+        return {"error": "forbidden"}, 403
+    if fpath.exists() and fpath.is_file():
         try:
             content = fpath.read_text(encoding="utf-8")
             return {"path": str(fpath), "name": fpath.name, "content": content, "size": len(content)}, 200

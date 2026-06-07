@@ -21,12 +21,13 @@ class HarnessBus:
         """推送事件到所有连接的 SSE 客户端"""
         payload = json.dumps({"type": event_type, "data": data, "ts": time.time()},
                              ensure_ascii=False)
-        # 记入滚动日志
-        self._event_log.append({"type": event_type, "data": data, "ts": time.time()})
-        if len(self._event_log) > self._max_log:
-            self._event_log = self._event_log[-self._max_log:]
 
         with self._lock:
+            # 记入滚动日志（锁内保护，与 recent_events 互斥）
+            self._event_log.append({"type": event_type, "data": data, "ts": time.time()})
+            if len(self._event_log) > self._max_log:
+                self._event_log = self._event_log[-self._max_log:]
+
             dead = []
             for q in self._queues:
                 try:
@@ -50,10 +51,11 @@ class HarnessBus:
 
     def recent_events(self, event_type: str = None, limit: int = 50):
         """查询最近事件"""
-        if event_type:
-            filtered = [e for e in self._event_log if e["type"] == event_type]
-            return filtered[-limit:]
-        return self._event_log[-limit:]
+        with self._lock:
+            if event_type:
+                filtered = [e for e in self._event_log if e["type"] == event_type]
+                return filtered[-limit:]
+            return list(self._event_log[-limit:])
 
 
 # 全局单例
