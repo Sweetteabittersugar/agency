@@ -538,6 +538,11 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
+        if length > 0:
+            ct = self.headers.get("Content-Type", "")
+            if not ct.startswith("application/json"):
+                self.send_json({"error": "需要 JSON 格式"}, 400)
+                return
         body = json.loads(self.rfile.read(length)) if length > 0 else {}
         path = urlparse(self.path).path
 

@@ -56,6 +56,7 @@ def get_conn() -> sqlite3.Connection:
         print(f"数据库不存在: {COST_DB}")
         sys.exit(1)
     conn = sqlite3.connect(f"file:{COST_DB}?mode=ro", uri=True)
+    conn.execute("PRAGMA busy_timeout=5000")
     conn.row_factory = sqlite3.Row
     return conn
 

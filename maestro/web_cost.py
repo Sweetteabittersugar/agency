@@ -17,6 +17,8 @@ def record_cost(project_root, time_str, model, in_tokens, out_tokens, cost_usd, 
     date_str = time_str[:10]
     with _cost_db_lock:
         conn = sqlite3.connect(str(db))
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=5000")
         try:
             conn.execute("""CREATE TABLE IF NOT EXISTS costs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -64,6 +66,8 @@ def get_cost_analytics(project_root, days=30):
     if not db.exists():
         return None
     conn = sqlite3.connect(str(db))
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=5000")
     try:
         conn.row_factory = sqlite3.Row
         has_date = any(c[1] == 'date' for c in conn.execute("PRAGMA table_info(costs)").fetchall())

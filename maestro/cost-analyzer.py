@@ -516,6 +516,7 @@ def main() -> int:
         return 0
 
     conn = sqlite3.connect(str(COST_DB))
+    conn.execute("PRAGMA busy_timeout=5000")
     try:
         today_rows = query_today(conn, today_str)
 
