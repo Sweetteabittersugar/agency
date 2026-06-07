@@ -1,5 +1,5 @@
 """路由注册中心 — 将所有路由绑定到 Handler 类"""
-from maestro.routes import agents, chat, cost, config, harness, memory, files, orchestrate, static, agent_factory, remote, setup, restart
+from maestro.routes import agents, chat, cost, config, harness, memory, files, orchestrate, static, agent_factory, remote, setup, restart, webhook
 
 
 def register_all(Handler):
@@ -46,4 +46,5 @@ def register_all(Handler):
         ("/api/remote/config", remote.handle_config),
         ("/api/setup", setup.handle_save),
         ("/api/restart", restart.handle_restart),
+        ("/api/webhook/", webhook.handle_webhook),
     ]
