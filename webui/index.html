@@ -361,11 +361,6 @@ function toggleDashboard(){
   btn.classList.toggle('on',harnessActive);
   if(harnessActive){renderHarnessTab('overview')}
 }
-// 通用小窗切换
-function toggleMiniOverlay(id){
-  var ov=$(id);if(!ov)return;
-  ov.classList.toggle('on');
-}
 var dragTarget=null,dragOX=0,dragOY=0;
 function onDrag(e){if(!dragTarget)return;dragTarget.style.left=(e.clientX-dragOX)+'px';dragTarget.style.top=(e.clientY-dragOY)+'px'}
 function offDrag(){dragTarget=null;document.removeEventListener('mousemove',onDrag);document.removeEventListener('mouseup',offDrag)}
@@ -522,15 +517,6 @@ function loadHooksLog(){
   }).catch(function(){var el=$('hhooks-log');if(el)el.innerHTML='加载失败'});
 }
 // ═══════════════════════════════════════
-// Skills 管理
-// ═══════════════════════════════════════
-function loadSkills(){
-  fetch('/api/skills').then(function(r){return r.json()}).then(function(skills){
-    var el=$('hskills-list');if(!el)return;
-    if(skills&&skills.length){el.innerHTML=skills.map(function(s){return'<div style="padding:8px 10px;margin:4px 0;background:var(--surface2);border-radius:var(--radius-sm)"><div style="font-weight:600;font-size:12px">'+escHtml(s.name)+'</div><div style="font-size:10px;color:var(--muted)">'+escHtml(s.description||'')+'</div></div>'}).join('')}else{el.innerHTML='暂无 Skills'}
-  }).catch(function(){var el=$('hskills-list');if(el)el.innerHTML='加载失败'});
-}
-// ═══════════════════════════════════════
 // MCP 详情
 // ═══════════════════════════════════════
 function loadMCPDetail(){
@@ -540,16 +526,6 @@ function loadMCPDetail(){
     var html=servers.length?servers.map(function(s){return'<div style="padding:8px 10px;margin:4px 0;background:var(--surface2);border-radius:var(--radius-sm)"><div style="font-weight:600;font-size:12px">'+escHtml(s.name)+' <span style="font-size:9px;color:'+(s.running?'var(--accent)':'var(--muted)')+'">● '+(s.running?'活跃':'离线')+'</span></div><div style="font-size:10px;color:var(--muted)">'+escHtml(s.command||'')+(s.args||[]).join(' ')+'</div></div>'}).join(''):'暂无 MCP 服务器';
     el.innerHTML=html;if(sel)sel.innerHTML=html;
   }).catch(function(){var el=$('hmcp-list');if(el)el.innerHTML='加载失败'});
-}
-// ═══════════════════════════════════════
-// 记忆层
-// ═══════════════════════════════════════
-function loadMemoryFiles(){
-  fetch('/api/memory').then(function(r){return r.json()}).then(function(d){
-    var el=$('hmem-list');if(!el)return;
-    var files=d.files||[];
-    if(files.length){el.innerHTML=files.map(function(f){return'<div class="mem-file" onclick="openMemEditor(\''+escHtml(f.path)+'\',\''+escHtml(f.name)+'\')"><span class="icon">📄</span><span>'+escHtml(f.name)+'</span><span style="color:var(--muted);font-size:10px;margin-left:auto">'+(f.size||0)+'B</span></div>'}).join('')}else{el.innerHTML='暂无记忆文件'}
-  }).catch(function(){var el=$('hmem-list');if(el)el.innerHTML='加载失败'});
 }
 function openMemEditor(path,name){
   var fname=name.split('\\').pop().split('/').pop();

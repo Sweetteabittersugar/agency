@@ -18,14 +18,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "maestro"))
 
 # Load .env
-env_file = PROJECT_ROOT / ".env"
-if env_file.exists():
-    for line in env_file.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line and not line.startswith("#") and "=" in line:
-            k, v = line.split("=", 1)
-            if k.strip() not in os.environ:
-                os.environ[k.strip()] = v.strip().strip('"').strip("'")
+from maestro.env_loader import load_dotenv
+load_dotenv(PROJECT_ROOT)
 
 from main import route_task, load_agent
 from models import get_provider_config

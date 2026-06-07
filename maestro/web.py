@@ -3,7 +3,7 @@
 Agency — Claude Code Web 前端
   python maestro/web.py   →   http://localhost:8800
 """
-import os, sys, json, time, yaml, sqlite3, threading, subprocess, shutil, logging, re
+import os, sys, json, time, yaml, threading, subprocess, shutil, logging, re
 from pathlib import Path
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingMixIn
@@ -67,13 +67,8 @@ for _src_skills in [_claude_dir_path / "skills", Path.home() / ".claude" / "skil
                     shutil.copytree(str(_sd), str(_dest))
 
 # ── 加载 .env ──
-env_file = PROJECT_ROOT / ".env"
-if env_file.exists():
-    for line in env_file.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line and not line.startswith("#") and "=" in line:
-            k, v = line.split("=", 1)
-            os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+from maestro.env_loader import load_dotenv
+load_dotenv(PROJECT_ROOT)
 
 PORT = 8800
 
@@ -98,24 +93,20 @@ if not CLAUDE_BIN:
         if os.path.isfile(p): CLAUDE_BIN = p; break
 
 # ── Agent 列表缓存 ──
+from maestro.agent_parser import parse_agent_md
+
 def load_agents():
     """从 agents/ 目录加载 Agent 列表（只读元数据，不做路由）"""
     agents = []
     agents_dir = PROJECT_ROOT / "agents"
     if agents_dir.exists():
         for f in sorted(agents_dir.glob("*.md")):
-            content = f.read_text(encoding="utf-8")
-            fm = {}
-            if content.startswith("---"):
-                parts = content.split("---", 2)
-                if len(parts) >= 3:
-                    try: fm = yaml.safe_load(parts[1]) or {}
-                    except: pass
+            info = parse_agent_md(f)
             agents.append({
-                "name": f.stem,
-                "description": fm.get("description", ""),
-                "model": fm.get("model", ""),
-                "tools": fm.get("tools", []),
+                "name": info["name"],
+                "description": info["description"],
+                "model": info["model"],
+                "tools": info["tools"],
             })
     return agents
 
@@ -222,47 +213,10 @@ def get_permission_stats():
     return {"total": total, "allowed": allowed, "denied": denied, "blocked": blocked}
 
 # ── 记忆文件辅助 ──
-def list_memory_files():
-    """列出项目的记忆体系文件"""
-    files = []
-    project_root = PROJECT_ROOT
-    candidates = [
-        project_root / "CLAUDE.md",
-        project_root / "AGENTS.md",
-        project_root / "MEMORY.md",
-        project_root / ".claude" / "project.md",
-        project_root / ".claude" / "global.md",
-        project_root / ".claude" / "context.md",
-    ]
-    # rules
-    rules_dir = project_root / ".claude" / "rules"
-    if rules_dir.exists():
-        candidates.extend(sorted(rules_dir.glob("*.md")))
-    # memory
-    mem_dir = project_root / "memory"
-    if not mem_dir.exists():
-        mem_dir = Path.home() / ".claude" / "projects" / "D--agency" / "memory"
-    if mem_dir.exists():
-        candidates.extend(sorted(mem_dir.glob("*.md")))
-
-    for f in candidates:
-        if f.exists() and f.is_file():
-            try:
-                content = f.read_text(encoding="utf-8")
-                files.append({
-                    "path": str(f.resolve()),
-                    "name": f.name,
-                    "size": len(content),
-                    "preview": content[:200],
-                    "type": f.suffix.lstrip("."),
-                })
-            except Exception:
-                pass
-    return files
+from maestro.web_memory import list_memory_files, get_memory_file, save_memory_file
 
 # ── 子进程追踪（防止泄漏）──
 _proc_lock = threading.Lock()
-_running_procs: set = set()
 MAX_PROCS = 8
 
 # 用 list 包装避免 global 声明问题 — Python 的 set -= 是赋值操作
@@ -301,125 +255,7 @@ def _cleanup_all_procs():
         _proc_registry.clear()
 
 # ── 费用记录（多维：项目 / Agent / 模型 / 日期）──
-_cost_db_lock = threading.Lock()
-def record_cost(time_str, model, in_tokens, out_tokens, cost_usd, duration_s, agent="", project="",
-                cache_read=0, cache_write=0, cache_saved=0.0, is_estimated=False, session_id=""):
-    db = PROJECT_ROOT / "maestro" / "cost.db"
-    date_str = time_str[:10]  # YYYY-MM-DD
-    with _cost_db_lock:
-        conn = sqlite3.connect(str(db))
-        try:
-            conn.execute("""CREATE TABLE IF NOT EXISTS costs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                time TEXT, date TEXT, project TEXT, agent TEXT, model TEXT,
-                in_tokens INTEGER, out_tokens INTEGER, cost_usd REAL,
-                duration_s REAL, task_preview TEXT,
-                cache_read_tokens INTEGER DEFAULT 0,
-                cache_write_tokens INTEGER DEFAULT 0,
-                cache_saved_usd REAL DEFAULT 0.0,
-                is_estimated INTEGER DEFAULT 0,
-                session_id TEXT DEFAULT ''
-            )""")
-            # 迁移：为旧表（main.py / 早期 schema）添加缺失列
-            _migrate = [
-                "date TEXT DEFAULT ''",
-                "project TEXT DEFAULT ''",
-                "task_preview TEXT DEFAULT ''",
-                "agent TEXT DEFAULT ''",
-                "cache_read_tokens INTEGER DEFAULT 0",
-                "cache_write_tokens INTEGER DEFAULT 0",
-                "cache_saved_usd REAL DEFAULT 0.0",
-                "is_estimated INTEGER DEFAULT 0",
-                "session_id TEXT DEFAULT ''",
-            ]
-            for col_def in _migrate:
-                try:
-                    conn.execute(f"ALTER TABLE costs ADD COLUMN {col_def}")
-                except sqlite3.OperationalError:
-                    pass
-            # 回填 date：从 time 列的前10位提取
-            conn.execute("UPDATE costs SET date = substr(time, 1, 10) WHERE date = '' OR date IS NULL")
-            conn.execute(
-                "INSERT INTO costs (time, date, project, agent, model, in_tokens, out_tokens, cost_usd, duration_s, cache_read_tokens, cache_write_tokens, cache_saved_usd, is_estimated, session_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                (time_str, date_str, project or "", agent or "", model, in_tokens, out_tokens, round(cost_usd, 8), duration_s,
-                 cache_read, cache_write, round(cache_saved, 8), 1 if is_estimated else 0, session_id or "")
-            )
-            conn.commit()
-        except Exception as e:
-            log.warning(f"record_cost 写入失败: {e}")
-        finally:
-            conn.close()
-
-def get_cost_analytics(days=30):
-    """多维度费用分析"""
-    db = PROJECT_ROOT / "maestro" / "cost.db"
-    if not db.exists():
-        return None
-    conn = sqlite3.connect(str(db))
-    try:
-        conn.row_factory = sqlite3.Row
-        # 兼容旧表无 date 列：退到 time 列
-        has_date = any(c[1] == 'date' for c in conn.execute("PRAGMA table_info(costs)").fetchall())
-        date_col = "date" if has_date else "substr(time, 1, 10)"
-        # 总览
-        total = conn.execute(f"SELECT COUNT(*) as calls, COALESCE(SUM(cost_usd),0) as cost, COALESCE(SUM(in_tokens),0) as in_tok, COALESCE(SUM(out_tokens),0) as out_tok FROM costs WHERE {date_col} >= date('now','-'||?||' days')", (days,)).fetchone()
-        # 按日期
-        by_date = [dict(r) for r in conn.execute(f"SELECT {date_col} as date, COUNT(*) as calls, ROUND(COALESCE(SUM(cost_usd),0),6) as cost FROM costs WHERE {date_col} >= date('now','-'||?||' days') GROUP BY {date_col} ORDER BY date", (days,))]
-        # 按模型
-        by_model = [dict(r) for r in conn.execute(f"SELECT model, COUNT(*) as calls, ROUND(COALESCE(SUM(cost_usd),0),6) as cost, SUM(in_tokens) as in_tok, SUM(out_tokens) as out_tok FROM costs WHERE {date_col} >= date('now','-'||?||' days') GROUP BY model ORDER BY cost DESC", (days,))]
-        # 按 Agent
-        by_agent = [dict(r) for r in conn.execute(f"SELECT agent, COUNT(*) as calls, ROUND(COALESCE(SUM(cost_usd),0),6) as cost FROM costs WHERE {date_col} >= date('now','-'||?||' days') AND agent != '' GROUP BY agent ORDER BY cost DESC", (days,))]
-        # 按项目
-        by_project = [dict(r) for r in conn.execute(f"SELECT project, COUNT(*) as calls, ROUND(COALESCE(SUM(cost_usd),0),6) as cost FROM costs WHERE {date_col} >= date('now','-'||?||' days') AND project != '' GROUP BY project ORDER BY cost DESC", (days,))]
-        # 今日
-        today = conn.execute(f"SELECT COUNT(*) as calls, COALESCE(SUM(cost_usd),0) as cost FROM costs WHERE {date_col} = date('now')").fetchone()
-        # 缓存节省汇总
-        try:
-            cache = conn.execute(f"SELECT COALESCE(SUM(cache_read_tokens),0) as read_tok, COALESCE(SUM(cache_write_tokens),0) as write_tok, COALESCE(SUM(cache_saved_usd),0) as saved FROM costs WHERE {date_col} >= date('now','-'||?||' days')", (days,)).fetchone()
-        except sqlite3.OperationalError:
-            cache = {"read_tok": 0, "write_tok": 0, "saved": 0}
-        # 告警数据
-        alerts = _build_alerts(conn) if has_date else []
-        conn.close()
-        return {
-            "total": dict(total), "today": dict(today),
-            "by_date": by_date, "by_model": by_model,
-            "by_agent": by_agent, "by_project": by_project,
-            "cache": dict(cache) if cache else {"read_tok": 0, "write_tok": 0, "saved": 0},
-            "alerts": alerts,
-        }
-    except Exception as e:
-        log.warning(f"get_cost_analytics 查询失败: {e}")
-        conn.close()
-        return None
-
-def _build_alerts(conn: sqlite3.Connection) -> list:
-    """生成费用告警列表"""
-    alerts = []
-    DAILY_WARN = 5.0
-    ENTRY_RED = 0.50
-    try:
-        # 日超 $5 警告
-        daily = conn.execute(
-            "SELECT date, ROUND(COALESCE(SUM(cost_usd),0),6) as cost FROM costs GROUP BY date ORDER BY date DESC LIMIT 14"
-        ).fetchall()
-        for r in daily:
-            if r["cost"] > DAILY_WARN:
-                level = "warn" if r["cost"] < DAILY_WARN * 3 else "danger"
-                alerts.append({"level": level, "type": "daily_budget", "date": r["date"], "cost": r["cost"],
-                                "msg": f'{r["date"]} 单日费用 ${r["cost"]:.4f} 超过 ${DAILY_WARN:.2f} 告警线'})
-        # 单次超 $0.50 标红
-        big = conn.execute(
-            "SELECT id, time, model, cost_usd FROM costs WHERE cost_usd > ? AND date >= date('now','-7 days') ORDER BY cost_usd DESC LIMIT 10",
-            (ENTRY_RED,)
-        ).fetchall()
-        for r in big:
-            alerts.append({"level": "danger", "type": "single_high", "id": r["id"], "time": r["time"],
-                            "model": r["model"], "cost": r["cost_usd"],
-                            "msg": f'单次调用 ${r["cost_usd"]:.4f} ({r["model"]} @ {r["time"]})'})
-    except Exception:
-        pass
-    return alerts
+from maestro.web_cost import record_cost, get_cost_analytics
 
 
 class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
@@ -494,21 +330,21 @@ class Handler(BaseHTTPRequestHandler):
             })
         elif path == "/api/cost":
             days = int(parse_qs(parsed.query).get("days", ["30"])[0])
-            data = get_cost_analytics(days)
+            data = get_cost_analytics(PROJECT_ROOT, days)
             if data:
                 self.send_json(data)
             else:
                 self.send_json({"total": {"calls":0,"cost":0}, "today": {"calls":0,"cost":0}, "by_date":[], "by_model":[], "by_agent":[], "by_project":[], "alerts":[]})
         elif path == "/api/cost/history":
             days = int(parse_qs(parsed.query).get("days", ["30"])[0])
-            data = get_cost_analytics(days)
+            data = get_cost_analytics(PROJECT_ROOT, days)
             if data:
                 self.send_json({"by_date": data.get("by_date", []), "by_model": data.get("by_model", []),
                                 "cache": data.get("cache", {"read_tok":0,"write_tok":0,"saved":0})})
             else:
                 self.send_json({"by_date": [], "by_model": [], "cache": {"read_tok":0,"write_tok":0,"saved":0}})
         elif path == "/api/cost/alerts":
-            data = get_cost_analytics(7)
+            data = get_cost_analytics(PROJECT_ROOT, 7)
             alerts = data.get("alerts", []) if data else []
             self.send_json({"alerts": alerts})
         # ── Harness GET 端点 ──
@@ -629,21 +465,11 @@ class Handler(BaseHTTPRequestHandler):
                             pass
             self.send_json(skills)
         elif path == "/api/memory":
-            self.send_json({"files": list_memory_files()})
+            self.send_json({"files": list_memory_files(PROJECT_ROOT)})
         elif path.startswith("/api/memory/"):
-            # 读取单个记忆文件
             rel = path[len("/api/memory/"):]
-            fpath = PROJECT_ROOT / rel
-            if not fpath.exists():
-                fpath = Path(rel) if Path(rel).exists() else None
-            if fpath and fpath.exists() and fpath.is_file():
-                try:
-                    content = fpath.read_text(encoding="utf-8")
-                    self.send_json({"path": str(fpath), "name": fpath.name, "content": content, "size": len(content)})
-                except Exception as e:
-                    self.send_json({"error": str(e)}, 500)
-            else:
-                self.send_json({"error": "file not found"}, 404)
+            data, code = get_memory_file(PROJECT_ROOT, rel)
+            self.send_json(data, code)
         elif path == "/api/files":
             # 文件浏览器 — 列出目录
             target = parse_qs(parsed.query).get("path", [str(PROJECT_ROOT)])[0]
@@ -748,20 +574,10 @@ class Handler(BaseHTTPRequestHandler):
                 ]:
                     candidate = search_dir / f"{force_agent}.md"
                     if candidate.exists():
-                        content = candidate.read_text(encoding="utf-8")
-                        fm = {}
-                        body = content
-                        if content.startswith("---"):
-                            parts = content.split("---", 2)
-                            if len(parts) >= 3:
-                                try:
-                                    fm = yaml.safe_load(parts[1]) or {}
-                                except Exception:
-                                    pass
-                                body = parts[2].strip() if len(parts) > 2 else ""
-                        agent_model_override = fm.get("model", "")
-                        agent_tools_override = fm.get("tools", [])
-                        agent_system_prompt = body
+                        info = parse_agent_md(candidate)
+                        agent_model_override = info["model"]
+                        agent_tools_override = info["tools"]
+                        agent_system_prompt = info["body"]
                         log.info(f"CHAT agent injection: model={agent_model_override}, tools={agent_tools_override}, prompt_len={len(agent_system_prompt)}")
                         break
             # 注入 model
@@ -900,7 +716,7 @@ class Handler(BaseHTTPRequestHandler):
                         self.wfile.flush()
                     except Exception:
                         pass
-                    record_cost(time.strftime("%Y-%m-%d %H:%M:%S"), detected_model, in_tokens, out_tokens, cost, elapsed, agent_name, proj_dir or "",
+                    record_cost(PROJECT_ROOT, time.strftime("%Y-%m-%d %H:%M:%S"), detected_model, in_tokens, out_tokens, cost, elapsed, agent_name, proj_dir or "",
                                 cache_read, cache_write, cache_saved, is_estimated, session_id or "")
                     log.info(f'CHAT done elapsed={elapsed:.1f}s cost=${cost:.4f} model={detected_model} estimated={is_estimated}')
                 finally:
@@ -980,7 +796,7 @@ class Handler(BaseHTTPRequestHandler):
                 out_tokens = len(full_output) // 2
                 orchestrator_model = "deepseek-v4-pro"
                 cost = estimate_cost(orchestrator_model, in_tokens, out_tokens)
-                record_cost(time.strftime("%Y-%m-%d %H:%M:%S"), orchestrator_model, in_tokens, out_tokens, cost, elapsed, "orchestrator", proj_dir or "")
+                record_cost(PROJECT_ROOT, time.strftime("%Y-%m-%d %H:%M:%S"), orchestrator_model, in_tokens, out_tokens, cost, elapsed, "orchestrator", proj_dir or "")
 
                 # 提取 JSON 计划
                 plan = _extract_plan(full_output)
@@ -1040,33 +856,10 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json({"ok": True})
 
         elif path.startswith("/api/memory/"):
-            # 编辑记忆文件
             rel = path[len("/api/memory/"):]
-            fpath = (PROJECT_ROOT / rel).resolve()
-            allowed_mem_dirs = [PROJECT_ROOT.resolve(), (Path.home() / ".claude").resolve()]
-            in_allowed = False
-            for d in allowed_mem_dirs:
-                try:
-                    fpath.relative_to(d)
-                    in_allowed = True
-                    break
-                except ValueError:
-                    continue
-            if not in_allowed:
-                self.send_json({"error": "forbidden"}, 403)
-                return
-            if not fpath.exists():
-                self.send_json({"error": "file not found"}, 404)
-                return
             content = body.get("content", "")
-            if not content:
-                self.send_json({"error": "content required"}, 400)
-                return
-            try:
-                fpath.write_text(content, encoding="utf-8")
-                self.send_json({"ok": True, "path": str(fpath), "size": len(content)})
-            except Exception as e:
-                self.send_json({"error": str(e)}, 500)
+            data, code = save_memory_file(PROJECT_ROOT, rel, content)
+            self.send_json(data, code)
 
         elif path == "/api/skills/toggle":
             # 启用/禁用 Skill

@@ -26,19 +26,8 @@ from datetime import datetime
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # ── 加载 .env ──────────────────────────────────
-def load_env():
-    env_file = PROJECT_ROOT / ".env"
-    if env_file.exists():
-        with open(env_file) as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith("#") and "=" in line:
-                    key, val = line.split("=", 1)
-                    val = val.strip().strip('"').strip("'")
-                    if key.strip() not in os.environ:
-                        os.environ[key.strip()] = val
-
-load_env()
+from maestro.env_loader import load_dotenv
+load_dotenv(PROJECT_ROOT)
 
 sys.path.insert(0, str(PROJECT_ROOT / "maestro"))
 from models import get_provider_config, resolve_model, get_default_model
@@ -292,8 +281,10 @@ def route_with_cache(task, force_agent=None):
 
 
 # ── Agent 加载 ─────────────────────────────────
+from maestro.agent_parser import parse_agent_md
+
 def load_agent(name):
-    """读 agents/{name}.md，返回 system_prompt"""
+    """读 agents/{name}.md，返回 system_prompt, model"""
     agent_file = PROJECT_ROOT / "agents" / f"{name}.md"
     if not agent_file.exists():
         # 模糊匹配
@@ -305,21 +296,9 @@ def load_agent(name):
     if not agent_file.exists():
         return f"你是一个 {name}。请完成任务。", DEFAULT_MODEL
 
-    content = agent_file.read_text(encoding="utf-8")
-    model = DEFAULT_MODEL
-
-    if content.startswith("---"):
-        parts = content.split("---", 2)
-        if len(parts) >= 3:
-            try:
-                fm = yaml.safe_load(parts[1])
-                if fm:
-                    model = resolve_model(fm.get("model", ""))
-            except Exception:
-                pass
-            return parts[2].strip(), model
-
-    return content.strip(), model
+    info = parse_agent_md(agent_file)
+    model = resolve_model(info["model"]) if info["model"] else DEFAULT_MODEL
+    return info["body"], model
 
 
 # ── DeepSeek API ───────────────────────────────

@@ -22,19 +22,8 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # ── 加载 .env ──────────────────────────────────
-def load_env():
-    env_file = PROJECT_ROOT / ".env"
-    if env_file.exists():
-        with open(env_file) as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith("#") and "=" in line:
-                    key, val = line.split("=", 1)
-                    val = val.strip().strip('"').strip("'")
-                    if key.strip() not in os.environ:
-                        os.environ[key.strip()] = val
-
-load_env()
+from maestro.env_loader import load_dotenv
+load_dotenv(PROJECT_ROOT)
 
 sys.path.insert(0, str(PROJECT_ROOT / "maestro"))
 from models import get_provider_config, resolve_model, get_default_model
@@ -43,6 +32,8 @@ DEFAULT_MODEL = get_default_model()
 
 
 # ── 加载 Agent ──────────────────────────────────
+from maestro.agent_parser import parse_agent_md
+
 def load_agent(name):
     """读 agents/{name}.md，返回 (system_prompt, model)"""
     agent_file = PROJECT_ROOT / "agents" / f"{name}.md"
@@ -57,24 +48,9 @@ def load_agent(name):
         print(f"✗ Agent '{name}' 不存在。用 --list 查看可用 Agent。")
         sys.exit(1)
 
-    content = agent_file.read_text(encoding="utf-8")
-
-    # 解析 YAML frontmatter
-    model = DEFAULT_MODEL
-    if content.startswith("---"):
-        parts = content.split("---", 2)
-        if len(parts) >= 3:
-            try:
-                fm = yaml.safe_load(parts[1])
-                if fm:
-                    model = resolve_model(fm.get("model", ""))
-            except Exception:
-                pass
-            system_prompt = parts[2].strip()
-    else:
-        system_prompt = content.strip()
-
-    return system_prompt, model
+    info = parse_agent_md(agent_file)
+    model = resolve_model(info["model"]) if info["model"] else DEFAULT_MODEL
+    return info["body"], model
 
 
 def list_agents():
