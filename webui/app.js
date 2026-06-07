@@ -24,11 +24,15 @@ function showSetupStep(step){
     ov.classList.add('on');
   } else if(step===2){
     $('setup-title').textContent='远端访问（可选）';
+    // 自动生成密码（只生成一次）
+    if(!setupData._remote_token){
+      setupData._remote_token=Array(16).fill(0).map(function(){return'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'.charAt(Math.floor(Math.random()*62))}).join('');
+    }
     body.innerHTML='<p style=\"font-size:12px;color:var(--text2);margin-bottom:12px\">开启后可从手机/平板远程操作</p>'+
       '<label style=\"display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:8px\"><input type=\"checkbox\" id=\"setup-remote\" onchange=\"document.getElementById(\"setup-remote-info\").style.display=this.checked?\"block\":\"none\"\"> 启用远端访问</label>'+
       '<div id=\"setup-remote-info\" style=\"display:none\">'+
-      '<p style=\"font-size:10px;color:var(--muted);margin-bottom:4px\">访问密码（自动生成，可修改）</p>'+
-      '<div style=\"display:flex;gap:4px\"><input class=\"proj-input\" id=\"setup-remote-token\" style=\"flex:1;margin:0;font-size:11px;font-family:monospace\" placeholder=\"留空自动生成\"><button class=\"btn\" onclick=\"$(\"setup-remote-token\").value=Array(16).fill(0).map(function(){return\"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789\".charAt(Math.floor(Math.random()*62))}).join(\"\")\" style=\"font-size:10px\">随机</button></div>'+
+      '<p style=\"font-size:10px;color:var(--muted);margin-bottom:4px\">访问密码（已自动生成，可修改）</p>'+
+      '<div style=\"display:flex;gap:4px\"><input class=\"proj-input\" id=\"setup-remote-token\" style=\"flex:1;margin:0;font-size:11px;font-family:monospace\" value=\"'+escHtml(setupData._remote_token)+'\"><button class=\"btn\" onclick=\"setupData._remote_token=Array(16).fill(0).map(function(){return\"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789\".charAt(Math.floor(Math.random()*62))}).join(\"\");$(\"setup-remote-token\").value=setupData._remote_token\" style=\"font-size:10px\">随机</button></div>'+
       '</div>';
     footer.innerHTML='<button class=\"btn\" onclick=\"showSetupStep(1)\" style=\"font-size:11px\">上一步</button><button class=\"new-chat-btn\" onclick=\"setupFinish()\" style=\"width:auto;font-size:11px;padding:5px 20px\">完成</button>';
   }
@@ -42,7 +46,7 @@ function setupNext(){
 }
 function setupFinish(){
   var remoteOn=$('setup-remote')&&$('setup-remote').checked;
-  var remoteToken=remoteOn?($('setup-remote-token').value.trim()||''):'';
+  var remoteToken=remoteOn?($('setup-remote-token').value.trim()||setupData._remote_token||''):'';
   var body={api_key:setupData._api_key||'',api_provider:setupData._api_provider||'deepseek',remote_enabled:remoteOn,remote_token:remoteToken};
   fetch('/api/setup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){return r.json()}).then(function(d){
     if(d.ok){
