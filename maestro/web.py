@@ -21,7 +21,8 @@ sync_isolated_config(PROJECT_ROOT)
 from maestro.env_loader import load_dotenv
 load_dotenv(PROJECT_ROOT)
 
-PORT = 8800
+# ── 远端访问配置 ──
+from maestro.remote import BIND_ADDR, PORT, check_auth, startup_info
 
 # ── 诊断日志 ──
 logging.basicConfig(
@@ -82,7 +83,19 @@ class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
 class Handler(BaseHTTPRequestHandler):
     """请求处理器 — 路由分发到各路模块"""
 
+    def _check_auth(self):
+        """API 请求认证检查，静态文件放行"""
+        path = urlparse(self.path).path
+        if not path.startswith("/api/"):
+            return True  # 静态文件不校验
+        ok, msg = check_auth(self.headers)
+        if not ok:
+            self.send_json({"error": msg}, 401)
+        return ok
+
     def do_GET(self):
+        if not self._check_auth():
+            return
         parsed = urlparse(self.path)
         path = parsed.path
 
@@ -104,6 +117,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json({"error": "not found"}, 404)
 
     def do_POST(self):
+        if not self._check_auth():
+            return
         length = int(self.headers.get("Content-Length", 0))
         body = {}
         if length > 0:
@@ -164,13 +179,15 @@ def _kill_old():
 if __name__ == "__main__":
     import webbrowser, socket
     _kill_old()
-    httpd = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
+    httpd = ThreadingHTTPServer((BIND_ADDR, PORT), Handler)
     httpd.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     httpd.timeout = 30
-    threading.Timer(1.0, lambda: webbrowser.open(f"http://127.0.0.1:{PORT}")).start()
+    # 仅本地模式自动打开浏览器
+    if BIND_ADDR == "127.0.0.1":
+        threading.Timer(1.0, lambda: webbrowser.open(f"http://127.0.0.1:{PORT}")).start()
     print(f"\n  Agency v{AGENCY_VERSION}  [多线程模式]")
-    print(f"  Claude Code config: {_claude_dir}")
-    print(f"  http://localhost:{PORT}\n")
+    print(startup_info())
+    print(f"  Claude Code config: {_claude_dir}\n")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
