@@ -4,13 +4,27 @@ import json
 from pathlib import Path
 
 
+def _find_key():
+    """从 .env 文件和环境变量中查找 API Key"""
+    # 先查环境变量
+    for k in ("ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_API_KEY", "DEEPSEEK_API_KEY"):
+        if os.environ.get(k):
+            return True
+    # 再查 .env 文件（即使还没加载到环境变量）
+    env_file = Path(__file__).resolve().parent.parent.parent / ".env"
+    if env_file.exists():
+        for line in env_file.read_text(encoding="utf-8").split("\n"):
+            line = line.strip()
+            if line.startswith(("ANTHROPIC_AUTH_TOKEN=", "ANTHROPIC_API_KEY=", "DEEPSEEK_API_KEY=")):
+                val = line.split("=", 1)[1].strip().strip('"').strip("'")
+                if val:
+                    return True
+    return False
+
+
 def handle_status(handler, parsed):
     """GET /api/setup/status — 检查是否需要首次配置"""
-    has_key = bool(
-        os.environ.get("ANTHROPIC_AUTH_TOKEN") or
-        os.environ.get("ANTHROPIC_API_KEY") or
-        os.environ.get("DEEPSEEK_API_KEY")
-    )
+    has_key = _find_key()
     from maestro.remote import is_remote_enabled, get_local_ip, PORT
     needs_setup = not has_key
     handler.send_json({
