@@ -442,13 +442,13 @@ function toggleRemote(on){
 function setRemoteToken(){
   var t=$('remote-token-input').value.trim();if(!t)return;
   fetch('/api/remote/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:true,token:t})}).then(function(r){return r.json()}).then(function(d){
-    if(d.ok){authToken=d.token;localStorage.setItem('agency_auth_token',d.token);showToast('密码已更新');loadRemotePanel()}
+    if(d.ok){authToken=d.token;localStorage.setItem('agency_auth_token',d.token);$('remote-token-input').value='';showToast('密码已更新');}
     else showToast(d.error||'更新失败',!0);
   });
 }
 function genRemoteToken(){
   fetch('/api/remote/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:true,token:''})}).then(function(r){return r.json()}).then(function(d){
-    if(d.ok){authToken=d.token;localStorage.setItem('agency_auth_token',d.token);$('remote-token-input').value=d.token;showToast('新密码: '+d.token.slice(0,6)+'…');loadRemotePanel()}
+    if(d.ok){authToken=d.token;localStorage.setItem('agency_auth_token',d.token);$('remote-token-input').value=d.token;showToast('新密码: '+d.token);}
     else showToast(d.error||'生成失败',!0);
   });
 }
