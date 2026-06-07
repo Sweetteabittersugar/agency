@@ -420,7 +420,7 @@ function toggleRemote(on){
       else showToast('远端已关闭');
       loadRemotePanel();
     } else showToast(d.error||'操作失败',!0);
-  });
+  }).catch(function(e){showToast('操作失败: '+e.message,!0);console.error(e)});
 }
 function setRemoteToken(){
   var t=$('remote-token-input').value.trim();if(!t)return;
