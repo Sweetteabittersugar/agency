@@ -98,7 +98,7 @@ function renderHistory(){historyList.innerHTML=conversations.slice(0,30).map(fun
 renderHistory();
 function loadConvo(id){var c=conversations.find(function(x){return x.id===Number(id)});if(!c)return;var p=getFocusedPanel();p.currentConvo={id:c.id,title:c.title,messages:c.messages.slice(),sessionId:c.sessionId||''};p.dom.messages.innerHTML='';p.dom.route.innerHTML='';c.messages.forEach(function(m){addMsg(p,m.role,m.content)});p.dom.messages.scrollTop=p.dom.messages.scrollHeight;setTimeout(function(){p.dom.messages.querySelectorAll('.bubble').forEach(highlightCode)},100)}
 function delConvo(id,e){e.stopPropagation();conversations=conversations.filter(function(c){return c.id!==Number(id)});localStorage.setItem('agency_convos',JSON.stringify(conversations));renderHistory()}
-function toggleDevOverlay(){devMode=!devMode;var ov=$('devOverlay'),btn=$('devBtn');ov.classList.toggle('on',devMode);btn.classList.toggle('on',devMode);if(devMode){var ak=$('api-key');if(ak&&apiKey)ak.value=apiKey;var ap=$('api-provider');if(ap&&apiProvider)ap.value=apiProvider;loadSkillsList();loadMemList()}}
+function toggleDevOverlay(){devMode=!devMode;var ov=$('devOverlay'),btn=$('devBtn');ov.classList.toggle('on',devMode);btn.classList.toggle('on',devMode);if(devMode){var ak=$('api-key');if(ak&&apiKey)ak.value=apiKey;var ap=$('api-provider');if(ap&&apiProvider)ap.value=apiProvider;loadSkillsList();loadMemList();loadRemotePanel()}}
 function loadSkillsList(){var el=$('skills-list');if(!el)return;fetch('/api/skills').then(function(r){return r.json()}).then(function(skills){el.innerHTML=skills.length?skills.map(function(s){return'<div style="padding:4px 0;font-size:11px"><span>'+escHtml(s.name)+'</span> <span style="color:var(--muted);font-size:10px">'+escHtml(s.description||'').slice(0,40)+'</span></div>'}).join(''):'暂无 Skills'}).catch(function(){el.innerHTML='加载失败'})}
 function loadMemList(){var el=$('mem-list');if(!el)return;fetch('/api/memory').then(function(r){return r.json()}).then(function(d){var files=d.files||[];el.innerHTML=files.length?files.map(function(f){return'<div class="mem-file" onclick="openMemEditor(\''+escHtml(f.path)+'\',\''+escHtml(f.name)+'\')"><span class="icon">📄</span><span>'+escHtml(f.name)+'</span><span style="color:var(--muted);font-size:10px;margin-left:auto">'+(f.size||0)+'B</span></div>'}).join(''):'暂无记忆文件'}).catch(function(){el.innerHTML='加载失败'})}
 function generateAgent(){var input=$('agent-factory-input'),output=$('agent-factory-output');var req=input.value.trim();if(!req)return;output.innerHTML='生成中…';fetch('/api/agent-generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requirement:req,api_key:apiKey||undefined,api_provider:apiProvider||undefined})}).then(function(resp){var reader=resp.body.getReader(),decoder=new TextDecoder(),buf='',txt='';function read(){reader.read().then(function(result){if(result.done){finish();return}buf+=decoder.decode(result.value,{stream:!0});var lines=buf.split('\n');buf=lines.pop()||'';for(var i=0;i<lines.length;i++){if(lines[i].indexOf('data: ')!==0)continue;try{var d=JSON.parse(lines[i].slice(6));if(d.content)txt+=d.content;if(d.error){output.innerHTML='<span style=color:var(--danger)>'+escHtml(d.error)+'</span>';return}}catch(_){}}read()})}function finish(){output.innerHTML='<pre style=\"font-size:10px;max-height:200px;overflow:auto;background:var(--bg);padding:8px;border-radius:4px\">'+escHtml(txt)+'</pre><button class=\"new-chat-btn\" style=\"margin-top:4px\" onclick=\"saveAgent()\">保存此 Agent</button>';output._agentContent=txt}read()}).catch(function(){output.innerHTML='生成失败'})}
@@ -316,5 +316,66 @@ var currentPromptAgent='';
 function viewAgentPrompt(name){currentPromptAgent=name;$('apm-title').textContent='编辑: '+name;$('apm-textarea').value='加载中…';$('agentPromptOverlay').classList.add('on');fetch('/api/agents/'+encodeURIComponent(name)).then(function(r){return r.json()}).then(function(d){if(d.error){showToast(d.error,!0);return}$('apm-textarea').value=d.content}).catch(function(){showToast('加载失败',!0)})}
 function closeAgentPrompt(){$('agentPromptOverlay').classList.remove('on');currentPromptAgent=''}
 function saveAgentPrompt(){var content=$('apm-textarea').value;if(!currentPromptAgent||!content)return;fetch('/api/agent-update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:currentPromptAgent,content:content})}).then(function(r){return r.json()}).then(function(d){if(d.ok){showToast('已保存: '+currentPromptAgent);closeAgentPrompt();loadAgents()}else{showToast(d.error||'保存失败',!0)}}).catch(function(){showToast('保存失败',!0)})}
-document.querySelector('.sidebar-tab[data-tab="project"]')&&document.querySelector('.sidebar-tab[data-tab="project"]').addEventListener('click',function(){loadFileTree(projDir)});
+document.querySelector('.sidebar-tab[data-tab=\"project\"]')&&document.querySelector('.sidebar-tab[data-tab=\"project\"]').addEventListener('click',function(){loadFileTree(projDir)});
+/* ── 远端访问面板 ── */
+function loadRemotePanel(){
+  var el=$('remote-panel');if(!el)return;
+  fetch('/api/remote/status').then(function(r){return r.json()}).then(function(d){
+    var html='';
+    if(d.enabled){
+      html+='<div style=\"background:rgba(34,211,160,.08);border:1px solid var(--accent);border-radius:6px;padding:8px 10px;margin-bottom:8px\">';
+      html+='<div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:4px\">';
+      html+='<span style=\"color:var(--accent);font-weight:600\">已启用</span>';
+      html+='<button class=\"btn\" onclick=\"toggleRemote(false)\" style=\"font-size:10px\">关闭</button>';
+      html+='</div>';
+      html+='<div style=\"font-size:10px;color:var(--text2);margin-bottom:6px\">连接地址</div>';
+      html+='<div style=\"display:flex;gap:4px;align-items:center\">';
+      html+='<input class=\"proj-input\" value=\"'+escHtml(d.url||'')+'\" readonly style=\"flex:1;margin:0;font-size:11px;cursor:text\" id=\"remote-url\">';
+      html+='<button class=\"btn\" onclick=\"copyRemoteUrl()\" style=\"font-size:10px;white-space:nowrap\">复制</button>';
+      html+='</div>';
+      html+='<div style=\"margin-top:6px;font-size:10px;color:var(--text2)\">访问密码</div>';
+      html+='<div style=\"display:flex;gap:4px;align-items:center;margin-top:2px\">';
+      html+='<input class=\"proj-input\" id=\"remote-token-input\" style=\"flex:1;margin:0;font-size:11px;font-family:monospace\" placeholder=\"输入密码…\">';
+      html+='<button class=\"btn\" onclick=\"setRemoteToken()\" style=\"font-size:10px;white-space:nowrap\">更新</button>';
+      html+='<button class=\"btn\" onclick=\"genRemoteToken()\" style=\"font-size:10px\">随机</button>';
+      html+='</div>';
+      html+='</div>';
+    } else {
+      html+='<div style=\"background:var(--surface2);border-radius:6px;padding:8px 10px;margin-bottom:8px\">';
+      html+='<div style=\"display:flex;justify-content:space-between;align-items:center\">';
+      html+='<span style=\"color:var(--muted)\">未启用</span>';
+      html+='<button class=\"btn\" onclick=\"toggleRemote(true)\" style=\"font-size:10px;background:var(--accent);color:#000;border-color:var(--accent)\">开启</button>';
+      html+='</div>';
+      html+='<div style=\"font-size:10px;color:var(--muted);margin-top:4px\">开启后可从手机/其他设备访问</div>';
+      html+='</div>';
+    }
+    el.innerHTML=html;
+  }).catch(function(){el.innerHTML='加载失败'});
+}
+function toggleRemote(on){
+  fetch('/api/remote/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:on})}).then(function(r){return r.json()}).then(function(d){
+    if(d.ok){
+      if(d.token){authToken=d.token;localStorage.setItem('agency_auth_token',d.token);showToast('远端已开启')}
+      else showToast('远端已关闭');
+      loadRemotePanel();
+    } else showToast(d.error||'操作失败',!0);
+  });
+}
+function setRemoteToken(){
+  var t=$('remote-token-input').value.trim();if(!t)return;
+  fetch('/api/remote/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:true,token:t})}).then(function(r){return r.json()}).then(function(d){
+    if(d.ok){authToken=d.token;localStorage.setItem('agency_auth_token',d.token);showToast('密码已更新');loadRemotePanel()}
+    else showToast(d.error||'更新失败',!0);
+  });
+}
+function genRemoteToken(){
+  fetch('/api/remote/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:true,token:''})}).then(function(r){return r.json()}).then(function(d){
+    if(d.ok){authToken=d.token;localStorage.setItem('agency_auth_token',d.token);$('remote-token-input').value=d.token;showToast('新密码: '+d.token.slice(0,6)+'…');loadRemotePanel()}
+    else showToast(d.error||'生成失败',!0);
+  });
+}
+function copyRemoteUrl(){
+  var el=$('remote-url');if(!el)return;
+  el.select();document.execCommand('copy');showToast('已复制连接地址');
+}
 addPanel();

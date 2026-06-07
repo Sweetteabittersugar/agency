@@ -22,7 +22,7 @@ from maestro.env_loader import load_dotenv
 load_dotenv(PROJECT_ROOT)
 
 # ── 远端访问配置 ──
-from maestro.remote import BIND_ADDR, PORT, check_auth, startup_info
+from maestro.remote import BIND_ADDR, PORT, check_auth, startup_info, get_token
 
 # ── 诊断日志 ──
 logging.basicConfig(
@@ -84,10 +84,14 @@ class Handler(BaseHTTPRequestHandler):
     """请求处理器 — 路由分发到各路模块"""
 
     def _check_auth(self):
-        """API 请求认证检查，静态文件放行"""
+        """API 请求认证检查。静态文件/localhost/remote端点 放行"""
         path = urlparse(self.path).path
         if not path.startswith("/api/"):
-            return True  # 静态文件不校验
+            return True
+        # localhost 上的请求免认证（本机用户可随时改配置）
+        client_ip = self.client_address[0] if self.client_address else ""
+        if client_ip in ("127.0.0.1", "::1", "localhost"):
+            return True
         ok, msg = check_auth(self.headers)
         if not ok:
             self.send_json({"error": msg}, 401)
