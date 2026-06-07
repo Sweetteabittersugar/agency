@@ -69,6 +69,27 @@ def handle_skills(handler, parsed):
     return True
 
 
+def _check_mcp_running(name, args):
+    """检测 MCP 进程是否在运行"""
+    import subprocess
+    try:
+        # 检查是否有匹配的 npx/node 进程
+        r = subprocess.run(
+            "wmic process where \"name='node.exe' or name='npx.exe'\" get commandline /format:csv",
+            capture_output=True, text=True, timeout=5, shell=True
+        )
+        search = name
+        if args:
+            for a in args:
+                if a.startswith("@") or a.startswith("-"):
+                    continue
+                search = a
+                break
+        return search.lower() in r.stdout.lower()
+    except Exception:
+        return False  # 无法检测时返回离线
+
+
 def handle_mcp_status(handler, parsed):
     """GET /api/mcp/status — MCP 服务状态（扫描多个 .mcp.json）"""
     servers = []
@@ -87,12 +108,13 @@ def handle_mcp_status(handler, parsed):
                 if name in seen:
                     continue
                 seen.add(name)
+                running = _check_mcp_running(name, cfg.get("args", []))
                 servers.append({
                     "name": name,
                     "command": cfg.get("command", ""),
                     "args": cfg.get("args", []),
                     "env": list(cfg.get("env", {}).keys()) if cfg.get("env") else [],
-                    "running": True,
+                    "running": running,
                     "source": str(src),
                     "tools": [],
                     "callCount": 0,

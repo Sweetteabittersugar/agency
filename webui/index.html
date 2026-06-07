@@ -115,6 +115,14 @@
 <div class="apm-footer"><button class="new-chat-btn" onclick="saveAgentPrompt()" style="font-size:11px;padding:5px 14px;width:auto">💾 保存</button><button class="btn" onclick="closeAgentPrompt()">取消</button></div>
 </div>
 </div>
+<!-- 首次配置向导 -->
+<div class="agent-prompt-overlay" id="setupOverlay">
+<div class="agent-prompt-modal" style="width:480px">
+<div class="apm-header"><span id="setup-title">欢迎使用 Agency</span></div>
+<div class="apm-body" id="setup-body"></div>
+<div class="apm-footer" id="setup-footer"></div>
+</div>
+</div>
 <script src="app.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 </body>

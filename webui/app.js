@@ -6,6 +6,57 @@ try{projDir=localStorage.getItem('agency_proj_dir')||''}catch(_){}
 try{apiKey=localStorage.getItem('agency_api_key')||''}catch(_){}
 try{apiProvider=localStorage.getItem('agency_api_provider')||'deepseek'}catch(_){}
 try{authToken=localStorage.getItem('agency_auth_token')||''}catch(_){}
+/* ── 首次配置向导 ── */
+var setupData=null;
+fetch('/api/setup/status').then(function(r){return r.json()}).then(function(d){
+  setupData=d;
+  if(d.needs_setup){showSetupStep(1)}
+}).catch(function(){});
+function showSetupStep(step){
+  var body=$('setup-body'),footer=$('setup-footer'),ov=$('setupOverlay');
+  if(step===1){
+    $('setup-title').textContent='欢迎使用 Agency';
+    body.innerHTML='<p style=\"font-size:12px;color:var(--text2);margin-bottom:12px\">第一步：配置 API Key 以连接 AI 模型</p>'+
+      '<select class=\"proj-input\" id=\"setup-provider\" style=\"margin-bottom:8px\"><option value=\"deepseek\">DeepSeek（推荐，便宜）</option><option value=\"anthropic\">Anthropic</option><option value=\"openai\">OpenAI 兼容</option></select>'+
+      '<input class=\"proj-input\" id=\"setup-key\" type=\"password\" placeholder=\"sk-…\" autocomplete=\"off\">'+
+      '<p style=\"font-size:10px;color:var(--muted);margin-top:4px\">Key 仅存在本地 .env 文件，不会上传</p>';
+    footer.innerHTML='<button class=\"btn\" onclick=\"$(\'setupOverlay\').classList.remove(\'on\')\" style=\"font-size:11px\">跳过</button><button class=\"new-chat-btn\" onclick=\"setupNext()\" style=\"width:auto;font-size:11px;padding:5px 20px\">下一步</button>';
+    ov.classList.add('on');
+  } else if(step===2){
+    $('setup-title').textContent='远端访问（可选）';
+    body.innerHTML='<p style=\"font-size:12px;color:var(--text2);margin-bottom:12px\">开启后可从手机/平板远程操作</p>'+
+      '<label style=\"display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:8px\"><input type=\"checkbox\" id=\"setup-remote\" onchange=\"document.getElementById(\"setup-remote-info\").style.display=this.checked?\"block\":\"none\"\"> 启用远端访问</label>'+
+      '<div id=\"setup-remote-info\" style=\"display:none\">'+
+      '<p style=\"font-size:10px;color:var(--muted);margin-bottom:4px\">访问密码（自动生成，可修改）</p>'+
+      '<div style=\"display:flex;gap:4px\"><input class=\"proj-input\" id=\"setup-remote-token\" style=\"flex:1;margin:0;font-size:11px;font-family:monospace\" placeholder=\"留空自动生成\"><button class=\"btn\" onclick=\"$(\"setup-remote-token\").value=Array(16).fill(0).map(function(){return\"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789\".charAt(Math.floor(Math.random()*62))}).join(\"\")\" style=\"font-size:10px\">随机</button></div>'+
+      '</div>';
+    footer.innerHTML='<button class=\"btn\" onclick=\"showSetupStep(1)\" style=\"font-size:11px\">上一步</button><button class=\"new-chat-btn\" onclick=\"setupFinish()\" style=\"width:auto;font-size:11px;padding:5px 20px\">完成</button>';
+  }
+}
+function setupNext(){
+  var key=$('setup-key').value.trim();
+  if(!key){showToast('请输入 API Key',!0);return}
+  setupData._api_key=key;
+  setupData._api_provider=$('setup-provider').value;
+  showSetupStep(2);
+}
+function setupFinish(){
+  var remoteOn=$('setup-remote')&&$('setup-remote').checked;
+  var remoteToken=remoteOn?($('setup-remote-token').value.trim()||''):'';
+  var body={api_key:setupData._api_key||'',api_provider:setupData._api_provider||'deepseek',remote_enabled:remoteOn,remote_token:remoteToken};
+  fetch('/api/setup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){return r.json()}).then(function(d){
+    if(d.ok){
+      $('setupOverlay').classList.remove('on');
+      showToast('配置已保存！请重启 Agency 使 API Key 生效');
+      // 存储到 localStorage 以便后续使用
+      apiKey=setupData._api_key||'';apiProvider=setupData._api_provider||'deepseek';
+      localStorage.setItem('agency_api_key',apiKey);localStorage.setItem('agency_api_provider',apiProvider);
+      if($('api-key'))$('api-key').value=apiKey;
+      if($('api-provider'))$('api-provider').value=apiProvider;
+      if(remoteToken){authToken=remoteToken;localStorage.setItem('agency_auth_token',remoteToken)}
+    } else showToast(d.error||'保存失败',!0);
+  });
+}
 // API 请求包装：自动注入认证头
 function apiFetch(url, opts){
   opts = opts || {};

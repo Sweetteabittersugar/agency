@@ -199,7 +199,9 @@ def _clean_assistant_content(content) -> str:
                 if block.get("type") == "text":
                     parts.append(str(block.get("text", "")))
                 elif block.get("type") == "tool_use":
-                    pass  # tool_use 暂不处理
+                    tool_name = block.get("name", "")
+                    tool_input = str(block.get("input", ""))[:80]
+                    parts.append(f"[Tool: {tool_name}] {tool_input}")
             elif isinstance(block, str):
                 parts.append(block)
         return "".join(parts)
