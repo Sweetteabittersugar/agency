@@ -105,12 +105,23 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
+        body = {}
         if length > 0:
             ct = self.headers.get("Content-Type", "")
             if not ct.startswith("application/json"):
                 self.send_json({"error": "需要 JSON 格式"}, 400)
                 return
-        body = json.loads(self.rfile.read(length)) if length > 0 else {}
+            raw = self.rfile.read(length)
+            # 尝试 UTF-8 → GBK → latin-1 三种编码
+            for enc in ('utf-8', 'gbk', 'latin-1'):
+                try:
+                    body = json.loads(raw.decode(enc))
+                    break
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    continue
+            else:
+                self.send_json({"error": "invalid JSON body"}, 400)
+                return
         path = urlparse(self.path).path
 
         for prefix, handler_func in self._post_routes:
