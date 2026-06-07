@@ -47,23 +47,10 @@ function setupFinish(){
   fetch('/api/setup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){return r.json()}).then(function(d){
     if(d.ok){
       $('setupOverlay').classList.remove('on');
-      // 存储到 localStorage
       apiKey=setupData._api_key||'';apiProvider=setupData._api_provider||'deepseek';
       localStorage.setItem('agency_api_key',apiKey);localStorage.setItem('agency_api_provider',apiProvider);
       if(remoteToken){authToken=remoteToken;localStorage.setItem('agency_auth_token',remoteToken)}
-      // 自动重启服务使配置生效
-      showToast('配置已保存，正在重启服务…');
-      setTimeout(function(){
-        fetch('/api/restart',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}).catch(function(){});
-        // 等待新服务启动
-        var retries=0;
-        function waitRestart(){
-          fetch('/api/version').then(function(){location.reload()}).catch(function(){
-            if(++retries<20)setTimeout(waitRestart,1000);
-          });
-        }
-        setTimeout(waitRestart,2000);
-      },500);
+      showToast('配置完成！');
     } else showToast(d.error||'保存失败',!0);
   });
 }
