@@ -10,7 +10,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-0.1.0-green)](VERSION)
 [![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://python.org)
-[![Agents](https://img.shields.io/badge/Agents-31-purple)]()
+[![Agents](https://img.shields.io/badge/Agents-33-purple)]()
 [![Skills](https://img.shields.io/badge/Skills-40+-orange)]()
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
@@ -37,7 +37,7 @@ agency start
 | 🧠 | 📊 | 📱 |
 |:---:|:---:|:---:|
 | **多 Agent 协作** | **实时仪表盘** | **手机远程操控** |
-| 31 个专业 Agent 自动匹配任务 | Token · 费用 · 权限全追踪 | 扫码即用，电脑关机也能查 |
+| 33 个专业 Agent 按 12 大类自动匹配任务 | Token · 费用 · 权限全追踪 | 扫码即用，电脑关机也能查 |
 | @agent名 显式指定 | 按日期/模型/Agent 三维分析 | 密码保护，Token 持久化 |
 
 | 🔧 | 🎨 | 🔌 |
@@ -105,7 +105,7 @@ cp agents/coder.md ~/.claude/agents/
 agency/
 ├── maestro/        调度引擎（路由/聊天/编排/成本/安全）
 ├── webui/          前端（模块化 JS + CSS 暗色主题 + HTML）
-├── agents/         31 个 Agent 定义
+├── agents/         33 个 Agent 定义（12 大类）
 ├── .claude/skills/ 40+ 个 Skill 工作流
 ├── rules/          工程规范
 ├── hooks/          生命周期自动化

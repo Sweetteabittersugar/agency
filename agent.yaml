@@ -1,98 +1,46 @@
 # agency-kit Agent 注册表
-# 所有子代理的统一配置入口
+# 所有子代理的统一配置入口 | 33 Agent × 12 分类
 
-version: "0.1.0"
+version: "0.2.0"
 
 agents:
+  # ============================================================
+  # architecture — 架构设计
+  # ============================================================
+  architect:
+    category: architecture
+    file: agents/architect.md
+    model: opus
+    tools: [Read, Grep, Glob, Bash]
+    routing: ["系统设计", "架构设计", "技术选型", "模块划分", "架构方案", "架构评审"]
+
+  api-designer:
+    category: architecture
+    file: agents/api-designer.md
+    model: sonnet
+    tools: [Read, Grep, Glob, Bash, Write, Edit]
+    routing: ["API设计", "接口设计", "RESTful", "OpenAPI", "Swagger", "GraphQL", "gRPC", "端点"]
+    skills:
+      required: [api-design]
+      optional: [architecture-patterns, code-standards]
+      excluded: []
+
+  # ============================================================
+  # implementation — 编码实现
+  # ============================================================
   coder:
+    category: implementation
     file: agents/coder.md
     model: sonnet
     tools: [Read, Grep, Glob, Bash, Write, Edit, NotebookEdit]
-    routing: ["写", "改", "重构", "代码", "实现", "开发", "死代码", "清理代码", "简化代码"]
+    routing: ["写", "改", "重构", "代码", "实现", "开发", "修复", "功能开发"]
     skills:
       required: [self-healing]
       optional: [pre-commit-guard, context-budget, changelog-guard]
       excluded: []
 
-  code-reviewer:
-    file: agents/code-reviewer.md
-    model: sonnet
-    tools: [Read, Grep, Glob, Bash]
-    routing: ["审查", "review", "检查"]
-    skills:
-      required: [multi-perspective-review]
-      optional: [pre-commit-guard, dependency-audit]
-      excluded: [self-healing]
-
-  explorer:
-    file: agents/explorer.md
-    model: haiku
-    tools: [Read, Grep, Glob, Bash]
-    routing: ["查", "搜", "找", "定位", "分析", "grep"]
-
-  test-runner:
-    file: agents/test-runner.md
-    model: haiku
-    tools: [Read, Bash, Grep, Glob]
-    routing: ["测试", "验证", "跑", "确认", "test", "测试策略", "边界用例", "回归测试"]
-    skills:
-      required: []
-      optional: [self-healing, context-budget]
-      excluded: [changelog-guard, dependency-audit]
-
-  general-worker:
-    file: agents/general-worker.md
-    model: sonnet
-    tools: [Read, Write, Edit, Bash, Grep, Glob]
-    routing: ["通用", "整理", "配置", "杂务"]
-
-  webnovel-writer:
-    file: agents/webnovel-writer.md
-    model: opus
-    tools: [Read, Write, Edit, Grep, Glob]
-    routing: ["写小说", "章节", "大纲", "人物", "世界观"]
-
-  planner:
-    file: agents/planner.md
-    model: sonnet
-    tools: [Read, Grep, Glob, Bash]
-    routing: ["规划", "设计", "架构", "方案"]
-
-  security-reviewer:
-    file: agents/security-reviewer.md
-    model: sonnet
-    tools: [Read, Grep, Glob, Bash]
-    routing: ["安全", "审计", "漏洞"]
-    skills:
-      required: [pre-commit-guard, dependency-audit]
-      optional: [multi-perspective-review]
-      excluded: [changelog-guard]
-
-  cost-analyst:
-    file: agents/cost-analyst.md
-    model: haiku
-    tools: [Read, Bash, Grep, Glob]
-    routing: ["费用", "用量", "成本", "@cost"]
-
-  python-reviewer:
-    file: agents/python-reviewer.md
-    model: sonnet
-    tools: [Read, Grep, Glob, Bash]
-    routing: ["审查 Python", "Django", "FastAPI", "Flask", "pip"]
-
-  go-reviewer:
-    file: agents/go-reviewer.md
-    model: sonnet
-    tools: [Read, Grep, Glob, Bash]
-    routing: ["审查 Go", "golang", "goroutine"]
-
-  typescript-reviewer:
-    file: agents/typescript-reviewer.md
-    model: sonnet
-    tools: [Read, Grep, Glob, Bash]
-    routing: ["审查 TypeScript", "React", "Node.js", "前端"]
-
   build-error-resolver:
+    category: implementation
     file: agents/build-error-resolver.md
     model: sonnet
     tools: [Read, Bash, Grep, Glob, Edit, Write]
@@ -102,59 +50,128 @@ agents:
       optional: [dependency-audit, context-budget]
       excluded: []
 
-  doc-updater:
-    file: agents/doc-updater.md
-    model: haiku
-    tools: [Read, Write, Edit, Grep, Glob, Bash]
-    routing: ["更新文档", "README", "CHANGELOG", "文档同步"]
-
-  database-reviewer:
-    file: agents/database-reviewer.md
-    model: sonnet
-    tools: [Read, Grep, Glob, Bash]
-    routing: ["数据库", "sql", "schema", "索引", "查询"]
-
-  e2e-runner:
-    file: agents/e2e-runner.md
-    model: sonnet
-    tools: [Read, Write, Bash, Grep, Glob]
-    routing: ["e2e", "端到端", "playwright"]
-
   performance-optimizer:
+    category: implementation
     file: agents/performance-optimizer.md
     model: sonnet
     tools: [Read, Bash, Grep, Glob, Edit, Write]
     routing: ["性能", "优化", "瓶颈"]
 
+  # ============================================================
+  # review — 审查验证
+  # ============================================================
+  code-reviewer:
+    category: review
+    file: agents/code-reviewer.md
+    model: sonnet
+    tools: [Read, Grep, Glob, Bash]
+    routing: ["审查", "review", "检查", "代码审查", "代码质量", "PR审查", "代码规范", "重构审查"]
+    skills:
+      required: [multi-perspective-review]
+      optional: [pre-commit-guard, dependency-audit]
+      excluded: [self-healing]
+
+  critic:
+    category: review
+    file: agents/critic.md
+    model: sonnet
+    tools: [Read, Grep, Glob]
+    routing: ["评估输出", "质量检查", "输出审查", "格式检查"]
+
+  # ============================================================
+  # testing — 测试质量
+  # ============================================================
+  test-runner:
+    category: testing
+    file: agents/test-runner.md
+    model: haiku
+    tools: [Read, Bash, Grep, Glob]
+    routing: ["测试", "验证", "跑", "确认", "test", "测试策略", "边界用例", "回归测试"]
+    skills:
+      required: []
+      optional: [self-healing, context-budget]
+      excluded: [changelog-guard, dependency-audit]
+
+  e2e-runner:
+    category: testing
+    file: agents/e2e-runner.md
+    model: sonnet
+    tools: [Read, Write, Bash, Grep, Glob]
+    routing: ["e2e", "端到端", "playwright"]
+
   tdd-guide:
+    category: testing
     file: agents/tdd-guide.md
     model: sonnet
     tools: [Read, Write, Edit, Bash, Grep, Glob]
-    routing: ["tdd", "测试驱动"]
+    routing: ["tdd", "测试驱动", "生成测试", "写测试用例", "测试生成", "mock", "单元测试"]
 
-  orchestrator:
-    file: agents/orchestrator.md
+  verifier:
+    category: testing
+    file: agents/verifier.md
     model: sonnet
-    tools: [Read, Write, Bash, Grep, Glob]
-    routing: ["拆解", "分配", "协作", "多个任务", "全部", "整套"]
+    tools: [Read, Grep, Glob, Bash]
+    routing: ["验证改动", "检查修复", "确认修复", "改动验证", "回归检查"]
+
+  # ============================================================
+  # security — 安全防护
+  # ============================================================
+  security-reviewer:
+    category: security
+    file: agents/security-reviewer.md
+    model: sonnet
+    tools: [Read, Grep, Glob, Bash]
+    routing: ["安全", "审计", "漏洞"]
     skills:
-      required: [pipeline-gate, context-budget]
-      optional: [self-healing, web-fetch]
+      required: [pre-commit-guard, dependency-audit]
+      optional: [multi-perspective-review]
+      excluded: [changelog-guard]
+
+  pentester:
+    category: security
+    file: agents/pentester.md
+    model: sonnet
+    tools: [Read, Bash, Grep, Glob]
+    routing: ["渗透测试", "漏洞验证", "攻击模拟", "pentest", "黑盒"]
+    skills:
+      required: [owasp-top10]
+      optional: [injection-analysis, authz-patterns, secret-detection]
+      excluded: [self-healing, changelog-guard]
+
+  secret-scanner:
+    category: security
+    file: agents/secret-scanner.md
+    model: haiku
+    tools: [Read, Grep, Glob, Bash]
+    routing: ["密钥扫描", "密码泄露", "敏感信息", "secret"]
+    skills:
+      required: [secret-detection]
+      optional: [pre-commit-guard]
+      excluded: [self-healing]
+
+  incident-responder:
+    category: security
+    file: agents/incident-responder.md
+    model: sonnet
+    tools: [Read, Grep, Glob, Bash]
+    routing: ["事件响应", "安全事故", "入侵", "incident", "应急"]
+    skills:
+      required: [self-healing]
+      optional: [rollback-plan, health-check-patterns]
       excluded: []
 
-  ceo:
-    file: agents/ceo.md
-    model: sonnet
-    tools: [Read, Grep, Glob]
-    routing: ["产品", "需求", "优先级", "用户故事", "验收标准", "功能范围"]
-
+  # ============================================================
+  # devops — 运维部署
+  # ============================================================
   devops:
+    category: devops
     file: agents/devops.md
     model: sonnet
     tools: [Read, Write, Edit, Bash, Grep, Glob]
     routing: ["CI/CD", "Docker", "部署", "环境配置", "devops", "运维", "容器化"]
 
   release-manager:
+    category: devops
     file: agents/release-manager.md
     model: haiku
     tools: [Read, Write, Edit, Bash, Grep, Glob]
@@ -164,56 +181,152 @@ agents:
       optional: [pre-commit-guard, dependency-audit]
       excluded: []
 
-  lead:
-    file: agents/lead.md
+  observability-engineer:
+    category: devops
+    file: agents/observability-engineer.md
     model: sonnet
-    tools: [Read, Write, Bash, Grep, Glob]
-    routing: ["委派", "领导", "异步", "后台执行", "大任务", "lead"]
+    tools: [Read, Grep, Glob, Bash, Write]
+    routing: ["监控", "日志", "追踪", "Prometheus", "Grafana", "可观测"]
+    skills:
+      required: []
+      optional: [health-check-patterns]
+      excluded: []
 
-  architect:
-    file: agents/architect.md
-    model: opus
-    tools: [Read, Grep, Glob, Bash]
-    routing: ["系统设计", "架构设计", "技术选型", "接口设计", "模块划分", "架构方案"]
-
-  debugger:
-    file: agents/debugger.md
-    model: sonnet
-    tools: [Read, Grep, Glob, Bash]
-    routing: ["调试", "debug", "排查bug", "定位问题", "错误分析", "堆栈跟踪", "根因分析"]
-
-  verifier:
-    file: agents/verifier.md
+  # ============================================================
+  # data — 数据工程
+  # ============================================================
+  database-reviewer:
+    category: data
+    file: agents/database-reviewer.md
     model: sonnet
     tools: [Read, Grep, Glob, Bash]
-    routing: ["验证改动", "检查修复", "确认修复", "改动验证", "回归检查"]
+    routing: ["数据库", "sql", "schema", "索引", "查询", "数据模型"]
 
+  data-engineer:
+    category: data
+    file: agents/data-engineer.md
+    model: sonnet
+    tools: [Read, Write, Edit, Bash, Grep, Glob]
+    routing: ["数据管道", "ETL", "数据建模", "数据仓库", "Spark"]
+    skills:
+      required: []
+      optional: [database-design, query-optimization, error-handling-patterns]
+      excluded: []
+
+  # ============================================================
+  # frontend — 前端交互
+  # ============================================================
   designer:
+    category: frontend
     file: agents/designer.md
     model: sonnet
     tools: [Read, Grep, Glob, Bash, Write]
     routing: ["界面设计", "UI设计", "UX设计", "交互设计", "页面设计", "原型", "网页设计"]
 
-  test-generator:
-    file: agents/test-generator.md
+  a11y-expert:
+    category: frontend
+    file: agents/a11y-expert.md
     model: sonnet
-    tools: [Read, Write, Edit, Grep, Glob, Bash]
-    routing: ["生成测试", "写测试用例", "测试生成", "单元测试生成", "mock"]
+    tools: [Read, Grep, Glob, Bash]
+    routing: ["无障碍", "a11y", "WCAG", "ARIA", "屏幕阅读", "对比度"]
+    skills:
+      required: [a11y-audit]
+      optional: [browser-compat, component-patterns]
+      excluded: []
 
-  critic:
-    file: agents/critic.md
+  # ============================================================
+  # orchestration — 编排调度
+  # ============================================================
+  orchestrator:
+    category: orchestration
+    file: agents/orchestrator.md
     model: sonnet
+    tools: [Read, Write, Bash, Grep, Glob]
+    routing: ["拆解", "分配", "协作", "多个任务", "全部", "整套"]
+    skills:
+      required: [pipeline-gate, context-budget]
+      optional: [self-healing, web-fetch]
+      excluded: []
+
+  router:
+    category: orchestration
+    file: agents/router.md
+    model: haiku
     tools: [Read, Grep, Glob]
-    routing: ["评估输出", "质量检查", "输出审查", "格式检查"]
+    routing: ["路由", "意图识别", "agent选择"]
+
+  planner:
+    category: orchestration
+    file: agents/planner.md
+    model: sonnet
+    tools: [Read, Grep, Glob, Bash]
+    routing: ["规划", "方案", "任务分解", "排期", "路线图"]
+
+  lead:
+    category: orchestration
+    file: agents/lead.md
+    model: sonnet
+    tools: [Read, Write, Bash, Grep, Glob]
+    routing: ["委派", "领导", "需求", "优先级", "大任务", "lead", "产品", "用户故事"]
+
+  # ============================================================
+  # documentation — 文档知识
+  # ============================================================
+  doc-updater:
+    category: documentation
+    file: agents/doc-updater.md
+    model: haiku
+    tools: [Read, Write, Edit, Grep, Glob, Bash]
+    routing: ["更新文档", "README", "文档同步", "文档生成"]
 
   memory-keeper:
+    category: documentation
     file: agents/memory-keeper.md
     model: haiku
     tools: [Read, Write, Grep, Glob]
     routing: ["压缩上下文", "摘要", "记忆管理", "会话总结"]
 
-  router:
-    file: agents/router.md
+  knowledge-synthesizer:
+    category: documentation
+    file: agents/knowledge-synthesizer.md
     model: haiku
-    tools: [Read, Grep, Glob]
-    routing: ["路由", "意图识别", "agent选择"]
+    tools: [Read, Write, Grep, Glob]
+    routing: ["知识总结", "经验提取", "文档聚合", "knowledge"]
+    skills:
+      required: []
+      optional: [context-budget]
+      excluded: []
+
+  # ============================================================
+  # exploration — 探查搜索
+  # ============================================================
+  explorer:
+    category: exploration
+    file: agents/explorer.md
+    model: haiku
+    tools: [Read, Grep, Glob, Bash]
+    routing: ["查", "搜", "找", "定位", "分析", "grep"]
+
+  debugger:
+    category: exploration
+    file: agents/debugger.md
+    model: sonnet
+    tools: [Read, Grep, Glob, Bash]
+    routing: ["调试", "debug", "排查bug", "定位问题", "错误分析", "堆栈跟踪", "根因分析"]
+
+  # ============================================================
+  # utility — 通用工具
+  # ============================================================
+  cost-analyst:
+    category: utility
+    file: agents/cost-analyst.md
+    model: haiku
+    tools: [Read, Bash, Grep, Glob]
+    routing: ["费用", "用量", "成本", "@cost"]
+
+  general-worker:
+    category: utility
+    file: agents/general-worker.md
+    model: sonnet
+    tools: [Read, Write, Edit, Bash, Grep, Glob]
+    routing: ["通用", "整理", "配置", "杂务"]

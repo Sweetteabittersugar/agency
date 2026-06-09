@@ -18,7 +18,7 @@
     "standard": {
       "max_tokens": 65536,
       "description": "标准模式 — 正常开发、多文件修改，约支持 80 轮对话",
-      "agents": ["领域全组"],
+      "agents": ["router", "coder", "code-reviewer", "test-runner", "explorer", "security-reviewer", "devops", "designer", "debugger", "general-worker", "orchestrator", "planner"],
       "skills": ["按需匹配"],
       "hooks": ["SessionStart", "SubagentStop"],
       "trigger": "日常开发、2-5文件修改、代码审查、写测试",
@@ -31,7 +31,7 @@
     "full": {
       "max_tokens": 131072,
       "description": "深度模式 — 复杂重构、架构设计，约支持 160 轮对话",
-      "agents": ["协调层 + 领域全组"],
+      "agents": ["全部 33 个 Agent（12 大类）"],
       "skills": ["全部匹配"],
       "hooks": ["全部"],
       "trigger": "复杂重构、架构设计、多模块联动、管线编排",
