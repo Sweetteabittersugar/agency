@@ -203,7 +203,7 @@ var L={
   filePickerHint:{zh:'💡 输入文件路径：从文件管理器复制路径后粘贴到这里',en:'💡 Enter file path: copy and paste path from your file manager'},
   // Tooltip 文案
   tooltipSend:{zh:'Ctrl+Enter 发送，支持 @agent 指定助手',en:'Ctrl+Enter to send. @agent to specify assistant'},
-  tooltipProfile:{zh:'轻量=快+便宜；标准=智能路由；全功能=最强能力。随时切换',en:'Minimal=fast+cheap; Standard=smart routing; Full=maximum power. Switch anytime'},
+  tooltipProfile:{zh:'省流=日常问答+简单编辑；标准=正常开发+多文件；深度=复杂重构+架构设计。随时切换',en:'Eco=queries+edits; Standard=dev+multi-file; Deep=refactor+architecture. Switch anytime'},
   tooltipRoute:{zh:'Agency 自动选择最适合的 Agent，点击可手动更换',en:'Agency auto-selects the best Agent. Click to manually change'},
   tooltipMCP:{zh:'MCP 让 Agent 能操作浏览器、搜索网络。需要先安装对应服务',en:'MCP enables Agent to control browsers and search. Install services first'},
   tooltipSkill:{zh:'Skill 是给 Agent 的工作流模板，开启后 Agent 在合适场景自动调用',en:'Skills are workflow templates. Agents auto-use them in relevant scenarios'},
@@ -211,7 +211,13 @@ var L={
   tooltipTemplate:{zh:'一键填入常用任务模板，可自定义保存',en:'One-click task templates. Customizable and savable'},
   // Profile 自动升级
   profileAutoUpgraded:{zh:'📈 已使用 Agency {n}天，已自动升级为标准模式。路由和 Agent 列表已解锁 [设置]',en:'📈 Used Agency for {n} days. Auto-upgraded to Standard. Routing & Agent list unlocked [Settings]'},
-  profileRecommendFull:{zh:'📈 已使用 Agency {n}天，推荐升级全功能模式。解锁全部能力 [设置]',en:'📈 Used Agency for {n} days. Full mode recommended. Unlock all features [Settings]'},
+  profileRecommendFull:{zh:'📈 已使用 Agency {n}天，推荐升级深度模式。解锁全部能力 [设置]',en:'📈 Used Agency for {n} days. Full mode recommended. Unlock all features [Settings]'},
+  // Profile 用户体验
+  profileChanged:{zh:'已切换到{name}模式，约支持{rounds}轮对话',en:'Switched to {name} mode, ~{rounds} rounds'},
+  profileAutoCompress:{zh:'上下文用满后会自动总结前文，不会突然中断',en:'Context auto-summarizes when full, no abrupt cutoffs'},
+  profileMinimal:{zh:'省流 — 日常查询、简单编辑',en:'Eco — queries & simple edits'},
+  profileStandard:{zh:'标准 — 正常开发、多文件修改',en:'Standard — dev & multi-file'},
+  profileFull:{zh:'深度 — 复杂重构、架构设计',en:'Deep — refactor & architecture'},
   // 快捷键编辑
   shortcuts:{zh:'⌨️ 快捷键',en:'⌨️ Shortcuts'},
   editShortcut:{zh:'编辑',en:'Edit'},

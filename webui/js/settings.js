@@ -267,17 +267,26 @@ function showProfilePicker(){
   // 在设置面板打开时刷新 profile 列表
   fetch('/api/profile').then(function(r){return r.json()}).then(function(d){
     var sel = document.getElementById('profile-select');
-    if(!sel) return;
     var profiles = d.profiles || {};
     var keys = Object.keys(profiles);
     if(!keys.length) keys = ['minimal','standard','full'];
-    sel.innerHTML = keys.map(function(k){
-      var p = profiles[k] || {};
-      var label = PROFILE_LABELS[k] || k;
-      var icon = PROFILE_ICONS[k] || '';
-      return '<option value="'+escHtml(k)+'">'+icon+' '+escHtml(label)+' — '+escHtml(p.trigger||k)+'</option>';
-    }).join('');
-    sel.value = agencyProfile;
+    if(sel){
+      sel.innerHTML = keys.map(function(k){
+        var p = profiles[k] || {};
+        var label = PROFILE_LABELS[k] || k;
+        var icon = PROFILE_ICONS[k] || '';
+        return '<option value="'+escHtml(k)+'">'+icon+' '+escHtml(label)+' — '+escHtml(p.description||p.trigger||k)+'</option>';
+      }).join('');
+      sel.value = agencyProfile;
+    }
+    // 同步加载描述文字
+    if(typeof loadedProfileDescriptions !== 'undefined'){
+      loadedProfileDescriptions = {};
+      keys.forEach(function(k){
+        loadedProfileDescriptions[k] = (profiles[k]||{}).description || (typeof PROFILE_DESC_FALLBACK !== 'undefined' ? PROFILE_DESC_FALLBACK[k] : '') || '';
+      });
+      if(typeof updateProfileUI === 'function') updateProfileUI();
+    }
   }).catch(function(){});
 }
 

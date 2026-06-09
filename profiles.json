@@ -1,13 +1,14 @@
 {
-  "version": "0.1.0",
-  "description": "Profile 三级制度 — 根据任务复杂度动态分配 Agent、Skill、Token 预算",
+  "version": "0.2.0",
+  "description": "Profile 三级制度 — 面向用户体验设计，控制上下文窗口、Token 预算和可用功能",
   "profiles": {
     "minimal": {
-      "max_tokens": 3000,
+      "max_tokens": 16384,
+      "description": "省流模式 — 日常查询、简单编辑，约支持 20 轮对话",
       "agents": ["router"],
       "skills": [],
       "hooks": ["SessionStart"],
-      "trigger": "单文件读写、grep搜索、状态查询、简单编辑",
+      "trigger": "单文件读写、grep搜索、状态查询、简单问答",
       "conditions": {
         "max_files": 1,
         "max_steps": 1,
@@ -15,11 +16,12 @@
       }
     },
     "standard": {
-      "max_tokens": 8000,
+      "max_tokens": 65536,
+      "description": "标准模式 — 正常开发、多文件修改，约支持 80 轮对话",
       "agents": ["领域全组"],
       "skills": ["按需匹配"],
       "hooks": ["SessionStart", "SubagentStop"],
-      "trigger": "多文件修改、代码生成、测试编写",
+      "trigger": "日常开发、2-5文件修改、代码审查、写测试",
       "conditions": {
         "max_files": 5,
         "max_steps": 5,
@@ -27,11 +29,12 @@
       }
     },
     "full": {
-      "max_tokens": 20000,
+      "max_tokens": 131072,
+      "description": "深度模式 — 复杂重构、架构设计，约支持 160 轮对话",
       "agents": ["协调层 + 领域全组"],
       "skills": ["全部匹配"],
       "hooks": ["全部"],
-      "trigger": "架构重构、DAG协调、多Agent协作",
+      "trigger": "复杂重构、架构设计、多模块联动、管线编排",
       "conditions": {
         "max_files": 999,
         "max_steps": 999,

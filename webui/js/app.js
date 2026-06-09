@@ -13,8 +13,10 @@ var _saveTimer=null;
 // ── Profile 级别 ──
 var agencyProfile='standard';  // minimal | standard | full
 try{agencyProfile=localStorage.getItem('agency_profile')||'standard'}catch(_){}
-var PROFILE_LABELS={minimal:'轻量',standard:'标准',full:'全功能'};
-var PROFILE_ICONS={minimal:'⚡',standard:'⚙',full:'🚀'};
+var PROFILE_LABELS={minimal:'省流',standard:'标准',full:'深度'};
+var PROFILE_ICONS={minimal:'⚡',standard:'💼',full:'🚀'};
+var PROFILE_ROUNDS={minimal:20,standard:80,full:160};
+var PROFILE_DESC_FALLBACK={minimal:'日常查询、简单编辑，约支持 20 轮对话',standard:'正常开发、多文件修改，约支持 80 轮对话',full:'复杂重构、架构设计，约支持 160 轮对话'};
 var PROFILE_COLORS={minimal:'var(--accent)',standard:'#f0a020',full:'var(--danger)'};
 var grid=$('grid'),pageBar=$('pageBar'),agentList=$('agent-list'),historyList=$('history-list');
 
@@ -67,7 +69,7 @@ function setProfile(level){
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({level: level})
   }).catch(function(){});
-  showToast('Profile: ' + PROFILE_LABELS[level]);
+  showToast(t('profileChanged').replace('{name}', PROFILE_LABELS[level]).replace('{rounds}', PROFILE_ROUNDS[level]));
 }
 function updateProfileUI(){
   var sel = document.getElementById('profile-select');
@@ -77,11 +79,16 @@ function updateProfileUI(){
     label.textContent = PROFILE_ICONS[agencyProfile] + ' ' + PROFILE_LABELS[agencyProfile];
     label.style.color = PROFILE_COLORS[agencyProfile];
   }
+  // 更新 settings 面板描述
+  var desc = document.getElementById('profile-desc');
+  if(desc){
+    desc.textContent = (loadedProfileDescriptions && loadedProfileDescriptions[agencyProfile]) || PROFILE_DESC_FALLBACK[agencyProfile] || '';
+  }
   // 更新 header 快捷按钮
   var btn = document.getElementById('profileQuickBtn');
   if(btn){
     btn.textContent = PROFILE_ICONS[agencyProfile];
-    btn.title = 'Profile: ' + PROFILE_LABELS[agencyProfile] + ' (点击切换)';
+    btn.title = PROFILE_LABELS[agencyProfile] + ' (点击切换)';
     btn.style.color = PROFILE_COLORS[agencyProfile];
   }
   // 更新 settings 面板按钮
@@ -91,12 +98,24 @@ function updateProfileUI(){
     b.classList.toggle('active', lv === agencyProfile);
   });
 }
+var loadedProfileDescriptions = null;
+function loadProfileDescriptions(){
+  fetch('/api/profile').then(function(r){return r.json()}).then(function(d){
+    var profiles = d.profiles || {};
+    loadedProfileDescriptions = {};
+    Object.keys(profiles).forEach(function(k){
+      loadedProfileDescriptions[k] = profiles[k].description || PROFILE_DESC_FALLBACK[k] || '';
+    });
+    updateProfileUI();
+  }).catch(function(){});
+}
 
 // ── 初始加载 ──
 loadAgents();
 renderHistory();
 addPanel();
 updateProfileUI();
+loadProfileDescriptions();
 initTheme();
 initTooltips();
 
