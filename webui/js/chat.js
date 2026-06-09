@@ -1,0 +1,67 @@
+/* Agency — 聊天面板 + SSE流式 + 分屏 */
+function mkPanel(){return{id:++pidSeq,isStreaming:!1,abortController:null,_lastAgent:null,currentConvo:{id:Date.now(),title:'',messages:[],sessionId:''},currentAssistantMsg:null,dom:{}}}
+function addPanel(){var s=mkPanel();panels.push(s);buildPanelDOM(s);curPage=Math.floor((panels.length-1)/perPage);refreshUI();return s}
+function removePanel(pid){if(panels.length<=1)return;var idx=panels.findIndex(function(p){return p.id===pid});if(idx<0)return;var p=panels[idx];if(p.isStreaming&&p.abortController)p.abortController.abort();panels.splice(idx,1);p.dom.wrapper.remove();if(focusedPid===pid)focusedPid=null;var total=Math.ceil(panels.length/perPage);if(curPage>=total)curPage=Math.max(0,total-1);refreshUI()}
+function clearAllPanels(){panels.forEach(function(p){if(p.isStreaming&&p.abortController)p.abortController.abort()});while(panels.length>1){var p=panels.pop();p.dom.wrapper&&p.dom.wrapper.remove()}var p=panels[0];p.currentConvo={id:Date.now(),title:'',messages:[],sessionId:''};p.dom.messages.innerHTML='<div class="empty-panel"><div class="logo">⚡</div><h3>就绪</h3></div>';p.dom.route.innerHTML='';p.dom.agentName.textContent='就绪';curPage=0;refreshUI()}
+function buildPanelDOM(s){var w=document.createElement('div');w.className='panel on';w.innerHTML='<div class="panel-bar"><span class="pinfo"><span class="pdot"></span><span class="pagent">就绪</span></span><button class="pclose">✕</button></div><div class="panel-msgs"><div class="empty-panel"><div class="logo">⚡</div><h3>就绪</h3></div></div><div class="panel-route"></div><div class="panel-inp"><textarea placeholder="输入任务或 @agent名…" rows="1"></textarea><button>发送</button></div>';grid.appendChild(w);s.dom={wrapper:w,messages:w.querySelector('.panel-msgs'),route:w.querySelector('.panel-route'),input:w.querySelector('textarea'),sendBtn:w.querySelector('.panel-inp button'),dot:w.querySelector('.pdot'),agentName:w.querySelector('.pagent'),empty:w.querySelector('.empty-panel')};w.querySelector('.pclose').addEventListener('click',function(e){e.stopPropagation();removePanel(s.id)});s.dom.input.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleSend(s.id)}});s.dom.input.addEventListener('focus',function(){focusedPid=s.id});s.dom.input.addEventListener('input',function(){s.dom.input.style.height='auto';s.dom.input.style.height=Math.min(s.dom.input.scrollHeight,100)+'px'});s.dom.sendBtn.addEventListener('click',function(){handleSend(s.id)});}
+function cycleGrid(){var s=[1,2,4];perPage=s[(s.indexOf(perPage)+1)%3];curPage=0;refreshUI()}
+function prevPage(){if(curPage>0){curPage--;refreshUI()}}
+function nextPage(){if(curPage<Math.ceil(panels.length/perPage)-1){curPage++;refreshUI()}}
+function refreshUI(){var total=Math.ceil(panels.length/perPage),start=curPage*perPage;grid.className='grid g'+perPage;$('gridBtn').textContent='⊞';if(total>1){pageBar.style.display='flex';$('pgNum').textContent=(curPage+1)+'/'+total;$('pgPrev').disabled=curPage<=0;$('pgNext').disabled=curPage>=total-1}else{pageBar.style.display='none'}panels.forEach(function(p,i){p.dom.wrapper.classList.toggle('on',i>=start&&i<start+perPage)});$('summary').textContent=panels.length+'窗'+(total>1?' '+(curPage+1)+'/'+total:'')}
+function pickAgent(name){var p=getFocusedPanel();p.dom.input.value='@'+name+' ';p.dom.input.focus()}
+function pickAgentNew(name,e){e.preventDefault();var p=addPanel();p.dom.input.value='@'+name+' ';p.dom.input.focus()}
+function toggleOrchMode(){orchMode=!orchMode;var btn=$('orchBtn');btn.classList.toggle('on',orchMode);btn.textContent=orchMode?'🧠 调度中':'🧠 调度';if(orchMode&&perPage<4){perPage=4;refreshUI()}}
+function setStreaming(p,v){p.isStreaming=v;p.dom.input.disabled=v;p.dom.sendBtn.textContent=v?'停止':'发送';if(v){p.dom.sendBtn.classList.add('stopping');if(p.dom.dot)p.dom.dot.classList.add('busy')}else{p.dom.sendBtn.classList.remove('stopping');if(p.dom.dot)p.dom.dot.classList.remove('busy');p.abortController=null}if(!v)setTimeout(function(){p.dom.input.disabled=!1},50)}
+function addMsg(p,role,content){var w=document.createElement('div');w.className='msg '+role;w.innerHTML='<div class="msg-label">'+(role==='user'?'你':'Agency')+'</div><div class="bubble">'+content+'</div>';p.dom.messages.appendChild(w);p.dom.messages.scrollTop=p.dom.messages.scrollHeight;return w.querySelector('.bubble')}
+function stopStream(pid){var p=panels.find(function(x){return x.id===pid});if(p){if(p.abortController){p.abortController.abort();p.abortController=null}if(p._reader){try{p._reader.cancel()}catch(_){}p._reader=null}}if(p&&p.currentAssistantMsg&&(!p.currentAssistantMsg.textContent||p.currentAssistantMsg.textContent.trim()==='')){p.currentAssistantMsg.innerHTML='<span style="color:var(--warn)">⏹ 已停止</span>'}}
+function retrySend(pid){var p=panels.find(function(x){return x.id===pid});if(!p)return;stopStream(pid);setStreaming(p,!1);var lastUser=p.currentConvo.messages.filter(function(m){return m.role==='user'}).pop();if(lastUser){p.dom.input.value=lastUser.content;setTimeout(function(){handleSend(pid)},300)}}
+function saveAllConvos(){
+  if(_saveTimer)clearTimeout(_saveTimer);
+  _saveTimer=setTimeout(function(){
+    _saveTimer=null;
+    panels.forEach(function(p){if(p.currentConvo.messages.length===0)return;if(!p.currentConvo.title||p.currentConvo.title==='新对话'){var f=p.currentConvo.messages.find(function(m){return m.role==='user'});if(f)p.currentConvo.title=f.content.slice(0,40)}var idx=conversations.findIndex(function(c){return c.id===p.currentConvo.id});if(idx>=0){conversations[idx]={id:p.currentConvo.id,title:p.currentConvo.title,messages:p.currentConvo.messages,sessionId:p.currentConvo.sessionId}}else{conversations.unshift({id:p.currentConvo.id,title:p.currentConvo.title,messages:p.currentConvo.messages,sessionId:p.currentConvo.sessionId})}});
+    try{localStorage.setItem('agency_convos',JSON.stringify(conversations))}catch(e){}
+    renderHistory();
+  },500);
+}
+function handleSend(pid){var p=panels.find(function(x){return x.id===pid});if(!p)return;if(p.isStreaming){stopStream(pid);return}if(orchMode){handleOrchSend(p);return}var task=p.dom.input.value.trim();if(!task)return;var isNew=!p.currentConvo.sessionId;if(isNew)p.currentConvo.sessionId='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16)});var forceAgent='',actualTask=task;var m=task.match(/^@(\S+)\s+/);if(m){forceAgent=m[1];actualTask=task.slice(m[0].length);p._lastAgent=forceAgent}else if(p._lastAgent){forceAgent=p._lastAgent}setStreaming(p,!0);p.dom.input.value='';p.dom.input.style.height='auto';p.dom.route.innerHTML='<span>…</span>';p.dom.agentName.textContent='…';if(p.dom.empty)p.dom.empty.style.display='none';addMsg(p,'user',task);p.currentConvo.messages.push({role:'user',content:task});p.currentAssistantMsg=addMsg(p,'assistant','<span class="cursor"></span>');p._receivedDone=!1;p.abortController=new AbortController();apiFetch('/api/route',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task:actualTask,force_agent:forceAgent,proj_dir:projDir||undefined,api_key:apiKey||undefined,api_provider:apiProvider||undefined}),signal:p.abortController.signal}).then(function(r){return r.json()}).then(function(route){if(route.error)throw new Error(route.error);p.dom.route.innerHTML='<span>🤖 '+route.agent+'</span><span>🧠 '+route.model+'</span>';p.dom.agentName.textContent=route.agent;var c=p.currentAssistantMsg.querySelector('.cursor');if(c)c.remove();return apiFetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task:actualTask,force_agent:forceAgent,model:route.model,proj_dir:projDir||undefined,session_id:p.currentConvo.sessionId,is_new_session:isNew,api_key:apiKey||undefined,api_provider:apiProvider||undefined}),signal:p.abortController.signal})}).then(function(resp){var reader=resp.body.getReader();p._reader=reader;var decoder=new TextDecoder(),buf='',txt='';function read(){reader.read().then(function(result){if(result.done){p._reader=null;if(!p._receivedDone&&p.isStreaming){p.currentAssistantMsg.innerHTML+='<div style="color:var(--warn);margin-top:4px;font-size:11px;cursor:pointer" onclick="retrySend('+pid+')">⚠ 连接中断 — 点击重试</div>'}finish();return}buf+=decoder.decode(result.value,{stream:!0});buf=buf.replace(/\r\n/g,'\n');var lines=buf.split('\n');buf=lines.pop()||'';for(var i=0;i<lines.length;i++){var line=lines[i];if(line.indexOf('event:')===0)continue;if(line.indexOf('data: ')!==0)continue;try{var d=JSON.parse(line.slice(6));if(d.content){txt+=d.content;p.currentAssistantMsg.innerHTML=renderMD(txt)+'<span class="cursor"></span>';p.dom.messages.scrollTop=p.dom.messages.scrollHeight}else if(d.elapsed){p._receivedDone=!0;p.dom.route.innerHTML+='<span>⏱ '+d.elapsed+'s</span><span>💰 $'+d.cost+'</span>'}else if(d.error){p.currentAssistantMsg.innerHTML='<span style="color:var(--danger)">❌ '+escHtml(d.error)+'</span>'}}catch(_){}}read()})}function finish(){var c=p.currentAssistantMsg.querySelector('.cursor');if(c)c.remove();p.currentConvo.messages.push({role:'assistant',content:txt});saveAllConvos();setStreaming(p,!1);p.dom.agentName.textContent='就绪';highlightCode(p.currentAssistantMsg);loadCostOverview()}read()}).catch(function(e){if(e.name==='AbortError'){var c=p.currentAssistantMsg.querySelector('.cursor');if(c)c.remove();p.currentAssistantMsg.innerHTML+=' <span style="color:var(--warn)">⏹ 已停止</span>';var partial=(p.currentAssistantMsg.textContent||'').replace('⏹ 已停止','').trim();if(partial){p.currentConvo.messages.push({role:'assistant',content:partial});saveAllConvos()}}else{if(p.currentAssistantMsg)p.currentAssistantMsg.innerHTML='<span style="color:var(--danger)">❌ '+escHtml(e.message)+'</span>'}setStreaming(p,!1);p._reader=null;p.dom.agentName.textContent='就绪'})}
+function handleOrchSend(p){var task=p.dom.input.value.trim();if(!task)return;setStreaming(p,!0);p.dom.input.value='';p.dom.input.style.height='auto';p.dom.route.innerHTML='<span>🧠 智能调度</span>';if(p.dom.empty)p.dom.empty.style.display='none';addMsg(p,'user',task);p.currentConvo.messages.push({role:'user',content:task});p.currentAssistantMsg=addMsg(p,'assistant','<span class="cursor"></span>');p.abortController=new AbortController();var planReceived=!1;fetch('/api/orchestrate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task:task,proj_dir:projDir||undefined,api_key:apiKey||undefined,api_provider:apiProvider||undefined}),signal:p.abortController.signal}).then(function(resp){var reader=resp.body.getReader();p._reader=reader;var decoder=new TextDecoder(),buf='',txt='',planData=null;function read(){reader.read().then(function(result){if(result.done){p._reader=null;finish();return}buf+=decoder.decode(result.value,{stream:!0});buf=buf.replace(/\r\n/g,'\n');var lines=buf.split('\n');buf=lines.pop()||'';for(var i=0;i<lines.length;i++){var line=lines[i],eventType='';if(line.indexOf('event: ')===0){eventType=line.slice(7);continue}if(line.indexOf('data: ')!==0)continue;try{var d=JSON.parse(line.slice(6));if(eventType==='plan'){planData=d;return}if(d.content){txt+=d.content;p.currentAssistantMsg.innerHTML=renderMD(txt)+'<span class="cursor"></span>';p.dom.messages.scrollTop=p.dom.messages.scrollHeight}else if(d.summary){txt+=d.summary}}catch(_){}}read()})}function finish(){var c=p.currentAssistantMsg.querySelector('.cursor');if(c)c.remove();p.currentConvo.messages.push({role:'assistant',content:txt||'调度完成'});saveAllConvos();setStreaming(p,!1);if(planData&&planData.phases){executePlan(planData)};loadCostOverview()}read()}).catch(function(e){if(e.name==='AbortError'){var c=p.currentAssistantMsg.querySelector('.cursor');if(c)c.remove();p.currentAssistantMsg.innerHTML+=' <span style="color:var(--warn)">⏹ 已停止</span>'}else{if(p.currentAssistantMsg)p.currentAssistantMsg.innerHTML='<span style="color:var(--danger)">❌ '+escHtml(e.message)+'</span>'}setStreaming(p,!1);p._reader=null})}
+function executePlan(plan){
+  if(!plan||!plan.phases)return;
+  showToast('调度计划: '+plan.title+' ('+plan.phases.length+'阶段)');
+  var allTasks=[];
+  plan.phases.forEach(function(phase){
+    (phase.tasks||[]).forEach(function(t){
+      allTasks.push({agent:t.agent,task:t.task,phase:phase.phase,parallel:phase.parallel});
+    });
+  });
+  if(allTasks.length===0)return;
+  if(perPage<4){perPage=4;curPage=0}
+  while(panels.length<Math.min(allTasks.length+1,8))addPanel();
+  refreshUI();
+  var phaseIdx=0;
+  function runNextPhase(){
+    if(phaseIdx>=plan.phases.length)return;
+    var phase=plan.phases[phaseIdx],tasks=phase.tasks||[];
+    showToast('阶段'+phase.phase+': '+phase.description);
+    if(phase.parallel){
+      tasks.forEach(function(t,i){
+        var panel=panels[i+1];if(!panel)return;
+        panel.dom.input.value='@'+t.agent+' '+t.task;
+        setTimeout(function(){handleSend(panel.id)},i*200);
+      });
+    }else{
+      var ti=0;
+      function runNext(){
+        if(ti>=tasks.length){phaseIdx++;setTimeout(runNextPhase,500);return}
+        var t=tasks[ti],panel=panels[ti+1];
+        if(panel){panel.dom.input.value='@'+t.agent+' '+t.task;handleSend(panel.id)}
+        ti++;setTimeout(runNext,15000);
+      }
+      runNext();
+      return;
+    }
+    phaseIdx++;setTimeout(runNextPhase,20000);
+  }
+  setTimeout(runNextPhase,1000);
+}
