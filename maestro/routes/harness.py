@@ -179,3 +179,28 @@ def handle_permissions_decision(handler, body):
     })
     handler.send_json({"ok": True})
     return True
+
+
+def handle_session_delete(handler, body):
+    """POST /api/session/delete"""
+    session_id = body.get("session_id", "")
+    if not session_id or len(session_id) < 8:
+        handler.send_json({"error": "session_id required"}, 400)
+        return True
+    import shutil
+    home = Path.home()
+    deleted = 0
+    projects_dir = home / ".claude" / "projects"
+    if projects_dir.exists():
+        for proj_dir in projects_dir.iterdir():
+            if not proj_dir.is_dir():
+                continue
+            for f in proj_dir.glob(f"*{session_id[:8]}*.jsonl"):
+                f.unlink()
+                deleted += 1
+            sd = proj_dir / "subagents" / session_id
+            if sd.exists():
+                shutil.rmtree(str(sd))
+                deleted += 1
+    handler.send_json({"ok": True, "deleted": deleted})
+    return True

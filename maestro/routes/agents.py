@@ -66,3 +66,19 @@ def handle_update(handler, body):
     except Exception as e:
         handler.send_json({"error": str(e)}, 500)
     return True
+
+
+def handle_delete(handler, body):
+    """POST /api/agent-delete — 删除 Agent"""
+    name = body.get("name", "")
+    if not re.match(r'^[a-zA-Z0-9_-]+$', name):
+        handler.send_json({"error": "invalid name"}, 400)
+        return True
+    deleted = 0
+    for base in [PROJECT_ROOT / "agents", PROJECT_ROOT / ".claude" / "agents", PROJECT_ROOT / ".claude-isolated" / "agents"]:
+        f = base / f"{name}.md"
+        if f.exists():
+            f.unlink()
+            deleted += 1
+    handler.send_json({"ok": True, "deleted": deleted})
+    return True

@@ -173,3 +173,24 @@ def handle_settings_patch(handler, body):
     settings_path.write_text(json.dumps(current, indent=2, ensure_ascii=False), encoding="utf-8")
     handler.send_json({"ok": True})
     return True
+
+
+def handle_skills_content(handler, parsed):
+    """GET /api/skills/content/:name — 查看 Skill 源码"""
+    path = parsed.path
+    name = path.replace("/api/skills/content/", "").strip("/")
+    if not name:
+        handler.send_json({"error": "name required"}, 400)
+        return True
+    search_dirs = [
+        Path(__file__).resolve().parent.parent.parent / ".claude" / "skills",
+        Path.home() / ".claude" / "skills",
+    ]
+    for base in search_dirs:
+        skmd = base / name / "SKILL.md"
+        if skmd.exists():
+            content = skmd.read_text(encoding="utf-8")
+            handler.send_json({"name": name, "content": content})
+            return True
+    handler.send_json({"error": "not found"}, 404)
+    return True

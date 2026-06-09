@@ -35,6 +35,7 @@ def handle_webhook(handler, body):
     handler.send_header("Connection", "close")
     handler.end_headers()
 
+    start_time = time.time()
     proc = None
     full_output = ""
     try:
@@ -69,7 +70,7 @@ def handle_webhook(handler, body):
         # 费用记录
         from maestro.models import estimate_cost
         from maestro.web_cost import record_cost
-        elapsed = time.time() - time.time()
+        elapsed = time.time() - start_time
         try:
             handler.wfile.write(f"event: done\ndata: {json.dumps({'elapsed': elapsed})}\n\n".encode())
             handler.wfile.flush()

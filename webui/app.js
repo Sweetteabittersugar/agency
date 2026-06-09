@@ -189,8 +189,8 @@ renderHistory();
 function loadConvo(id){var c=conversations.find(function(x){return x.id===Number(id)});if(!c)return;var p=getFocusedPanel();p.currentConvo={id:c.id,title:c.title,messages:c.messages.slice(),sessionId:c.sessionId||''};p.dom.messages.innerHTML='';p.dom.route.innerHTML='';c.messages.forEach(function(m){addMsg(p,m.role,m.content)});p.dom.messages.scrollTop=p.dom.messages.scrollHeight;setTimeout(function(){p.dom.messages.querySelectorAll('.bubble').forEach(highlightCode)},100)}
 function delConvo(id,e){e.stopPropagation();conversations=conversations.filter(function(c){return c.id!==Number(id)});localStorage.setItem('agency_convos',JSON.stringify(conversations));renderHistory()}
 function toggleDevOverlay(){devMode=!devMode;var ov=$('devOverlay'),btn=$('devBtn');ov.classList.toggle('on',devMode);btn.classList.toggle('on',devMode);if(devMode){var ak=$('api-key');if(ak&&apiKey)ak.value=apiKey;var ap=$('api-provider');if(ap&&apiProvider)ap.value=apiProvider;loadSkillsList();loadMemList();loadRemotePanel();loadIntegrationPanel()}}
-function loadSkillsList(){var el=$('skills-list');if(!el)return;fetch('/api/skills').then(function(r){return r.json()}).then(function(skills){el.innerHTML=skills.length?skills.map(function(s){return'<div style="padding:4px 0;font-size:11px"><span>'+escHtml(s.name)+'</span> <span style="color:var(--muted);font-size:10px">'+escHtml(s.description||'').slice(0,40)+'</span></div>'}).join(''):'暂无 Skills'}).catch(function(){el.innerHTML='加载失败'})}
-function loadMemList(){var el=$('mem-list');if(!el)return;fetch('/api/memory').then(function(r){return r.json()}).then(function(d){var files=d.files||[];el.innerHTML=files.length?files.map(function(f){return'<div class="mem-file" onclick="openMemEditor(\''+escHtml(f.path)+'\',\''+escHtml(f.name)+'\')"><span class="icon">📄</span><span>'+escHtml(f.name)+'</span><span style="color:var(--muted);font-size:10px;margin-left:auto">'+(f.size||0)+'B</span></div>'}).join(''):'暂无记忆文件'}).catch(function(){el.innerHTML='加载失败'})}
+function loadSkillsList(){var domEl=$('skills-list');if(!domEl)return;fetch('/api/skills').then(function(r){return r.json()}).then(function(skills){domEl.innerHTML=skills.length?skills.map(function(s){return'<div style="padding:4px 0;font-size:11px"><span>'+escHtml(s.name)+'</span> <span style="color:var(--muted);font-size:10px">'+escHtml(s.description||'').slice(0,40)+'</span></div>'}).join(''):'暂无 Skills'}).catch(function(){domEl.innerHTML='加载失败'})}
+function loadMemList(){var domEl=$('mem-list');if(!domEl)return;fetch('/api/memory').then(function(r){return r.json()}).then(function(d){var files=d.files||[];domEl.innerHTML=files.length?files.map(function(f){return'<div class="mem-file" onclick="openMemEditor(\''+escHtml(f.path)+'\',\''+escHtml(f.name)+'\')"><span class="icon">📄</span><span>'+escHtml(f.name)+'</span><span style="color:var(--muted);font-size:10px;margin-left:auto">'+(f.size||0)+'B</span></div>'}).join(''):'暂无记忆文件'}).catch(function(){domEl.innerHTML='加载失败'})}
 // generateAgent SSE 兼容 rn
 function generateAgent(){var input=$('agent-factory-input'),output=$('agent-factory-output');var req=input.value.trim();if(!req)return;output.innerHTML='生成中…';fetch('/api/agent-generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requirement:req,api_key:apiKey||undefined,api_provider:apiProvider||undefined})}).then(function(resp){var reader=resp.body.getReader(),decoder=new TextDecoder(),buf='',txt='';function read(){reader.read().then(function(result){if(result.done){finish();return}buf+=decoder.decode(result.value,{stream:!0});buf=buf.replace(/\r\n/g,'\n');var lines=buf.split('\n');buf=lines.pop()||'';for(var i=0;i<lines.length;i++){if(lines[i].indexOf('data: ')!==0)continue;try{var d=JSON.parse(lines[i].slice(6));if(d.content)txt+=d.content;if(d.error){output.innerHTML='<span style=color:var(--danger)>'+escHtml(d.error)+'</span>';return}}catch(_){}}read()})}function finish(){output.innerHTML='<pre style=\"font-size:10px;max-height:200px;overflow:auto;background:var(--bg);padding:8px;border-radius:4px\">'+escHtml(txt)+'</pre><button class=\"new-chat-btn\" style=\"margin-top:4px\" onclick=\"saveAgent()\">保存此 Agent</button>';output._agentContent=txt}read()}).catch(function(){output.innerHTML='生成失败'})}
 function saveAgent(){var txt=$('agent-factory-output')._agentContent;if(!txt)return;var m=txt.match(/name:\s*"?([a-z0-9-]+)"?/i);var name=m?m[1]:('agent-'+Date.now().toString(36));fetch('/api/agent-create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,content:txt})}).then(function(r){return r.json()}).then(function(d){if(d.ok){showToast('Agent 已保存: '+name);loadAgents()}else{showToast(d.error||'保存失败',!0)}}).catch(function(){showToast('保存失败',!0)})}
@@ -198,7 +198,7 @@ function toggleOrchMode(){orchMode=!orchMode;var btn=$('orchBtn');btn.classList.
 /* 全局快捷键已移除 — 避免与浏览器冲突 */
 // Thinking 块折叠：灰底左边框
 function renderMD(t){if(!t)return'';var h=t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');var p=0,o='';while(p<h.length){if(h.charAt(p)==='['){var e=h.indexOf(']',p);if(e!==-1&&h.charAt(e+1)==='('){var ue=h.indexOf(')',e+2);if(ue!==-1){var url=h.substring(e+2,ue);if(/^(https?:|mailto:|\/|#)/i.test(url))o+='<a href="'+url+'" target="_blank">'+h.substring(p+1,e)+'</a>';else o+=h.substring(p,ue+1);p=ue+1;continue}}}o+=h.charAt(p++)}h=o;h=h.replace(/\[Thinking\]([\s\S]*?)\[\/Thinking\]/gi,'<details class="think"><summary>💭 思考过程</summary><div class="think-body">$1</div></details>');h=h.replace(/```(\w*)\n([\s\S]*?)```/g,function(_,lang,code){return'<pre><code class="language-'+(lang||'plaintext')+'">'+code+'</code></pre>'});h=h.replace(/(\|.+\|\n?)+/gm,function(m){var r=m.trim().split('\n'),o='<table>';for(var i=0;i<r.length;i++){var c=r[i].split('|').filter(function(x){return!!x.trim()});var t=i?'td':'th';o+='<tr>'+c.map(function(x){return'<'+t+'>'+x.trim()+'</'+t+'>'}).join('')+'</tr>'}return o+'</table>'});h=h.replace(/`([^`]+)`/g,'<code>$1</code>');h=h.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');h=h.replace(/\*(.+?)\*/g,'<em>$1</em>');h=h.replace(/^### (.+)$/gm,'<h3>$1</h3>');h=h.replace(/^## (.+)$/gm,'<h2>$1</h2>');h=h.replace(/^# (.+)$/gm,'<h1>$1</h1>');h=h.replace(/^(\d+)\. (.+)$/gm,'<li style="margin-left:16px;list-style-type:decimal">$2</li>');h=h.replace(/^- (.+)$/gm,'<li style="margin-left:16px">$1</li>');h=h.replace(/\n/g,'<br>');return h}
-function highlightCode(el){if(!el)return;el.querySelectorAll('pre code').forEach(function(b){if(window.hljs)try{hljs.highlightElement(b)}catch(_){}})}
+function highlightCode(domEl){if(!domEl)return;domEl.querySelectorAll('pre code').forEach(function(b){if(window.hljs)try{hljs.highlightElement(b)}catch(_){}})}
 function escHtml(s){var d=document.createElement('div');d.textContent=s??'';return d.innerHTML}
 function showToast(m,err,level){var t=document.createElement('div');t.className='toast'+(err?' error':'')+(level==='warn'?' warn':'');t.textContent=m;document.body.appendChild(t);setTimeout(function(){t.style.opacity='0';t.style.transition='opacity .3s'},2500);setTimeout(function(){t.remove()},3000)}
 /* ── Harness: 仪表盘 ── */
@@ -226,33 +226,33 @@ var dragTarget=null,dragOX=0,dragOY=0;
 function onDrag(e){if(!dragTarget)return;dragTarget.style.left=(e.clientX-dragOX)+'px';dragTarget.style.top=(e.clientY-dragOY)+'px'}
 function offDrag(){dragTarget=null;document.removeEventListener('mousemove',onDrag);document.removeEventListener('mouseup',offDrag)}
 ['harnessOverlay','devOverlay'].forEach(function(id){
-  var el=document.getElementById(id);if(!el)return;
-  var tab=el.querySelector('.harness-overlay-tabs');if(!tab)return;
-  tab.addEventListener('mousedown',function(e){if(e.target.tagName==='BUTTON')return;dragTarget=el;dragOX=e.clientX-el.offsetLeft;dragOY=e.clientY-el.offsetTop;document.addEventListener('mousemove',onDrag);document.addEventListener('mouseup',offDrag);e.preventDefault()})
+  var domEl=document.getElementById(id);if(!domEl)return;
+  var tab=domEl.querySelector('.harness-overlay-tabs');if(!tab)return;
+  tab.addEventListener('mousedown',function(e){if(e.target.tagName==='BUTTON')return;dragTarget=domEl;dragOX=e.clientX-domEl.offsetLeft;dragOY=e.clientY-domEl.offsetTop;document.addEventListener('mousemove',onDrag);document.addEventListener('mouseup',offDrag);e.preventDefault()})
 });
 document.querySelectorAll('.harness-overlay-tab').forEach(function(t){t.addEventListener('click',function(){document.querySelectorAll('.harness-overlay-tab').forEach(function(x){x.classList.remove('active')});t.classList.add('active');_lastHarnessTab=t.dataset.htab;renderHarnessTab(t.dataset.htab)})});
 function renderHarnessTab(tab){
-  var el=$('harnessContent');if(!el)return;
+  var domEl=$('harnessContent');if(!domEl)return;
   if(tab==='overview'){
-    el.innerHTML='<div class="cost-kpis" style="margin-bottom:10px"><div class="cost-kpi"><span class="kpi-val" id="hov-cost-today">—</span><span class="kpi-label">今日费用</span></div><div class="cost-kpi"><span class="kpi-val" id="hov-cost-30d">—</span><span class="kpi-label">30天</span></div><div class="cost-kpi"><span class="kpi-val" id="hov-calls">—</span><span class="kpi-label">调用</span></div></div><div style="margin-bottom:8px"><span style="font-size:11px;color:var(--muted);font-weight:600">每日费用趋势</span><canvas id="cost-trend-canvas" width="440" height="100" style="width:100%;height:100px;display:block;background:var(--surface2);border-radius:6px;margin-top:4px"></canvas></div><div style="margin-bottom:8px"><span style="font-size:11px;color:var(--muted);font-weight:600">模型费用分布</span><div id="model-bars" style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;color:var(--muted);min-height:60px">—</div></div><div style="display:flex;gap:6px;margin-bottom:8px"><div class="cost-kpi" style="flex:1"><span class="kpi-val" id="hov-cache-saved" style="color:var(--warn)">$0</span><span class="kpi-label">缓存节省</span></div><div class="cost-kpi" style="flex:1"><span class="kpi-val" id="hov-cache-tokens" style="font-size:11px">0</span><span class="kpi-label">缓存Token</span></div></div><div id="cost-alerts" style="margin-bottom:6px;font-size:10px"></div><h4 style="font-size:11px;color:var(--muted);margin-bottom:6px">上下文窗口</h4><div class="ctx-gauge" style="height:14px;margin-bottom:4px"><div class="ctx-gauge-fill" id="hctx-fill" style="width:0%"></div></div><div style="font-size:11px;display:flex;justify-content:space-between"><span id="hctx-text">0 / 500K</span><span id="hctx-cache" style="color:var(--muted)">缓存: —</span></div><div id="hctx-detail" style="font-size:10px;color:var(--muted);margin-top:4px"></div>';
+    domEl.innerHTML='<div class="cost-kpis" style="margin-bottom:10px"><div class="cost-kpi"><span class="kpi-val" id="hov-cost-today">—</span><span class="kpi-label">今日费用</span></div><div class="cost-kpi"><span class="kpi-val" id="hov-cost-30d">—</span><span class="kpi-label">30天</span></div><div class="cost-kpi"><span class="kpi-val" id="hov-calls">—</span><span class="kpi-label">调用</span></div></div><div style="margin-bottom:8px"><span style="font-size:11px;color:var(--muted);font-weight:600">每日费用趋势</span><canvas id="cost-trend-canvas" width="440" height="100" style="width:100%;height:100px;display:block;background:var(--surface2);border-radius:6px;margin-top:4px"></canvas></div><div style="margin-bottom:8px"><span style="font-size:11px;color:var(--muted);font-weight:600">模型费用分布</span><div id="model-bars" style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;color:var(--muted);min-height:60px">—</div></div><div style="display:flex;gap:6px;margin-bottom:8px"><div class="cost-kpi" style="flex:1"><span class="kpi-val" id="hov-cache-saved" style="color:var(--warn)">$0</span><span class="kpi-label">缓存节省</span></div><div class="cost-kpi" style="flex:1"><span class="kpi-val" id="hov-cache-tokens" style="font-size:11px">0</span><span class="kpi-label">缓存Token</span></div></div><div id="cost-alerts" style="margin-bottom:6px;font-size:10px"></div><h4 style="font-size:11px;color:var(--muted);margin-bottom:6px">上下文窗口</h4><div class="ctx-gauge" style="height:14px;margin-bottom:4px"><div class="ctx-gauge-fill" id="hctx-fill" style="width:0%"></div></div><div style="font-size:11px;display:flex;justify-content:space-between"><span id="hctx-text">0 / 500K</span><span id="hctx-cache" style="color:var(--muted)">缓存: —</span></div><div id="hctx-detail" style="font-size:10px;color:var(--muted);margin-top:4px"></div>';
     loadContextDetail();loadCostOverview();
   }
-  else if(tab==='permission'){el.innerHTML='<h3 style="margin-bottom:8px">权限管线</h3><div id="hperm-log" style="font-size:11px">加载中…</div>';loadPermHistory()}
-  else if(tab==='subagents'){el.innerHTML='<h3 style="margin-bottom:8px">SubAgent 任务树</h3><div id="hsub-tree" style="font-size:11px;color:var(--muted)">加载中…</div>';loadSubagents()}
-  else if(tab==='hooks'){el.innerHTML='<h3 style="margin-bottom:8px">Hooks 生命周期</h3><div id="hhooks-log" style="font-size:11px;color:var(--muted)">从事件日志中加载…</div>';loadHooksLog()}
-  else if(tab==='mcp'){el.innerHTML='<h3 style="margin-bottom:8px">MCP 集成</h3><div id="hmcp-list" style="font-size:11px;color:var(--muted)">加载中…</div>';loadMCPDetail()}
+  else if(tab==='permission'){domEl.innerHTML='<h3 style="margin-bottom:8px">权限管线</h3><div id="hperm-log" style="font-size:11px">加载中…</div>';loadPermHistory()}
+  else if(tab==='subagents'){domEl.innerHTML='<h3 style="margin-bottom:8px">SubAgent 任务树</h3><div id="hsub-tree" style="font-size:11px;color:var(--muted)">加载中…</div>';loadSubagents()}
+  else if(tab==='hooks'){domEl.innerHTML='<h3 style="margin-bottom:8px">Hooks 生命周期</h3><div id="hhooks-log" style="font-size:11px;color:var(--muted)">从事件日志中加载…</div>';loadHooksLog()}
+  else if(tab==='mcp'){domEl.innerHTML='<h3 style="margin-bottom:8px">MCP 集成</h3><div id="hmcp-list" style="font-size:11px;color:var(--muted)">加载中…</div>';loadMCPDetail()}
 }
 function loadCostOverview(){
   fetch('/api/cost?days=30').then(function(r){return r.json()}).then(function(d){
     if(!d||!d.total)return;
     var t=d.total,td=d.today;
-    var el=function(id){return document.getElementById(id)};
-    if(el('hov-cost-today'))el('hov-cost-today').textContent='$'+(td.cost||0).toFixed(4);
-    if(el('hov-cost-30d'))el('hov-cost-30d').textContent='$'+(t.cost||0).toFixed(4);
-    if(el('hov-calls'))el('hov-calls').textContent=t.calls||0;
+    // 局部 domEl 函数已移除，直接使用全局 $
+    if($('hov-cost-today'))$('hov-cost-today').textContent='$'+(td.cost||0).toFixed(4);
+    if($('hov-cost-30d'))$('hov-cost-30d').textContent='$'+(t.cost||0).toFixed(4);
+    if($('hov-calls'))$('hov-calls').textContent=t.calls||0;
     var cache=d.cache||{};
-    if(el('hov-cache-saved'))el('hov-cache-saved').textContent='$'+(cache.saved||0).toFixed(4);
-    if(el('hov-cache-tokens'))el('hov-cache-tokens').textContent=((cache.read_tok||0)+(cache.write_tok||0)).toLocaleString();
+    if($('hov-cache-saved'))$('hov-cache-saved').textContent='$'+(cache.saved||0).toFixed(4);
+    if($('hov-cache-tokens'))$('hov-cache-tokens').textContent=((cache.read_tok||0)+(cache.write_tok||0)).toLocaleString();
     drawCostTrend(d.by_date||[]);
     drawModelBars(d.by_model||[]);
     renderCostAlerts(d.alerts||[]);
@@ -283,10 +283,10 @@ function drawCostTrend(byDate){
   });
 }
 function drawModelBars(models){
-  var el=document.getElementById('model-bars');if(!el)return;
-  if(!models.length){el.innerHTML='暂无数据';return}
+  var domEl=document.getElementById('model-bars');if(!domEl)return;
+  if(!models.length){domEl.innerHTML='暂无数据';return}
   var totalCost=0;models.forEach(function(m){totalCost+=m.cost||0});
-  el.innerHTML=models.map(function(m,i){
+  domEl.innerHTML=models.map(function(m,i){
     var pct=totalCost>0?((m.cost||0)/totalCost*100):0;
     var colors=['#22d3a0','#60a5fa','#fbbf20','#f87171','#a78bfa','#34d399'];
     return'<div style="display:flex;align-items:center;margin:3px 0;gap:6px">'+
@@ -299,9 +299,9 @@ function drawModelBars(models){
   }).join('');
 }
 function renderCostAlerts(alerts){
-  var el=document.getElementById('cost-alerts');if(!el)return;
-  if(!alerts||!alerts.length){el.innerHTML='';return}
-  el.innerHTML=alerts.slice(0,5).map(function(a){
+  var domEl=document.getElementById('cost-alerts');if(!domEl)return;
+  if(!alerts||!alerts.length){domEl.innerHTML='';return}
+  domEl.innerHTML=alerts.slice(0,5).map(function(a){
     var bg=a.level==='danger'?'rgba(248,113,113,.15)':'rgba(251,191,32,.12)';
     var border=a.level==='danger'?'#f87171':'#fbbf20';
     return'<div style="padding:4px 8px;margin:2px 0;background:'+bg+';border-left:2px solid '+border+';border-radius:3px;font-size:10px">'+
@@ -327,9 +327,9 @@ function addAllowRule(data){
 }
 function loadPermHistory(){
   fetch('/api/permissions/history?limit=100').then(function(r){return r.json()}).then(function(d){
-    var el=$('hperm-log');if(!el)return;
-    if(d.history&&d.history.length){el.innerHTML=d.history.map(function(e){return'<div class="perm-item '+e.decision+'"><span class="pdec">'+(e.decision==='allow'?'✓':e.decision==='deny'?'✗':'⚠')+'</span> '+escHtml(e.tool||'?')+' <span style="color:var(--muted);font-size:9px">'+e.time+(e.reason?' · '+escHtml(e.reason):'')+'</span></div>'}).join('')}else{el.innerHTML='暂无权限记录'}
-  }).catch(function(){var el=$('hperm-log');if(el)el.innerHTML='加载失败'});
+    var domEl=$('hperm-log');if(!domEl)return;
+    if(d.history&&d.history.length){domEl.innerHTML=d.history.map(function(e){return'<div class="perm-item '+e.decision+'"><span class="pdec">'+(e.decision==='allow'?'✓':e.decision==='deny'?'✗':'⚠')+'</span> '+escHtml(e.tool||'?')+' <span style="color:var(--muted);font-size:9px">'+e.time+(e.reason?' · '+escHtml(e.reason):'')+'</span></div>'}).join('')}else{domEl.innerHTML='暂无权限记录'}
+  }).catch(function(){var domEl=$('hperm-log');if(domEl)domEl.innerHTML='加载失败'});
 }
 /* ── 上下文工程（每会话独立进度条）── */
 var _ctxTimer=null;
@@ -355,7 +355,7 @@ function loadContextDetail(){
       html+='输入 '+(d.input_tokens||0).toLocaleString()+' · 输出 '+(d.output_tokens||0).toLocaleString()+' · 费用 $'+(d.cost_est?d.cost_est.total.toFixed(6):'0')+(d.last_update?' · '+d.last_update:'');
       detail.innerHTML=html;
     }
-  }).catch(function(){var el=$('hctx-detail');if(el)el.innerHTML='加载失败'});
+  }).catch(function(){var domEl=$('hctx-detail');if(domEl)domEl.innerHTML='加载失败'});
   if(_ctxTimer)clearInterval(_ctxTimer);
   _ctxTimer=setInterval(function(){if($('harnessOverlay').classList.contains('on'))loadContextDetail()},10000);
 }
@@ -363,34 +363,34 @@ function loadContextDetail(){
 var _subTimer=null;
 function loadSubagents(){
   fetch('/api/harness/subagents').then(function(r){return r.json()}).then(function(d){
-    var el=$('hsub-tree');if(!el)return;
+    var domEl=$('hsub-tree');if(!domEl)return;
     if(d.tree&&d.tree.length){var html='<div style="margin-bottom:6px;color:var(--text2);font-size:11px">'+d.stats.total+' 个 · '+d.stats.done+' 完成 '+(d.stats.running||0)+' 运行中 '+(d.stats.failed||0)+' 失败</div>';
     d.tree.forEach(function(a,i){
       var icon=a.hasOutput?'✅':(a.status==='running'?'🔄':'⬤');
       var color=a.hasOutput?'var(--accent)':(a.status==='running'?'var(--warn)':'var(--muted)');
       html+='<details style="margin:2px 0;background:var(--surface2);border-radius:4px;font-size:11px"><summary style="padding:4px 8px;cursor:pointer"><span style="color:'+color+'">'+icon+'</span> '+escHtml(a.name)+' <span style="color:var(--muted);font-size:10px">'+escHtml(a.type||'')+'</span></summary><div style="padding:4px 12px 8px;font-size:10px;color:var(--text2)">'+escHtml(a.description||'无描述')+'<br>项目: '+escHtml(a.project||'')+'</div></details>';
     });
-    el.innerHTML=html}else{el.innerHTML='<span style="color:var(--muted)">暂无 SubAgent 记录</span>'}
+    domEl.innerHTML=html}else{domEl.innerHTML='<span style="color:var(--muted)">暂无 SubAgent 记录</span>'}
     if(_subTimer)clearInterval(_subTimer);
     _subTimer=setInterval(function(){if($('harnessOverlay').classList.contains('on'))loadSubagents()},5000);
-  }).catch(function(){var el=$('hsub-tree');if(el)el.innerHTML='加载失败'});
+  }).catch(function(){var domEl=$('hsub-tree');if(domEl)domEl.innerHTML='加载失败'});
 }
 /* ── Hooks 日志 ── */
 function loadHooksLog(){
   var hlogs=window._hlogs||[];
   fetch('/api/harness/events?limit=50').then(function(r){return r.json()}).then(function(d){
-    var events=d.events||[],el=$('hhooks-log');if(!el)return;
-    if(events.length){el.innerHTML=events.map(function(e){return'<div style="padding:3px 6px;margin:1px 0;font-size:10px;border-left:2px solid var(--accent);background:var(--surface2)"><strong>'+escHtml(e.type)+'</strong> <span style="color:var(--muted)">'+new Date(e.ts*1000).toLocaleTimeString()+'</span></div>'}).join('')}else{el.innerHTML='暂无 Hook 事件'}
-  }).catch(function(){var el=$('hhooks-log');if(el)el.innerHTML='加载失败'});
+    var events=d.events||[],domEl=$('hhooks-log');if(!domEl)return;
+    if(events.length){domEl.innerHTML=events.map(function(e){return'<div style="padding:3px 6px;margin:1px 0;font-size:10px;border-left:2px solid var(--accent);background:var(--surface2)"><strong>'+escHtml(e.type)+'</strong> <span style="color:var(--muted)">'+new Date(e.ts*1000).toLocaleTimeString()+'</span></div>'}).join('')}else{domEl.innerHTML='暂无 Hook 事件'}
+  }).catch(function(){var domEl=$('hhooks-log');if(domEl)domEl.innerHTML='加载失败'});
 }
 /* ── MCP 详情 ── */
 function loadMCPDetail(){
   fetch('/api/mcp/status').then(function(r){return r.json()}).then(function(d){
-    var el=$('hmcp-list'),sel=$('mcp-status');if(!el)return;
+    var domEl=$('hmcp-list'),sel=$('mcp-status');if(!domEl)return;
     var servers=d.servers||[];
     var html=servers.length?servers.map(function(s){return'<div style="padding:8px 10px;margin:4px 0;background:var(--surface2);border-radius:var(--radius-sm)"><div style="font-weight:600;font-size:12px">'+escHtml(s.name)+' <span style="font-size:9px;color:'+(s.running?'var(--accent)':'var(--muted)')+'">● '+(s.running?'活跃':'离线')+'</span></div><div style="font-size:10px;color:var(--muted)">'+escHtml(s.command||'')+(s.args||[]).join(' ')+'</div></div>'}).join(''):'暂无 MCP 服务器';
-    el.innerHTML=html;if(sel)sel.innerHTML=html;
-  }).catch(function(){var el=$('hmcp-list');if(el)el.innerHTML='加载失败'});
+    domEl.innerHTML=html;if(sel)sel.innerHTML=html;
+  }).catch(function(){var domEl=$('hmcp-list');if(domEl)domEl.innerHTML='加载失败'});
 }
 function openMemEditor(path,name){
   var fname=name.split('\\').pop().split('/').pop();
@@ -428,7 +428,7 @@ function saveAgentPrompt(){var content=$('apm-textarea').value;if(!currentPrompt
 document.querySelector('.sidebar-tab[data-tab=\"project\"]')&&document.querySelector('.sidebar-tab[data-tab=\"project\"]').addEventListener('click',function(){loadFileTree(projDir)});
 /* ── 集成面板 ── */
 function loadIntegrationPanel(){
-  var el=$('integration-panel');if(!el)return;
+  var domEl=$('integration-panel');if(!domEl)return;
   fetch('/api/remote/status').then(function(r){return r.json()}).then(function(d){
     var baseUrl=d.url||('http://'+d.ip+':'+d.port),hookUrl=baseUrl+'/api/webhook/generic';
     var html='<div style=\"margin-bottom:12px\">';
@@ -444,17 +444,17 @@ function loadIntegrationPanel(){
     html+='</details>';
     html+='<p style=\"font-size:10px;color:var(--muted);margin-top:8px\">飞书/微信接入请在各平台配置此 Webhook 地址</p>';
     html+='</div>';
-    el.innerHTML=html;
+    domEl.innerHTML=html;
     var btn=document.getElementById('hook-copy-btn');
     if(btn)btn.onclick=function(){copyText(hookUrl)};
-  }).catch(function(){el.innerHTML='加载失败'});
+  }).catch(function(){domEl.innerHTML='加载失败'});
 }
 function copyText(text){
   var ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showToast('已复制');
 }
 /* ── 远端访问面板 ── */
 function loadRemotePanel(){
-  var el=$('remote-panel');if(!el){console.debug('remote-panel not found');return}
+  var domEl=$('remote-panel');if(!domEl){console.debug('remote-panel not found');return}
   fetch('/api/remote/status').then(function(r){
     if(!r.ok)throw new Error('HTTP '+r.status);
     return r.json();
@@ -471,8 +471,8 @@ function loadRemotePanel(){
     } else {
       html+='<div style=\"background:var(--surface2);border-radius:6px;padding:8px 10px;margin-bottom:8px\"><div style=\"display:flex;justify-content:space-between;align-items:center\"><span style=\"color:var(--muted)\">未启用</span><button class=\"btn\" onclick=\"toggleRemote(true)\" style=\"font-size:10px;background:var(--accent);color:#000;border-color:var(--accent)\">开启</button></div><div style=\"font-size:10px;color:var(--muted);margin-top:4px\">开启后可从手机/其他设备访问</div></div>';
     }
-    el.innerHTML=html;
-  }).catch(function(e){console.error('loadRemotePanel:',e);el.innerHTML='加载失败: '+escHtml(e.message)});
+    domEl.innerHTML=html;
+  }).catch(function(e){console.error('loadRemotePanel:',e);domEl.innerHTML='加载失败: '+escHtml(e.message)});
 }
 function toggleRemote(on){
   fetch('/api/remote/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:on})}).then(function(r){return r.json()}).then(function(d){
@@ -497,20 +497,20 @@ function genRemoteToken(){
   }).catch(function(e){showToast('生成失败: '+e.message,!0)});
 }
 function copyRemoteUrl(){
-  var el=$('remote-url');if(!el)return;
-  el.select();document.execCommand('copy');showToast('已复制连接地址');
+  var domEl=$('remote-url');if(!domEl)return;
+  domEl.select();document.execCommand('copy');showToast('已复制连接地址');
 }
 /* ── 侧边栏 Skills ── */
 function loadSidebarSkills(){
-  var el=$('sidebar-skills-list');if(!el)return;
-  el.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px">加载中…</div>';
+  var domEl=$('sidebar-skills-list');if(!domEl)return;
+  domEl.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px">加载中…</div>';
   fetch('/api/skills').then(function(r){return r.json()}).then(function(skills){
     renderSidebarSkills(skills||[]);
-  }).catch(function(){el.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px">加载失败</div>'});
+  }).catch(function(){domEl.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px">加载失败</div>'});
 }
 function renderSidebarSkills(skills){
-  var el=$('sidebar-skills-list');if(!el)return;
-  el.innerHTML=skills.length?skills.map(function(s){
+  var domEl=$('sidebar-skills-list');if(!domEl)return;
+  domEl.innerHTML=skills.length?skills.map(function(s){
     return'<div style="padding:8px 10px;margin-bottom:4px;background:var(--surface2);border-radius:var(--radius-sm);font-size:12px;transition:background .15s;cursor:default">'+
       '<div style="font-weight:600;color:var(--text)">'+escHtml(s.name)+'</div>'+
       '<div style="font-size:10px;color:var(--muted);margin-top:2px">'+escHtml((s.description||'').slice(0,80))+'</div>'+
@@ -525,15 +525,15 @@ function toggleHelpOverlay(){
   if(ov.classList.contains('on')){switchHelpTab('quickstart')}
 }
 function switchHelpTab(tab){
-  var el=$('helpContent');if(!el)return;
+  var domEl=$('helpContent');if(!domEl)return;
   document.querySelectorAll('.help-tab').forEach(function(t){t.classList.toggle('active',t.textContent.includes(tab))});
   var tabs={
-    quickstart:'<h3>快速入门</h3><p style="font-size:11px;color:var(--text2)">1. 在左侧 Agent 面板选择或搜索 Agent<br>2. 输入框中输入任务，可 @agent名 指定<br>3. 点击发送或按 Enter 开始对话<br>4. 使用 ⊞ 切换布局（1/2/4窗）</p>',
-    features:'<h3>功能介绍</h3><p style="font-size:11px;color:var(--text2)">🧠 智能路由：自动选择最合适的 Agent<br>📊 仪表盘：费用、上下文、SubAgent 状态<br>🔧 设置：API Key、Agent 工厂、远端访问<br>📝 记忆：编辑持久化记忆文件<br>🔌 集成：Webhook 外部调用接口</p>',
-    faq:'<h3>常见问题</h3><p style="font-size:11px;color:var(--text2)"><b>Q: 如何切换模型？</b><br>A: 在设置面板中选择 Provider<br><b>Q: 如何添加 Agent？</b><br>A: 使用 Agent 工厂生成，或手动创建<br><b>Q: 支持哪些 AI 服务商？</b><br>A: DeepSeek/Anthropic/OpenAI/Google/xAI/SiliconFlow/Qwen/Kimi/GLM/MiniMax</p>',
-    shortcuts:'<h3>快捷键</h3><p style="font-size:11px;color:var(--text2)">Enter: 发送消息<br>Shift+Enter: 换行<br>Ctrl+点击 Agent: 新窗口打开<br>📊: 仪表盘<br>🔧: 设置<br>🧠: 智能调度<br>⊞: 切换布局<br>＋: 新建面板</p>'
+    quickstart:'<h3>快速入门</h3><p style="font-size:11px;color:var(--text2)">1. 输入 API Key 完成配置<br>2. 在底部输入框输入任务<br>3. 按 Enter 发送<br>4. 使用 @agent名 指定 Agent</p>',
+    features:'<h3>功能介绍</h3><p style="font-size:11px;color:var(--text2)">多面板聊天 · Agent 调度 · 仪表盘监控 · Skill 管理 · 远端访问</p>',
+    faq:'<h3>常见问题</h3><p style="font-size:11px;color:var(--text2)"><b>Q: Agent 没有回复？</b><br>A: 检查 API Key 是否正确<br><b>Q: 对话历史存在哪？</b><br>A: 浏览器 localStorage，不会丢失<br><b>Q: 如何添加 Agent？</b><br>A: 设置面板 → Agent 工厂</p>',
+    shortcuts:'<h3>快捷键</h3><p style="font-size:11px;color:var(--text2)">Enter = 发送<br>Shift+Enter = 换行</p>'
   };
-  el.innerHTML=tabs[tab]||'';
+  domEl.innerHTML=tabs[tab]||'';
 }
 /* ── 远端登录 ── */
 function showRemoteLogin(){

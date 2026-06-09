@@ -3,7 +3,7 @@
 Agency — Claude Code Web 前端
   python maestro/web.py   →   http://localhost:8800
 """
-import os, sys, json, time, threading, subprocess, logging
+import os, sys, json, time, threading, subprocess, logging, logging.handlers
 from pathlib import Path
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingMixIn
@@ -30,7 +30,7 @@ logging.basicConfig(
     format='%(asctime)s [%(thread)d] %(levelname)s %(message)s',
     datefmt='%H:%M:%S',
     handlers=[
-        logging.FileHandler(str(PROJECT_ROOT / 'maestro' / 'agency.log'), encoding='utf-8'),
+        logging.handlers.RotatingFileHandler(str(PROJECT_ROOT / 'maestro' / 'agency.log'), maxBytes=10*1024*1024, backupCount=5, encoding='utf-8'),
         logging.StreamHandler(sys.stderr),
     ]
 )

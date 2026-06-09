@@ -63,6 +63,24 @@ PROVIDER_PRESETS = {
         "light": "qwen2.5:7b",
         "base_url": "http://localhost:11434/v1",
     },
+    "google": {
+        "heavy": "gemini-2.5-pro",
+        "standard": "gemini-2.5-pro",
+        "light": "gemini-2.5-flash",
+        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+    },
+    "xai": {
+        "heavy": "grok-3",
+        "standard": "grok-3",
+        "light": "grok-3-mini",
+        "base_url": "https://api.x.ai/v1",
+    },
+    "minimax": {
+        "heavy": "abab7-chat",
+        "standard": "abab7-chat",
+        "light": "abab6.5s-chat",
+        "base_url": "https://api.minimax.chat/v1",
+    },
 }
 
 
@@ -87,6 +105,9 @@ def get_provider_config():
         "zhipu": "ZHIPU_API_KEY",
         "moonshot": "MOONSHOT_API_KEY",
         "ollama": None,
+        "google": "GOOGLE_API_KEY",
+        "xai": "XAI_API_KEY",
+        "minimax": "MINIMAX_API_KEY",
     }
 
     api_key = ""
