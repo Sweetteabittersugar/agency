@@ -20,6 +20,7 @@ def register_all(Handler):
         ("/api/harness/context", harness.handle_context),
         ("/api/harness/subagents", harness.handle_subagents),
         ("/api/harness/events", harness.handle_events),
+        ("/api/hooks/config", harness.handle_hooks_config),
         ("/api/skills", config.handle_skills),
         ("/api/memory", memory.handle_list),
         ("/api/memory/", memory.handle_get),

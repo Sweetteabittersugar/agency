@@ -181,6 +181,17 @@ def handle_permissions_decision(handler, body):
     return True
 
 
+def handle_hooks_config(handler, parsed):
+    """GET /api/hooks/config — 已配置的 Hook 脚本列表"""
+    hooks_dir = PROJECT_ROOT / ".claude" / "hooks"
+    scripts = []
+    if hooks_dir.exists():
+        for f in sorted(hooks_dir.glob("*.sh")):
+            scripts.append({"name": f.name, "size": f.stat().st_size})
+    handler.send_json({"scripts": scripts, "events": []})
+    return True
+
+
 def handle_session_delete(handler, body):
     """POST /api/session/delete"""
     session_id = body.get("session_id", "")
