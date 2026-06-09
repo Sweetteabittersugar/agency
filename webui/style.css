@@ -33,6 +33,10 @@ body{font:14px/1.55 "DM Sans","Segoe UI",system-ui,sans-serif;background:var(--b
 .agent-search:focus{border-color:var(--accent)}
 .agent-list{flex:1;overflow-y:auto}
 
+/* ── Skill 卡片 ── */
+.skill-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:11px;cursor:pointer;transition:border-color .15s}
+.skill-card:hover{border-color:var(--accent)}
+
 /* ── 历史 ── */
 .history-item{padding:8px 10px;border-radius:6px;cursor:pointer;font-size:11px;margin-bottom:2px;transition:all .15s;position:relative}
 .history-item:hover{background:rgba(255,255,255,.04)}
@@ -53,6 +57,7 @@ body{font:14px/1.55 "DM Sans","Segoe UI",system-ui,sans-serif;background:var(--b
 .btn:hover{border-color:var(--accent);color:var(--text);background:var(--surface3)}
 .btn.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.trust-mode-btn.active,.profile-quick-btn.active{border-color:var(--accent);background:color-mix(in srgb, var(--accent) 15%, var(--surface2))}
 .btn.primary:hover{background:var(--accent2)}
 .btn.danger{color:var(--danger)}
 .btn.danger:hover{border-color:var(--danger);background:rgba(239,68,68,.1)}

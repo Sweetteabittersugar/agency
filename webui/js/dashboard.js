@@ -1,7 +1,7 @@
 /* Agency — 仪表盘5标签页 + 成本 */
 var harnessActive=!1,_lastHarnessTab='overview',_ctxTimer=null,_subTimer=null;
 function toggleDashboard(){
-  if(!isFeatureUnlocked('dashboard')){
+  if(!(typeof _demoMode!=='undefined'&&_demoMode) && !isFeatureUnlocked('dashboard')){
     showToast(t('featureLocked').replace('{day}', FEATURE_UNLOCK_DAYS['dashboard']||1), false, 'warn');
     return;
   }
@@ -25,9 +25,9 @@ function toggleDashboard(){
 document.querySelectorAll('.harness-overlay-tab').forEach(function(t){t.addEventListener('click',function(){document.querySelectorAll('.harness-overlay-tab').forEach(function(x){x.classList.remove('active')});t.classList.add('active');_lastHarnessTab=t.dataset.htab;renderHarnessTab(t.dataset.htab)})});
 function renderHarnessTab(tab){
   var domEl=$('harnessContent');if(!domEl)return;
-  // 功能门控：某些仪表盘标签页需要更高解锁等级
+  // 功能门控：某些仪表盘标签页需要更高解锁等级 (Demo 模式下跳过)
   var gatedTabs = {subagents:'routing',hooks:'routing'};
-  if(gatedTabs[tab] && !isFeatureUnlocked(gatedTabs[tab])){
+  if(!(typeof _demoMode!=='undefined'&&_demoMode) && gatedTabs[tab] && !isFeatureUnlocked(gatedTabs[tab])){
     domEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:24px;margin-bottom:8px">🔒</div><p>'+t('featureLocked').replace('{day}', FEATURE_UNLOCK_DAYS[gatedTabs[tab]]||3)+'</p></div>';
     return;
   }
@@ -36,7 +36,7 @@ function renderHarnessTab(tab){
     domEl.innerHTML='<div class="cost-kpis" style="margin-bottom:10px"><div class="cost-kpi"><span class="kpi-val" id="hov-cost-today">—</span><span class="kpi-label">今日费用</span></div><div class="cost-kpi"><span class="kpi-val" id="hov-cost-30d">—</span><span class="kpi-label">30天</span></div><div class="cost-kpi"><span class="kpi-val" id="hov-calls">—</span><span class="kpi-label">调用</span></div></div><div style="margin-bottom:8px"><span style="font-size:11px;color:var(--muted);font-weight:600">每日费用趋势</span><canvas id="cost-trend-canvas" width="440" height="100" style="width:100%;height:100px;display:block;background:var(--surface2);border-radius:6px;margin-top:4px"></canvas></div><div style="margin-bottom:8px"><span style="font-size:11px;color:var(--muted);font-weight:600">模型费用分布</span><div id="model-bars" style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;color:var(--muted);min-height:60px">—</div></div><div style="margin-bottom:8px;padding:8px 10px;background:var(--surface2);border-radius:6px" id="opus-panel"><span style="font-size:11px;color:var(--muted);font-weight:600">Opus 调用占比 <span data-tooltip="tooltipOpus" style="cursor:help">?</span></span><div id="opus-ratio" style="margin-top:4px;font-size:10px;color:var(--muted)">加载中…</div></div><div style="display:flex;gap:6px;margin-bottom:8px"><div class="cost-kpi" style="flex:1"><span class="kpi-val" id="hov-cache-saved" style="color:var(--warn)">$0</span><span class="kpi-label">缓存节省</span></div><div class="cost-kpi" style="flex:1"><span class="kpi-val" id="hov-cache-tokens" style="font-size:11px">0</span><span class="kpi-label">缓存Token</span></div></div><div id="cost-alerts" style="margin-bottom:6px;font-size:10px"></div><h4 style="font-size:11px;color:var(--muted);margin-bottom:6px">上下文窗口</h4><div class="ctx-gauge" style="height:14px;margin-bottom:4px"><div class="ctx-gauge-fill" id="hctx-fill" style="width:0%"></div></div><div style="font-size:11px;display:flex;justify-content:space-between"><span id="hctx-text">0 / 500K</span><span id="hctx-cache" style="color:var(--muted)">缓存: —</span></div><div id="hctx-detail" style="font-size:10px;color:var(--muted);margin-top:4px"></div>';
     loadContextDetail();loadCostOverview();
   }
-  else if(tab==='permission'){domEl.innerHTML='<h3 style="margin-bottom:8px">权限管线</h3><div id="hperm-log" style="font-size:11px">加载中…</div><h4 style="margin-top:12px;margin-bottom:6px;font-size:11px;color:var(--muted)">审计日志</h4><div id="perm-audit-list" style="font-size:11px">加载中…</div>';loadPermHistory();loadPermissionAudit()}
+  else if(tab==='permission'){domEl.innerHTML='<h3 style="margin-bottom:8px">权限管线</h3><div id="hperm-log" style="font-size:11px">加载中…</div><h4 style="margin-top:12px;margin-bottom:6px;font-size:11px;color:var(--muted)">审计日志</h4><div id="perm-audit-list" style="font-size:11px">加载中…</div>';loadPermHistory();loadDashboardPermissionAudit()}
   else if(tab==='subagents'){domEl.innerHTML='<h3 style="margin-bottom:8px">SubAgent 任务树</h3><div id="hsub-tree" style="font-size:11px;color:var(--muted)">加载中…</div>';loadSubagents()}
   else if(tab==='hooks'){domEl.innerHTML='<h3 style="margin-bottom:8px">Hooks 生命周期</h3><div id="hhooks-log" style="font-size:11px;color:var(--muted)">从事件日志中加载…</div>';loadHooksLog()}
   else if(tab==='mcp'){domEl.innerHTML='<h3 style="margin-bottom:8px">MCP 集成</h3><div id="hmcp-list" style="font-size:11px;color:var(--muted)">加载中…</div>';loadMCPDetail()}
@@ -211,7 +211,7 @@ function loadMCPDetail(){
     domEl.innerHTML=html;if(sel)sel.innerHTML=html;
   }).catch(function(){var domEl=$('hmcp-list');if(domEl)domEl.innerHTML='无法加载 MCP 状态。服务可能未启动，请刷新页面重试'});
 }
-function loadPermissionAudit(){
+function loadDashboardPermissionAudit(){
   fetch('/api/permissions/audit?limit=50').then(function(r){return r.json()}).then(function(d){
     var domEl=document.getElementById('perm-audit-list');if(!domEl)return;
     var logs=d.logs||[],stats=d.stats||{};

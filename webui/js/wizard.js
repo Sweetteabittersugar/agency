@@ -35,7 +35,8 @@ function showSetupStep(step){
       '<p style="font-size:10px;color:var(--muted);text-align:center;margin-bottom:8px">🔒 所有数据仅存本地，永不离开你的设备</p>';
     footer.innerHTML=
       '<button class="btn primary" onclick="enterDemoMode()" style="width:auto;font-size:12px;padding:8px 24px">🚀 跳过，直接体验 Demo</button>'+
-      '<button class="btn" onclick="showSetupStep(1)" style="width:auto;font-size:12px;padding:8px 24px">⚙️ 开始配置</button>';
+      '<button class="btn" onclick="showSetupStep(1)" style="width:auto;font-size:12px;padding:8px 24px">⚙️ 开始配置</button>'+
+      '<button class="btn" onclick="unlockAllFromWizard()" style="font-size:10px;color:var(--muted);margin-top:6px;width:100%;text-align:center;background:transparent;border:1px dashed var(--border2);padding:5px 0">🔓 '+t('wizardUnlockAll')+'</button>';
     ov.classList.add('on');
     return;
   }
@@ -324,6 +325,7 @@ function setupFinish(){
         if(remoteToken){authToken=remoteToken;localStorage.setItem('agency_auth_token',remoteToken)}
         _demoMode=false;
         showToast('配置完成！发送一条消息试试吧 🚀');
+        setTimeout(function(){ showToast(t('wizardConfigDone'), false, null, 8000); }, 1500);
       },600);
     } else {
       $('setupOverlay').classList.remove('on');
@@ -335,6 +337,13 @@ function setupFinish(){
     showToast('保存失败，进入 Demo 模式',false);
     _demoMode=true;
   });
+}
+
+/* ── 老用户一键解锁 ── */
+function unlockAllFromWizard(){
+  localStorage.setItem('agency_unlock_all','true');
+  $('setupOverlay').classList.remove('on');
+  location.reload();
 }
 
 /* ── Demo 模式 ── */
@@ -351,5 +360,7 @@ function enterDemoMode(){
   // 聊天区显示 Demo 欢迎消息
   if(typeof renderDemoWelcome==='function')renderDemoWelcome();
 
-  // 仪表盘提示（用户点开时由 dashboard.js 检测 _demoMode）
+  // Demo 模式显示仪表盘按钮（绕过门控）
+  var dbBtn = document.getElementById('dashboardBtn');
+  if(dbBtn) dbBtn.style.display = '';
 }

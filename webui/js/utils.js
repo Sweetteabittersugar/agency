@@ -226,6 +226,10 @@ var L={
   mobileDashboard:{zh:'📊 仪表盘',en:'📊 Dashboard'},
   mobileSettings:{zh:'⚙️ 设置',en:'⚙️ Settings'},
   mobileAgents:{zh:'👤 Agent',en:'👤 Agents'},
+  // 引导解锁
+  wizardUnlockAll:{zh:'我是老用户，解锁全部功能',en:"I'm a returning user, unlock all features"},
+  wizardConfigDone:{zh:'🎉 配置完成！功能会随使用天数逐步解锁。在设置→功能解锁可提前开启全部。',en:'🎉 Setup complete! Features unlock gradually. Settings → Feature Unlock to enable all early.'},
+  featureUnlockHint:{zh:'💡 功能随使用天数逐步解锁。需要提前使用全部功能？→ 开启上方"解锁全部功能"开关',en:'💡 Features unlock gradually as you use Agency. Want everything now? → Turn on "Unlock All Features" above'},
 };
 function t(key){var entry=L[key];return entry?(_lang==='zh'?entry.zh:entry.en):key}
 

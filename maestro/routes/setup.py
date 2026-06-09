@@ -5,12 +5,11 @@ from pathlib import Path
 
 
 def _find_key():
-    """从 .env 文件和环境变量中查找 API Key"""
-    # 先查环境变量
-    for k in ("ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_API_KEY", "DEEPSEEK_API_KEY"):
-        if os.environ.get(k):
-            return True
-    # 再查 .env 文件（即使还没加载到环境变量）
+    """
+    查找 API Key。
+    优先 .env（用户显式配置），.env 无 Key 时视为需重新配置；
+    .env 不存在时回退到环境变量（Docker/CI 场景）。
+    """
     env_file = Path(__file__).resolve().parent.parent.parent / ".env"
     if env_file.exists():
         for line in env_file.read_text(encoding="utf-8").split("\n"):
@@ -19,6 +18,11 @@ def _find_key():
                 val = line.split("=", 1)[1].strip().strip('"').strip("'")
                 if val:
                     return True
+        return False  # .env 存在但无 Key → 允许重新配置
+    # .env 不存在 → 回退环境变量
+    for k in ("ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_API_KEY", "DEEPSEEK_API_KEY"):
+        if os.environ.get(k):
+            return True
     return False
 
 

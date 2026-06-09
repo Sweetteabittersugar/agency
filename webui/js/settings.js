@@ -345,9 +345,11 @@ function renderFeatureUnlock(){
   var labelMap = {chat:'基础聊天',settings:'设置面板',dashboard:'仪表盘',agents:'Agent列表',routing:'智能调度',multipanel:'多面板','agent-factory':'Agent工厂',skills:'Skill编辑',profiles:'Profile切换'};
   var html = '<p style="font-size:10px;color:var(--muted);margin-bottom:8px">'+t('currentDay').replace('{day}', day)+'</p>';
   html += '<table class="feature-unlock-table">';
+  var hasLocked = false;
   for(var i=0;i<keys.length;i++){
     var s = FEATURE_SCHEDULE[keys[i]];
     var isUnlocked = unlocked || day >= s.minDay;
+    if(!isUnlocked) hasLocked = true;
     var featuresStr = s.features.map(function(f){ return labelMap[f] || f; }).join(' + ');
     html += '<tr><td class="fu-icon">'+(isUnlocked?'✅':'🔒')+'</td>';
     html += '<td><div class="fu-features">'+escHtml(featuresStr)+'</div><div class="fu-desc">'+(s.desc[_lang]||s.desc.zh)+'</div></td>';
@@ -355,6 +357,9 @@ function renderFeatureUnlock(){
     html += '<td class="fu-status '+(isUnlocked?'unlocked':'locked')+'">'+(isUnlocked?t('unlockAll'):t('featureLocked').replace('{day}',s.minDay))+'</td></tr>';
   }
   html += '</table>';
+  if(hasLocked && !unlocked){
+    html += '<div style="padding:8px 10px;margin:10px 0;background:rgba(96,165,250,.08);border-left:3px solid #60a5fa;border-radius:4px;font-size:11px;color:var(--text);line-height:1.6">'+t('featureUnlockHint')+'</div>';
+  }
   html += '<div class="feature-unlock-switch"><span>🔓 解锁全部功能</span><label class="toggle-sw"><input type="checkbox" id="unlock-all-toggle" onchange="toggleUnlockAll(this.checked)"'+(unlocked?' checked':'')+'><span class="toggle-slider"></span></label></div>';
   domEl.innerHTML = html;
 }

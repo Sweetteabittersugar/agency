@@ -102,15 +102,15 @@ initTooltips();
 
 // ── 功能门控应用 ──
 (function applyFeatureGates(){
-  // 仪表盘按钮
-  if(!isFeatureUnlocked('dashboard')){
+  // 仪表盘按钮 (Demo 模式下始终显示)
+  if(!(typeof _demoMode!=='undefined'&&_demoMode) && !isFeatureUnlocked('dashboard')){
     var dbBtn = document.getElementById('dashboardBtn');
     if(dbBtn){ dbBtn.style.display='none'; }
   }
-  // 多面板/分屏 (addPanel 和 cycleGrid 保留但弹 toast)
+  // 多面板/分屏 (Demo 模式下允许新建面板)
   var origAddPanel = addPanel;
   addPanel = function(){
-    if(!isFeatureUnlocked('multipanel') && panels.length >= 1){
+    if(!(typeof _demoMode!=='undefined'&&_demoMode) && !isFeatureUnlocked('multipanel') && panels.length >= 1){
       showToast(t('featureLocked').replace('{day}', FEATURE_UNLOCK_DAYS['multipanel']||3), false, 'warn');
       return panels[0];
     }
@@ -226,20 +226,21 @@ function submitRemoteLogin(){
 
 /* ── 文件浏览器 ── */
 function loadFileTree(path){
+  var ft=$('file-tree');if(!ft)return;
   var p=path||projDir||'D:/';
   fetch('/api/files?path='+encodeURIComponent(p)).then(function(r){return r.json()}).then(function(d){
-    if(d.error){$('file-tree').innerHTML=escHtml(d.error);return}
-    projDir=d.path;$('proj-dir').value=d.path;localStorage.setItem('agency_proj_dir',projDir);
+    if(d.error){ft.innerHTML=escHtml(d.error);return}
+    projDir=d.path;var pd=$('proj-dir');if(pd)pd.value=d.path;localStorage.setItem('agency_proj_dir',projDir);
     var bread=d.path.replace(/\\/g,'/').split('/').filter(Boolean);
-    $('file-breadcrumb').innerHTML=bread.map(function(b,i){return'<span style="cursor:pointer;color:var(--accent)" onclick="loadFileTree(\''+bread.slice(0,i+1).join('/')+'\')">'+b+'</span>'}).join(' / ')||'/';
+    var fbc=$('file-breadcrumb');if(fbc)fbc.innerHTML=bread.map(function(b,i){return'<span style="cursor:pointer;color:var(--accent)" onclick="loadFileTree(\''+bread.slice(0,i+1).join('/')+'\')">'+b+'</span>'}).join(' / ')||'/';
     var h='';
     d.entries.forEach(function(e){h+='<div style="padding:3px 6px;cursor:pointer;display:flex;gap:6px;align-items:center" onclick="'+ (e.is_dir?'loadFileTree('+JSON.stringify((d.path+'/'+e.name).replace(/\\/g,'/'))+')':'openFilePanel('+JSON.stringify((d.path+'/'+e.name).replace(/\\/g,'/'))+')') +'">'+'<span>'+(e.is_dir?'📁':'📄')+'</span>'+'<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+e.name+'</span>'+'<span style="font-size:9px;color:var(--muted)">'+(e.is_dir?'':e.size>1024?(e.size/1024).toFixed(1)+'KB':e.size+'B')+'</span>'+'</div>'});
-    $('file-tree').innerHTML=h||'空目录';
-  }).catch(function(){$('file-tree').innerHTML='无法加载文件目录。服务可能未启动，请刷新页面重试'});
+    ft.innerHTML=h||'空目录';
+  }).catch(function(){ft.innerHTML='无法加载文件目录。服务可能未启动，请刷新页面重试'});
 }
 function openFilePanel(fpath){var p=getFocusedPanel();if(p){p.dom.input.value='@explorer 分析这个文件: '+fpath}loadFileTree(projDir)}
-function clearProjDir(){projDir='';$('proj-dir').value='';localStorage.removeItem('agency_proj_dir');$('file-tree').innerHTML='';$('file-breadcrumb').textContent='/'}
-function onFolderPicked(e){var files=e.target.files;if(!files.length)return;var root={};for(var i=0;i<files.length;i++){var parts=files[i].webkitRelativePath.split('/'),node=root;for(var j=0;j<parts.length;j++){if(j===parts.length-1){if(!node._files)node._files=[];node._files.push({name:parts[j],size:files[i].size})}else{if(!node[parts[j]])node[parts[j]]={};node=node[parts[j]]}}}var html='';function renderNode(node,depth){var keys=Object.keys(node).filter(function(k){return k!=='_files'}).sort();keys.forEach(function(k){html+='<div style="padding:3px 6px;padding-left:'+(6+depth*16)+'px">📁 '+escHtml(k)+'</div>';renderNode(node[k],depth+1)});if(node._files){node._files.sort(function(a,b){return a.name.localeCompare(b.name)}).forEach(function(f){html+='<div style="padding:3px 6px;padding-left:'+(6+depth*16)+'px">📄 '+escHtml(f.name)+' <span style="font-size:9px;color:var(--muted)">'+(f.size>1024?(f.size/1024).toFixed(1)+'KB':f.size+'B')+'</span></div>'})}}renderNode(root,0);$('file-tree').innerHTML=html||'空目录';var rootName=files[0].webkitRelativePath.split('/')[0];$('file-breadcrumb').textContent='📁 '+rootName}
+function clearProjDir(){projDir='';var pd=$('proj-dir');if(pd)pd.value='';localStorage.removeItem('agency_proj_dir');var ft=$('file-tree');if(ft)ft.innerHTML='';var fbc=$('file-breadcrumb');if(fbc)fbc.textContent='/'}
+function onFolderPicked(e){var files=e.target.files;if(!files.length)return;var root={};for(var i=0;i<files.length;i++){var parts=files[i].webkitRelativePath.split('/'),node=root;for(var j=0;j<parts.length;j++){if(j===parts.length-1){if(!node._files)node._files=[];node._files.push({name:parts[j],size:files[i].size})}else{if(!node[parts[j]])node[parts[j]]={};node=node[parts[j]]}}}var html='';function renderNode(node,depth){var keys=Object.keys(node).filter(function(k){return k!=='_files'}).sort();keys.forEach(function(k){html+='<div style="padding:3px 6px;padding-left:'+(6+depth*16)+'px">📁 '+escHtml(k)+'</div>';renderNode(node[k],depth+1)});if(node._files){node._files.sort(function(a,b){return a.name.localeCompare(b.name)}).forEach(function(f){html+='<div style="padding:3px 6px;padding-left:'+(6+depth*16)+'px">📄 '+escHtml(f.name)+' <span style="font-size:9px;color:var(--muted)">'+(f.size>1024?(f.size/1024).toFixed(1)+'KB':f.size+'B')+'</span></div>'})}}renderNode(root,0);var ft=$('file-tree');if(ft)ft.innerHTML=html||'空目录';var rootName=files[0].webkitRelativePath.split('/')[0];var fbc=$('file-breadcrumb');if(fbc)fbc.textContent='📁 '+rootName}
 
 /* ══════════════════════════════════════════
    HCI 增强: tooltip / 侧边栏拖拽 / 字体缩放
