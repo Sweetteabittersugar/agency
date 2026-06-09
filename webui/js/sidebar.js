@@ -180,13 +180,36 @@ function loadSidebarSkills(){
 }
 function renderSidebarSkills(skills){
   var domEl=$('sidebar-skills-list');if(!domEl)return;
-  domEl.innerHTML=skills.length?skills.map(function(s){
+  var enabled=skills.filter(function(s){return s.enabled!==false;});
+  var disabled=skills.filter(function(s){return s.enabled===false;});
+
+  var statsHtml='<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0 6px;font-size:10px;color:var(--muted);border-bottom:1px solid var(--border);margin-bottom:6px;gap:8px">'+
+    '<span>' + enabled.length + ' 个已启用 / ' + skills.length + ' 个可用</span>'+
+    '<span style="display:flex;gap:4px;flex-shrink:0">'+
+      (disabled.length?'<button class="btn skill-enable-all-btn" onclick="event.stopPropagation();enableAllSkills()" style="font-size:9px;padding:2px 6px;border-color:#2e7d32;color:#2e7d32">全部启用</button>':'')+
+      (enabled.length?'<button class="btn" onclick="event.stopPropagation();disableAllSkills()" style="font-size:9px;padding:2px 6px">全部禁用</button>':'')+
+    '</span></div>';
+
+  var cardsHtml='';
+  enabled.forEach(function(s){
     var ns=s.name.replace(/'/g,"\\'");
-    return'<div class="skill-card" onclick="viewSkillDetail(\''+ns+'\')" style="padding:8px 10px;margin-bottom:4px;background:var(--surface2);border-radius:var(--radius-sm);font-size:12px;transition:background .15s;cursor:pointer">'+
+    cardsHtml+='<div class="skill-card" onclick="viewSkillDetail(\''+ns+'\')" style="padding:8px 10px;margin-bottom:4px;background:var(--surface2);border-radius:var(--radius-sm);font-size:12px;transition:background .15s;cursor:pointer">'+
       '<div style="font-weight:600;color:var(--text)">'+escHtml(s.name)+'</div>'+
       '<div style="font-size:10px;color:var(--muted);margin-top:2px">'+escHtml((s.description||'').slice(0,80))+'</div>'+
     '</div>';
-  }).join(''):'<div class="empty-state"><div class="es-icon">🧩</div><div class="es-text">'+t('skillsEmptyTitle')+'</div><div class="es-actions"><a href="#" onclick="toggleHelpOverlay();return false" class="btn">'+t('learnMore')+'</a></div></div>';
+  });
+  disabled.forEach(function(s){
+    var ns=s.name.replace(/'/g,"\\'");
+    cardsHtml+='<div class="skill-card disabled" style="padding:8px 10px;margin-bottom:4px;background:var(--surface2);border-radius:var(--radius-sm);font-size:12px;transition:background .15s;display:flex;align-items:center;justify-content:space-between">'+
+      '<div style="flex:1;min-width:0;cursor:pointer" onclick="viewSkillDetail(\''+ns+'\')">'+
+        '<div style="font-weight:600;color:var(--text)">⏸ '+escHtml(s.name)+'</div>'+
+        '<div style="font-size:10px;color:var(--muted);margin-top:2px">'+escHtml((s.description||'').slice(0,80))+'</div>'+
+      '</div>'+
+      '<button class="skill-enable-btn" onclick="event.stopPropagation();enableSkill(\''+ns+'\')" style="flex-shrink:0;margin-left:8px" title="启用此 Skill">启用</button>'+
+    '</div>';
+  });
+
+  domEl.innerHTML=skills.length?statsHtml+cardsHtml:'<div class="empty-state"><div class="es-icon">🧩</div><div class="es-text">'+t('skillsEmptyTitle')+'</div><div class="es-actions"><a href="#" onclick="toggleHelpOverlay();return false" class="btn">'+t('learnMore')+'</a></div></div>';
 }
 function renderHistory(){historyList.innerHTML=conversations.slice(0,30).map(function(c){return'<div class="history-item" onclick="loadConvo(\''+c.id+'\')"><div style="display:flex;align-items:center"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">'+escHtml(c.title||'新对话')+'</span><button class="del-btn" onclick="delConvo(\''+c.id+'\',event)">×</button></div><div class="time">'+new Date(c.id).toLocaleDateString('zh-CN')+'</div><div class="preview">'+escHtml((c.messages[0]&&c.messages[0].content||'').slice(0,30))+'</div></div>'}).join('')||'<div class="empty-state"><div class="es-icon">💬</div><div class="es-text">'+t('historyEmpty')+'</div></div>'}
 function loadConvo(id){var c=conversations.find(function(x){return x.id===Number(id)});if(!c)return;var p=getFocusedPanel();p.currentConvo={id:c.id,title:c.title,messages:c.messages.slice(),sessionId:c.sessionId||''};p.dom.messages.innerHTML='';p.dom.route.innerHTML='';c.messages.forEach(function(m){addMsg(p,m.role,m.content)});p.dom.messages.scrollTop=p.dom.messages.scrollHeight;setTimeout(function(){p.dom.messages.querySelectorAll('.bubble').forEach(highlightCode)},100)}
@@ -245,6 +268,21 @@ function toggleSkill(name,enabled){
         if(!d.ok){showToast(d.error||'Skill 操作失败',true);loadSidebarSkills()}
       }).catch(function(e){showToast('Skill 操作失败',true);loadSidebarSkills()});
   });
+}
+function enableSkill(name){
+  toggleSkill(name,true);
+}
+function enableAllSkills(){
+  var disabled=allSkills.filter(function(s){return s.enabled===false;});
+  if(!disabled.length) return;
+  if(!confirm('确认启用全部 '+disabled.length+' 个已禁用的 Skill？')) return;
+  disabled.forEach(function(s){ toggleSkill(s.name,true); });
+}
+function disableAllSkills(){
+  var enabled=allSkills.filter(function(s){return s.enabled!==false;});
+  if(!enabled.length) return;
+  if(!confirm('确认禁用全部 '+enabled.length+' 个已启用的 Skill？\n\n注意：禁用的 Skill 不会出现在 AI 匹配列表中。')) return;
+  enabled.forEach(function(s){ toggleSkill(s.name,false); });
 }
 function deleteSkillDetail(name){
   showDeleteConfirm(t('confirmDelete')+' ('+escHtml(name)+')',function(){

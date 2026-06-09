@@ -1,0 +1,101 @@
+---
+name: browser-compatibility
+description: 浏览器兼容性方法论 —— CanIUse 查询、渐进增强、优雅降级与 Polyfill 策略
+category: frontend
+loading: on-demand
+triggers:
+  keywords: ["浏览器兼容", "兼容性", "caniuse", "polyfill"]
+---
+
+# 这是什么
+
+浏览器兼容性确保 Web 应用在目标用户使用的浏览器中都能正常运行。核心策略是渐进增强——基础功能在所有浏览器可用，增强功能在现代浏览器中提供更好体验。
+
+# 何时使用
+
+- 项目初期确定浏览器支持范围（Browserslist）
+- 使用了较新的 Web API，需评估兼容性风险
+- 用户反馈特定浏览器上功能异常
+- 依赖库更新后出现兼容性问题
+- 需要决定是否为某项特性添加 Polyfill
+
+# 核心规则
+
+1. **特性检测优于浏览器检测**：检测浏览器是否支持某个 API（`'geolocation' in navigator`），而非判断 User-Agent。浏览器版本判断因伪装和快速迭代而不可靠。
+2. **渐进增强，非优雅降级**：先保证核心功能在所有目标浏览器可用，再为现代浏览器叠加增强体验。
+3. **Polyfill 按需加载**：只在需要的浏览器中加载 Polyfill，不给所有用户增加负担。用 `<script nomodule>` 或动态 import() 条件加载。
+4. **Browserslist 统一配置**：所有构建工具（Babel、PostCSS、ESLint）共用一份 Browserslist 配置，确保一致性。
+
+# 工作流程
+
+1. **确定目标浏览器**
+   - 查看分析数据获取用户浏览器分布
+   - 用 Browserslist 配置目标范围：`> 0.5%, last 2 versions, not dead`
+   - 企业内部系统可激进（仅最新 Chrome/Edge），面向消费者的产品需保守
+   - 将配置写入 `package.json` 或 `.browserslistrc`
+
+2. **特性评估**
+   - 查询 CanIUse 了解 API 的全球支持率
+   - 区分"不可用"和"需要前缀"两种情况
+   - 评估 Polyfill 的体积和性能开销
+   - 优先级：核心功能必须有回退，非核心可降级
+
+3. **渐进增强实施**
+   - HTML 层：语义化标签保证无 CSS/JS 时内容仍可读
+   - CSS 层：基础布局用稳定属性，高级效果用 `@supports` 包裹
+   - JS 层：核心逻辑用 ES5 兼容写法，新特性用特性检测包裹
+
+4. **回退方案设计**
+   - CSS：`@supports (display: grid)` 提供 Grid 布局，否则用 Flexbox
+   - JS：`if ('IntersectionObserver' in window)` 使用观察者，否则用 scroll 事件
+   - 图片：`<picture>` 提供 WebP，fallback 到 JPEG
+   - 字体：`font-display: swap` 防白屏，系统字体回退
+
+5. **测试验证**
+   - BrowserStack / LambdaTest 覆盖目标浏览器版本
+   - CI 中用 Playwright 多浏览器矩阵测试
+   - 记录已知兼容问题和对应版本号
+
+# CSS 特性检测
+
+```css
+/* 支持 Grid 时使用 */
+@supports (display: grid) {
+  .layout { display: grid; }
+}
+/* 不支持时使用 Flexbox 回退 */
+.layout { display: flex; flex-wrap: wrap; }
+```
+
+# Polyfill 策略
+
+| 场景 | 策略 | 示例 |
+|------|------|------|
+| 新 API，多数不支持 | 提供完整 Polyfill | `fetch` → `whatwg-fetch` |
+| 新 API，多数支持 | 动态按需加载 | `import('polyfill').then(...)` |
+| CSS 新特性 | PostCSS 编译时转换 | `autoprefixer` |
+| 语法级新特性 | Babel 转译 | `?.` → 条件判断 |
+
+# 前缀管理
+
+- 使用 `autoprefixer` 自动添加厂商前缀，基于 Browserslist 配置
+- 手动前缀只用于 PostCSS 无法处理的场景（如部分 CSS 属性值）
+- 定期清理不再需要的前缀（如 `-webkit-border-radius` 已无浏览器需要）
+
+# 常见兼容性问题速查
+
+| 问题 | 影响浏览器 | 解决方案 |
+|------|-----------|----------|
+| `gap` 在 Flexbox 中 | Safari < 14.1 | 用 margin 替代 |
+| `position: sticky` | IE11 | 用 `position: fixed` + JS 回退 |
+| `aspect-ratio` | Safari < 15 | 用 padding-top 百分比技巧 |
+| `scroll-behavior: smooth` | Safari < 15.4 | JS 平滑滚动回退 |
+| `backdrop-filter` | Firefox < 103 | 用半透明背景色替代 |
+| `:focus-visible` | Safari < 15.4 | 保留 `:focus` 的同时追加 |
+
+# 参考标准
+
+- CanIUse —— API 支持率查询
+- Browserslist 规范 —— 目标浏览器配置
+- W3C 渐进增强原则 —— 核心设计哲学
+- MDN 浏览器兼容性数据 —— API 详细兼容表

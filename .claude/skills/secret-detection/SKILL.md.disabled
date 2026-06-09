@@ -1,0 +1,93 @@
+---
+name: secret-detection
+description: 密钥检测方法论 —— 密钥模式识别、Git 历史扫描、轮换策略与预防措施
+category: security
+loading: on-demand
+triggers:
+  keywords: ["密钥检测", "secret scan", "密码泄露", "凭证安全"]
+---
+
+# 这是什么
+
+密钥检测是在代码、配置文件和版本历史中发现意外提交的敏感凭据（API Key、密码、证书）的自动化实践。
+
+# 何时使用
+
+- 每次代码提交前的本地扫描
+- CI/CD 管道中的自动化秘钥审计
+- 怀疑密钥已经泄露，需要全面扫描
+- 新成员加入团队，配置安全开发环境
+- 开源项目发布前的最终检查
+
+# 核心规则
+
+1. **预防优于检测**：最佳策略是密钥从不出现在代码中。用环境变量、密钥管理服务、`.env` 文件（已加入 `.gitignore`）。
+2. **发现泄露立即轮换**：仅删除代码中的密钥是不够的——它还在 Git 历史中。先轮换密钥，再清理历史。
+3. **扫描要全面**：代码文件、配置文件、日志文件、Dockerfile、CI 配置、注释、文档、测试数据——密钥可能出现在任何地方。
+4. **自动化是唯一的尺度**：人工检查不可靠。git hooks + CI 扫描 + 定期全量扫描，三道防线。
+5. **不要忽略"看起来像"的匹配**：宁可误报也不漏报。误报可以加入白名单，漏报则意味着密钥泄露。
+
+# 工作流程
+
+1. **密钥模式识别**
+   - 常见前缀：`sk-`、`pk-`、`ghp_`、`gho_`、`xoxb-`、`AKIA`
+   - 高熵字符串：Base64 编码的长字符串（>= 20 字符）
+   - 关键词组合：`password`、`secret`、`token`、`key`、`api_key` 后跟 `=` 或 `:`
+   - 证书模式：`-----BEGIN RSA PRIVATE KEY-----`、`-----BEGIN CERTIFICATE-----`
+   - 连接字符串：`mongodb://user:pass@host`、`mysql://user:pass@host`
+
+2. **Git 历史扫描**
+   - `git log -p` 逐个 commit 逐行扫描
+   - 用 git-secrets、truffleHog、Gitleaks 等工具自动化
+   - 扫描所有分支和标签
+   - 特别注意：commit message 中也可能有密钥
+
+3. **轮换流程**
+   - 立即在密钥管理平台生成新密钥
+   - 更新所有使用该密钥的服务
+   - 验证新密钥正常工作
+   - 撤销旧密钥
+   - 验证旧密钥已失效
+   - 清理代码和 Git 历史中的旧密钥
+
+4. **预防措施**
+   - **pre-commit hook**：本地提交前扫描暂存区
+   - **CI 扫描**：每次 Push 和 PR 自动扫描增量变更
+   - **定期全量扫描**：每周一次全仓库扫描（包括全部分支和历史）
+   - **`.gitignore` 基础配置**：`.env`、`*.pem`、`credentials.json`、`secrets/`
+   - **密钥管理服务**：优先用云平台 Secrets Manager，而不是手动管理
+
+5. **Git 历史清理**
+   - 用 `git filter-repo` 或 `BFG Repo-Cleaner` 重写历史
+   - 注意：`git filter-branch` 已过时，用 `filter-repo`
+   - 推�清理后的历史前通知所有协作者（他们需要重新 clone）
+   - 清理后轮换密钥——已在历史中的密钥视为已泄露，即使清理过
+
+# 常见泄露途径
+
+| 途径 | 示例 |
+|------|------|
+| 源码硬编码 | `api_key = "sk-abc123"` |
+| 配置文件 | `config.json` 中包含数据库密码 |
+| 环境变量文件 | `.env` 被提交到 Git |
+| CI 日志 | 构建日志中打印了密钥 |
+| Docker 镜像层 | `ENV API_KEY=xxx` 写在 Dockerfile 中 |
+| 注释 | `// TODO: key = sk-xxx` |
+| 错误消息 | 异常堆栈中包含连接串 |
+| 测试数据 | 测试用的 `fixture.json` 包含真实密钥 |
+
+# 推荐工具
+
+| 工具 | 用途 | 部署位置 |
+|------|------|---------|
+| git-secrets | pre-commit 扫描 | 本地 |
+| truffleHog | Git 历史深度扫描 | CI / 定期扫描 |
+| Gitleaks | 全面密钥检测 | CI / 本地 |
+| detect-secrets | 基线扫描和审计 | 本地 / CI |
+| GitHub Secret Scanning | 平台内置扫描 | GitHub 仓库 |
+
+# 参考标准
+
+- OWASP 密钥管理速查表 —— 密钥安全最佳实践
+- NIST SP 800-57 —— 密钥管理建议
+- truffleHog 文档 —— 密钥扫描工具

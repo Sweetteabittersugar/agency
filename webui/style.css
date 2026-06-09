@@ -34,8 +34,14 @@ body{font:14px/1.55 "DM Sans","Segoe UI",system-ui,sans-serif;background:var(--b
 .agent-list{flex:1;overflow-y:auto}
 
 /* ── Skill 卡片 ── */
-.skill-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:11px;cursor:pointer;transition:border-color .15s}
+.skill-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:11px;cursor:pointer;transition:border-color .15s,.opacity .15s,.filter .15s}
 .skill-card:hover{border-color:var(--accent)}
+.skill-card.disabled{opacity:.5;filter:grayscale(30%)}
+.skill-card.disabled:hover{opacity:.8}
+.skill-enable-btn{border-color:#2e7d32;color:#2e7d32;font-size:10px;background:var(--surface2);border:1px solid #2e7d32;padding:2px 8px;border-radius:var(--radius-sm);cursor:pointer;white-space:nowrap;transition:all .15s}
+.skill-enable-btn:hover{background:rgba(46,125,50,.15);color:#2e7d32}
+.skill-enable-all-btn{border-color:#2e7d32!important;color:#2e7d32!important}
+.skill-enable-all-btn:hover{background:rgba(46,125,50,.15)!important}
 
 /* ── 历史 ── */
 .history-item{padding:8px 10px;border-radius:6px;cursor:pointer;font-size:11px;margin-bottom:2px;transition:all .15s;position:relative}

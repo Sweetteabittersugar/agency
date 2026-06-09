@@ -1,0 +1,90 @@
+---
+name: health-check-patterns
+description: 健康检查模式 —— 存活探针、就绪探针、健康端点设计与告警阈值
+category: devops
+loading: on-demand
+triggers:
+  keywords: ["健康检查", "health check", "探针", "存活检测"]
+---
+
+# 这是什么
+
+健康检查是服务可观测性的基础——让编排系统（K8s）、负载均衡和监控系统知道服务是否正常运行，以及能否接收流量。
+
+# 何时使用
+
+- 设计微服务的健康端点
+- 配置 K8s 的 Liveness/Readiness 探针
+- 服务频繁被重启但日志无异常
+- 需要区分"服务启动中"和"服务故障"两种状态
+- 负载均衡需要自动摘除故障节点
+
+# 核心规则
+
+1. **存活不等于就绪**：进程活着（Liveness）不代表能处理请求（Readiness）。K8s 应分别配置。
+2. **健康检查不能太重**：不要查数据库、调外部 API、跑复杂计算。探针可能每秒执行一次，重检查会拖垮服务。
+3. **不做级联检查**：A 的健康检查不应依赖 B 的健康检查。一个下游故障会级联标记所有上游不健康。
+4. **明确故障边界**：数据库不可用时，服务应标记为"就绪探针失败"（停止接收流量）但"存活探针通过"（不重启）。
+5. **告警要可操作**："健康检查失败"不是有效告警。应该是"支付服务健康检查连续失败 3 次，原因：数据库连接超时"。
+
+# 工作流程
+
+1. **健康端点设计**
+   - `/health/live`：存活探针——进程是否运行。只检查进程本身的状态。
+   - `/health/ready`：就绪探针——能否处理请求。检查关键依赖是否就绪。
+   - `/health`：综合健康信息（可选）——详细状态供运维查看。
+   - 三个端点职责不同，不要混用
+
+2. **探针配置（K8s）**
+   - **Liveness Probe**：`initialDelaySeconds: 15`、`periodSeconds: 10`、`failureThreshold: 3`
+   - **Readiness Probe**：`initialDelaySeconds: 5`、`periodSeconds: 5`、`failureThreshold: 2`
+   - Readiness 探针比 Liveness 更频繁、更敏感
+   - `initialDelaySeconds` 给应用足够的启动时间
+
+3. **检查内容设计**
+   - 存活检查：进程运行状态、死锁检测、内存使用率
+   - 就绪检查：数据库连接池状态、消息队列连接、关键配置加载
+   - 不检查：外部 API 可用性、CDN 状态、邮件服务（非应用启动所必需）
+   - 返回 200 表示健康，503 表示不健康
+
+4. **告警策略**
+   - Readiness 连续失败 → 告警（服务已停止接收流量）
+   - Liveness 失败 → 紧急告警（服务即将重启）
+   - 健康检查延迟超过阈值 → 资源告警
+   - 告警信息包含：服务名、失败的具体依赖、持续时间
+
+5. **优雅关闭**
+   - 收到 SIGTERM 后，立即标记 Readiness 为不健康
+   - 等待现有请求处理完毕（宽限期 30s）
+   - 超时后强制退出
+   - 不要在收到 SIGTERM 后立即崩���
+
+# 健康端点响应格式
+
+```json
+{
+  "status": "healthy",
+  "version": "1.2.3",
+  "uptime": 86400,
+  "checks": {
+    "database": {"status": "ok", "latency_ms": 2},
+    "redis": {"status": "ok", "latency_ms": 1},
+    "message_queue": {"status": "degraded", "message": "重连中"}
+  }
+}
+```
+
+# 常见反模式
+
+| 反模式 | 问题 | 改进 |
+|--------|------|------|
+| Liveness 检查数据库 | 数据库故障导致所有 Pod 重启，加重负载 | 只 Readiness 查数据库 |
+| 只有一个 `/health` | 无法区分存活和就绪 | 分离 live/ready |
+| 健康检查无超时 | 长时间挂起不返回 | 设置 5s 超时 |
+| 返回大量数据 | 浪费带宽、拖慢探测 | 响应体控制在 1KB 内 |
+
+# 参考标准
+
+- K8s 探针文档 —— Liveness/Readiness/Startup 配置
+- Google SRE Book —— 健康检查与可观测性
+- HTTP Health Check RFC —— 标准化健康检查响应

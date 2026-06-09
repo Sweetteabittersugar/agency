@@ -1,0 +1,103 @@
+---
+name: e2e-testing
+description: 端到端测试方法论 —— Page Object 模式、选择器策略、等待策略与截图对比
+category: testing
+loading: on-demand
+triggers:
+  keywords: ["E2E测试", "端到端测试", "Playwright", "Cypress"]
+---
+
+# 这是什么
+
+端到端（E2E）测试模拟真实用户操作，验证整个系统从前端到后端的完整工作流。与单元测试不同，E2E 测试关注用户视角的关键业务流程。
+
+# 何时使用
+
+- 关键用户流程（注册、登录、下单、支付）
+- 跨页面或跨系统的复杂交互
+- 回归测试——发版前验证核心功能
+- 多浏览器兼容性验证
+- 第三方集成的端到端验证（OAuth、支付网关）
+
+# 核心规则
+
+1. **只测关键路径**：E2E 测试慢且脆弱。只覆盖最重要的用户流程，不是每个功能都需要 E2E 测试。
+2. **测试金字塔**：底层大量单元测试，中层适量集成测试，顶层少量 E2E 测试。比例大约是 70:20:10。
+3. **可重复**：同一个测试跑 100 次结果应一致。不依赖特定时间、随机数据或外部服务的特定状态。
+4. **独立测试数据**：每个测试使用独立的数据（专属测试账号、临时订单），测试结束清理干净。
+5. **选择器要稳定**：用 data-testid 等专用属性定位元素，而不是依赖 CSS 类名或 DOM 结构。
+
+# 工作流程
+
+1. **选择测试场景**
+   - 梳理用户画像的核心任务流程
+   - 挑选频率最高 + 影响最大的 3-5 个流程
+   - 每个流程覆盖正常路径、异常路径各一条
+   - 用测试矩阵决定跨浏览器覆盖范围
+
+2. **Page Object 模式**
+   - 每个页面封装为一个 Page Object 类
+   - 页面元素作为属性，操作为方法
+   - 测试代码只调用 Page Object 方法，不直接操作 DOM
+   - 页面变动时只需改 Page Object，测试代码不变
+
+3. **选择器策略**
+   - 优先级：`[data-testid]` > `role` > `text` > `CSS class`
+   - 为关键交互元素添加 `data-testid` 属性
+   - 避免用 XPath 和复杂 CSS 选择器
+   - 不要依赖元素在 DOM 中的位置（`:nth-child` 等）
+
+4. **等待策略**
+   - 优先用自动等待（Playwright 的 `waitForSelector` 自带重试）
+   - 其次用语义等待：等待特定文本出现、网络请求完成
+   - 避免固定 `sleep()` —— 慢环境超时、快环境浪费时间
+   - 设置合理的全局超时时间，避免因一个慢请求阻塞整个测试
+
+5. **截图对比**
+   - 关键页面保存截图作为基线
+   - CI 中自动对比，超出阈值报错
+   - 截图对比只用于样式回归，不替代功能测试
+   - 容器化测试中注意字体渲染差异
+
+# Page Object 示例结构
+
+```
+class LoginPage:
+    // 元素定位
+    usernameInput = page.locator('[data-testid="username"]')
+    passwordInput = page.locator('[data-testid="password"]')
+    submitBtn = page.locator('[data-testid="login-btn"]')
+    errorMsg = page.locator('[data-testid="error"]')
+
+    // 操作方法
+    async login(username, password):
+        await this.usernameInput.fill(username)
+        await this.passwordInput.fill(password)
+        await this.submitBtn.click()
+```
+
+# E2E 测试反模式
+
+| 反模式 | 问题 | 改进 |
+|--------|------|------|
+| 测试所有流程 | 测试套件慢到无法在 CI 运行 | 只测 Top 5 关键流程 |
+| 硬编码 sleep(3000) | 慢环境不够，快环境浪费 | 用语义等待 |
+| 复杂选择器 `div:nth-child(3) > span:nth-child(2)` | 任何布局改动都破坏测试 | 加 testid |
+| 直接操作 localStorage | 绕过了用户真实交互 | 通过 UI 操作 |
+| 测试间互相依赖 | 一个失败导致后续全失败 | 每个测试独立准备/清理 |
+
+# Playwright vs Cypress 选型
+
+| 维度 | Playwright | Cypress |
+|------|-----------|---------|
+| 浏览器支持 | Chrome/Firefox/Safari/Edge | Chrome/Firefox/Edge |
+| 语言 | JS/TS/Python/Java/.NET | JS/TS |
+| 并行 | 原生支持 | 需付费 Dashboard |
+| 自动等待 | 内置 | 内置 |
+| 移动端模拟 | 完整 | 部分 |
+
+# 参考标准
+
+- Playwright 官方文档 —— E2E 测试框架
+- Page Object 模式（Martin Fowler）—— 页面对象设计
+- W3C WebDriver 规范 —— 浏览器自动化标准

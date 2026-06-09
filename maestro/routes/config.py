@@ -44,27 +44,37 @@ def handle_skills(handler, parsed):
             if not skill_dir.is_dir():
                 continue
             skmd = skill_dir / "SKILL.md"
+            disabled_skmd = skill_dir / "SKILL.md.disabled"
+            target_file = None
+            enabled = True
             if skmd.exists():
-                try:
-                    content = skmd.read_text(encoding="utf-8")
-                    fm = {}
-                    if content.startswith("---"):
-                        parts = content.split("---", 2)
-                        if len(parts) >= 3:
-                            try:
-                                fm = yaml.safe_load(parts[1]) or {}
-                            except Exception:
-                                log.debug(f"Failed to parse frontmatter for skill {skill_dir.name}")
-                    skills.append({
-                        "name": skill_dir.name,
-                        "description": fm.get("description", ""),
-                        "triggers": fm.get("triggers", fm.get("trigger", [])),
-                        "model": fm.get("model", ""),
-                        "enabled": True,
-                        "path": str(skmd.resolve()),
-                    })
-                except Exception:
-                    log.debug(f"Failed to read skill {skill_dir.name}", exc_info=True)
+                target_file = skmd
+                enabled = True
+            elif disabled_skmd.exists():
+                target_file = disabled_skmd
+                enabled = False
+            else:
+                continue
+            try:
+                content = target_file.read_text(encoding="utf-8")
+                fm = {}
+                if content.startswith("---"):
+                    parts = content.split("---", 2)
+                    if len(parts) >= 3:
+                        try:
+                            fm = yaml.safe_load(parts[1]) or {}
+                        except Exception:
+                            log.debug(f"Failed to parse frontmatter for skill {skill_dir.name}")
+                skills.append({
+                    "name": skill_dir.name,
+                    "description": fm.get("description", ""),
+                    "triggers": fm.get("triggers", fm.get("trigger", [])),
+                    "model": fm.get("model", ""),
+                    "enabled": enabled,
+                    "path": str(target_file.resolve()),
+                })
+            except Exception:
+                log.debug(f"Failed to read skill {skill_dir.name}", exc_info=True)
     handler.send_json(skills)
     return True
 
@@ -145,6 +155,10 @@ def handle_skills_save(handler, body):
     skills_dir = PROJECT_ROOT / ".claude" / "skills" / name
     skills_dir.mkdir(parents=True, exist_ok=True)
     try:
+        # 如果存在 disabled 文件，先删除它，保存即启用
+        disabled = skills_dir / "SKILL.md.disabled"
+        if disabled.exists():
+            disabled.unlink()
         (skills_dir / "SKILL.md").write_text(content, encoding="utf-8")
         handler.send_json({"ok": True, "name": name})
     except Exception as e:
@@ -242,8 +256,13 @@ def handle_skills_content(handler, parsed):
     ]
     for base in search_dirs:
         skmd = base / name / "SKILL.md"
+        disabled_skmd = base / name / "SKILL.md.disabled"
         if skmd.exists():
             content = skmd.read_text(encoding="utf-8")
+            handler.send_json({"name": name, "content": content})
+            return True
+        elif disabled_skmd.exists():
+            content = disabled_skmd.read_text(encoding="utf-8")
             handler.send_json({"name": name, "content": content})
             return True
     handler.send_json({"error": "未找到该 Skill。请检查名称是否正确"}, 404)
