@@ -45,7 +45,8 @@ $('agent-search').addEventListener('input',function(){var q=$('agent-search').va
 
 // ── 侧边栏标签切换 ──
 document.querySelectorAll('.sidebar-tab').forEach(function(tab){tab.addEventListener('click',function(){document.querySelectorAll('.sidebar-tab').forEach(function(t){t.classList.remove('active')});document.querySelectorAll('.sidebar-panel').forEach(function(p){p.classList.remove('active')});tab.classList.add('active');var p=$('panel-'+tab.dataset.tab);if(p)p.classList.add('active');})});
-document.querySelector('.sidebar-tab[data-tab="skills"]')&&document.querySelector('.sidebar-tab[data-tab="skills"]').addEventListener('click',function(){loadSidebarSkills()});
+document.querySelector('.sidebar-tab[data-tab="skills"]')&&document.querySelector('.sidebar-tab[data-tab="skills"]').addEventListener('click',function(){if(typeof _demoMode!=='undefined'&&_demoMode)return;loadSidebarSkills()});
+document.querySelector('.sidebar-tab[data-tab="history"]')&&document.querySelector('.sidebar-tab[data-tab="history"]').addEventListener('click',function(){if(typeof _demoMode!=='undefined'&&_demoMode)return;renderHistory()});
 document.querySelector('.sidebar-tab[data-tab="project"]')&&document.querySelector('.sidebar-tab[data-tab="project"]').addEventListener('click',function(){loadFileTree(projDir)});
 
 // ── Profile 快捷切换 ──
@@ -59,8 +60,8 @@ function setProfile(level){
   if(!PROFILE_LABELS[level]) return;
   agencyProfile = level;
   localStorage.setItem('agency_profile', level);
+  localStorage.setItem('profile_manual', 'true');
   updateProfileUI();
-  // 同步到后端
   fetch('/api/profile', {
     method:'POST',
     headers:{'Content-Type':'application/json'},
@@ -96,6 +97,71 @@ loadAgents();
 renderHistory();
 addPanel();
 updateProfileUI();
+initTheme();
+initTooltips();
+
+// ── 功能门控应用 ──
+(function applyFeatureGates(){
+  // 仪表盘按钮
+  if(!isFeatureUnlocked('dashboard')){
+    var dbBtn = document.getElementById('dashboardBtn');
+    if(dbBtn){ dbBtn.style.display='none'; }
+  }
+  // 多面板/分屏 (addPanel 和 cycleGrid 保留但弹 toast)
+  var origAddPanel = addPanel;
+  addPanel = function(){
+    if(!isFeatureUnlocked('multipanel') && panels.length >= 1){
+      showToast(t('featureLocked').replace('{day}', FEATURE_UNLOCK_DAYS['multipanel']||3), false, 'warn');
+      return panels[0];
+    }
+    return origAddPanel();
+  };
+  var origCycleGrid = cycleGrid;
+  cycleGrid = function(){
+    if(!isFeatureUnlocked('multipanel')){ showToast(t('featureLocked').replace('{day}', FEATURE_UNLOCK_DAYS['multipanel']||3), false, 'warn'); return; }
+    origCycleGrid();
+  };
+  // 智能调度
+  var origToggleOrch = toggleOrchMode;
+  toggleOrchMode = function(){
+    if(!isFeatureUnlocked('routing')){ showToast(t('featureLocked').replace('{day}', FEATURE_UNLOCK_DAYS['routing']||3), false, 'warn'); return; }
+    origToggleOrch();
+  };
+  // Profile 切换
+  var origCycleProfile = cycleProfile;
+  cycleProfile = function(){
+    if(!isFeatureUnlocked('profiles')){ showToast(t('featureLocked').replace('{day}', FEATURE_UNLOCK_DAYS['profiles']||7), false, 'warn'); return; }
+    origCycleProfile();
+  };
+  var origSetProfile = setProfile;
+  setProfile = function(level){
+    if(!isFeatureUnlocked('profiles') && level !== agencyProfile){ showToast(t('featureLocked').replace('{day}', FEATURE_UNLOCK_DAYS['profiles']||7), false, 'warn'); return; }
+    origSetProfile(level);
+  };
+  // 设置面板打开时刷新功能解锁 UI
+  var origToggleDev = toggleDevOverlay;
+  toggleDevOverlay = function(){
+    origToggleDev();
+    if(devMode){
+      renderFeatureUnlock();
+      if(typeof renderStickyAgentDropdown === 'function'){
+        var sac = document.getElementById('sticky-agent-container');
+        if(sac) renderStickyAgentDropdown(sac);
+      }
+      if(typeof renderShortcutEditor === 'function'){
+        var sec = document.getElementById('shortcut-editor-container');
+        if(sec) renderShortcutEditor(sec);
+      }
+      if(!isFeatureUnlocked('agent-factory')){
+        var af = document.getElementById('agent-factory-section');
+        if(af) af.style.display = 'none';
+      }
+    }
+  };
+})();
+
+// ── 检测新解锁功能 ──
+setTimeout(function(){ checkNewUnlocks(); }, 1500);
 
 /* ── 帮助覆盖层 ── */
 function toggleHelpOverlay(){
@@ -232,4 +298,61 @@ function onFolderPicked(e){var files=e.target.files;if(!files.length)return;var 
       localStorage.setItem('agency_font_size',document.body.style.fontSize);
     }
   });
+})();
+
+/* ── 响应式：汉堡菜单 ── */
+function toggleSidebar(){
+  var sb = document.querySelector('.sidebar');
+  if(!sb) return;
+  sb.classList.toggle('open');
+}
+
+/* ── 响应式：移动端底部 Tab ── */
+function switchMobileTab(tab){
+  var tabs = document.querySelectorAll('.mobile-tab');
+  tabs.forEach(function(t){ t.classList.remove('active'); });
+  var active = document.querySelector('.mobile-tab[data-mtab="'+tab+'"]');
+  if(active) active.classList.add('active');
+  switch(tab){
+    case 'chat':
+      document.querySelector('.sidebar').classList.remove('open');
+      document.querySelector('.main').style.display = 'flex';
+      break;
+    case 'dashboard':
+      toggleDashboard();
+      break;
+    case 'settings':
+      if(!devMode) toggleDevOverlay();
+      break;
+    case 'agents':
+      document.querySelector('.sidebar').classList.add('open');
+      var atab = document.querySelector('.sidebar-tab[data-tab="agents"]');
+      if(atab) atab.click();
+      break;
+  }
+}
+
+/* ── Tooltip + Route/Remplate 动态注入 ── */
+(function injectDynamicTooltips(){
+  // Route bar tooltip — 监听 DOM 变化为 route bar 添加
+  var observer = new MutationObserver(function(mutations){
+    mutations.forEach(function(m){
+      m.addedNodes.forEach(function(node){
+        if(node.nodeType !== 1) return;
+        // Template buttons
+        var tplBtns = node.querySelectorAll ? node.querySelectorAll('.template-btn') : [];
+        if(node.classList && node.classList.contains('template-btn')) tplBtns = [node];
+        tplBtns.forEach(function(b){
+          if(!b.hasAttribute('data-tooltip')) b.setAttribute('data-tooltip', 'tooltipTemplate');
+        });
+        // Route bars
+        var routes = node.querySelectorAll ? node.querySelectorAll('.panel-route') : [];
+        if(node.classList && node.classList.contains('panel-route')) routes = [node];
+        routes.forEach(function(r){
+          if(!r.hasAttribute('data-tooltip')) r.setAttribute('data-tooltip', 'tooltipRoute');
+        });
+      });
+    });
+  });
+  observer.observe(document.body, {childList: true, subtree: true});
 })();

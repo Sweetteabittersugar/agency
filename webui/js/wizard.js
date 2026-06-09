@@ -1,5 +1,5 @@
 /* Agency — 首次配置向导（5步：欢迎 → Key → 项目 → 远端 → 完成） */
-var setupData=null,_setupStep=0,_demoMode=false;
+var setupData=null,_setupStep=0,_demoMode=false,_wizardProvider='',_wizardRegion='',_wizardBudget='';
 fetch('/api/setup/status').then(function(r){return r.json()}).then(function(d){
   setupData=d;
   if(d.needs_setup){showSetupStep(0)}
@@ -40,36 +40,11 @@ function showSetupStep(step){
     return;
   }
 
-  // ── Step 1: API Key ──
+  // ── Step 1: Provider 智能推荐（Q&A 引导）──
   if(step===1){
     $('setup-title').textContent='配置 API Key';
-    body.innerHTML=
-      '<p style="font-size:12px;color:var(--text2);margin-bottom:8px">选择一个 AI 模型供应商，输入你的 API Key</p>'+
-      '<select class="proj-input" id="setup-provider" style="margin-bottom:8px">'+
-        '<option value="deepseek">DeepSeek ⭐推荐 — 便宜 + 中文好</option>'+
-        '<option value="anthropic">Anthropic (Claude)</option>'+
-        '<option value="openai">OpenAI (GPT)</option>'+
-        '<option value="google">Google (Gemini)</option>'+
-        '<option value="xai">xAI (Grok)</option>'+
-        '<option value="siliconflow">硅基流动</option>'+
-        '<option value="qwen">通义千问</option>'+
-        '<option value="kimi">Kimi (月之暗面)</option>'+
-        '<option value="glm">智谱 GLM</option>'+
-        '<option value="minimax">MiniMax</option>'+
-        '<option value="custom">自定义端点</option>'+
-      '</select>'+
-      '<div style="position:relative">'+
-        '<input class="proj-input" id="setup-key" type="password" placeholder="sk-…" autocomplete="off" style="padding-right:80px">'+
-        '<button class="btn" onclick="var el=document.getElementById(\'setup-key\');el.type=el.type===\'password\'?\'text\':\'password\'" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:10px;padding:2px 8px">👁 显示</button>'+
-      '</div>'+
-      '<p style="font-size:10px;color:var(--muted);margin-top:6px">'+
-        '🔒 Key 仅存浏览器本地存储和 .env 文件，<b>永不离开你的设备</b>。'+
-        ' 没有 Key？<a href="https://platform.deepseek.com/api_keys" target="_blank" style="color:var(--accent)">去 DeepSeek 免费注册 →</a>'+
-      '</p>';
-    footer.innerHTML=
-      '<button class="btn" onclick="enterDemoMode()" style="font-size:11px">跳过，先进去看看</button>'+
-      '<button class="btn primary" onclick="setupNext()" style="width:auto;font-size:11px;padding:6px 20px">下一步 →</button>';
-    ov.classList.add('on');
+    _wizardRegion='';_wizardBudget='';_wizardProvider='';
+    renderProviderQ1(body,footer,ov);
     return;
   }
 
@@ -123,12 +98,205 @@ function showSetupStep(step){
   }
 }
 
+/* ── Provider 智能推荐 Step 1 ── */
+
+function renderProviderQ1(body,footer,ov){
+  body.innerHTML=
+    '<p style="font-size:12px;color:var(--text);margin-bottom:12px;font-weight:600">'+t('providerRegion')+'</p>'+
+    '<p style="font-size:10px;color:var(--muted);margin-bottom:12px">💡 '+t('providerRegionHint')+'</p>'+
+    '<div style="display:flex;gap:10px;margin-bottom:12px">'+
+      '<div class="provider-region-card" onclick="selectRegion(\'cn\')" id="region-cn" style="flex:1;padding:16px 12px;background:var(--surface2);border-radius:var(--radius);text-align:center;cursor:pointer;border:2px solid var(--border2);transition:all .15s">'+
+        '<div style="font-size:24px;margin-bottom:6px">🌏</div>'+
+        '<div style="font-size:13px;font-weight:600;color:var(--text)">'+t('providerRegionCN')+'</div>'+
+        '<div style="font-size:10px;color:var(--muted);margin-top:4px">DeepSeek · 通义千问<br>Kimi · 智谱 · 硅基流动</div>'+
+      '</div>'+
+      '<div class="provider-region-card" onclick="selectRegion(\'global\')" id="region-global" style="flex:1;padding:16px 12px;background:var(--surface2);border-radius:var(--radius);text-align:center;cursor:pointer;border:2px solid var(--border2);transition:all .15s">'+
+        '<div style="font-size:24px;margin-bottom:6px">🌍</div>'+
+        '<div style="font-size:13px;font-weight:600;color:var(--text)">'+t('providerRegionGlobal')+'</div>'+
+        '<div style="font-size:10px;color:var(--muted);margin-top:4px">Claude · OpenAI · Gemini<br>Grok · 自定义端点</div>'+
+      '</div>'+
+    '</div>';
+  footer.innerHTML=
+    '<button class="btn" onclick="enterDemoMode()" style="font-size:11px">跳过</button>'+
+    '<button class="btn" onclick="showSetupStep(0)" style="font-size:11px">← 返回</button>';
+  ov.classList.add('on');
+}
+
+function selectRegion(region){
+  _wizardRegion=region;
+  // highlight selected
+  document.querySelectorAll('.provider-region-card').forEach(function(el){el.style.borderColor='var(--border2)'});
+  var sel=document.getElementById('region-'+region);
+  if(sel)sel.style.borderColor='var(--accent)';
+  // proceed to Q2
+  setTimeout(function(){renderProviderQ2($('setup-body'),$('setup-footer'))},200);
+}
+
+function renderProviderQ2(body,footer){
+  body.innerHTML=
+    '<p style="font-size:12px;color:var(--text);margin-bottom:4px;font-weight:600">'+t('providerBudget')+'</p>'+
+    '<p style="font-size:10px;color:var(--muted);margin-bottom:12px">当前地区: '+
+      (_wizardRegion==='cn'?t('providerRegionCN'):t('providerRegionGlobal'))+'</p>'+
+    '<div id="provider-recommendations" style="margin-bottom:12px"></div>'+
+    '<div style="margin-bottom:8px">'+
+      '<div style="font-size:10px;color:var(--muted);cursor:pointer;padding:6px 0;border-top:1px solid var(--border)" onclick="toggleAllProviders()" id="provider-toggle-all">'+t('providerShowAll')+'</div>'+
+      '<div id="all-providers-list" style="display:none;max-height:200px;overflow-y:auto;padding:8px;background:var(--surface2);border-radius:var(--radius-sm)"></div>'+
+    '</div>'+
+    '<div id="provider-auto-fill" style="font-size:10px;color:var(--muted);margin-bottom:8px;display:none"></div>'+
+    '<div style="position:relative">'+
+      '<input class="proj-input" id="setup-key" type="password" placeholder="sk-…" autocomplete="off" style="padding-right:80px;margin-bottom:4px">'+
+      '<button class="btn" onclick="var el=document.getElementById(\'setup-key\');el.type=el.type===\'password\'?\'text\':\'password\'" style="position:absolute;right:4px;top:4px;font-size:10px;padding:2px 8px">👁 显示</button>'+
+    '</div>'+
+    '<input class="proj-input" id="setup-provider" value="" type="hidden">'+
+    '<p style="font-size:10px;color:var(--muted);margin-top:2px">'+
+      '🔒 Key 仅存浏览器本地存储和 .env 文件，<b>永不离开你的设备</b>'+
+    '</p>';
+  footer.innerHTML=
+    '<button class="btn" onclick="enterDemoMode()" style="font-size:11px">跳过</button>'+
+    '<button class="btn" onclick="showSetupStep(1)" style="font-size:11px">← 重选地区</button>'+
+    '<button class="btn primary" id="setup-next-btn" onclick="setupNext()" style="width:auto;font-size:11px;padding:6px 20px">下一步 →</button>';
+
+  renderBudgetCards();
+  renderAllProvidersDropdown();
+}
+
+function renderBudgetCards(){
+  var container=document.getElementById('provider-recommendations');
+  if(!container)return;
+
+  var budgetTiers=[
+    {key:'free',icon:'💰',label:t('providerBudgetFree'),descKey:'free'},
+    {key:'mid',icon:'💳',label:t('providerBudgetMid'),descKey:'mid'},
+    {key:'high',icon:'🚀',label:t('providerBudgetHigh'),descKey:'high'}
+  ];
+
+  var html='';
+  budgetTiers.forEach(function(tier){
+    var providers=getProvidersForRegionBudget(_wizardRegion,tier.key);
+    var selectedClass= _wizardBudget===tier.key?' budget-selected':'';
+    html+='<div class="budget-tier-card'+selectedClass+'" onclick="selectBudget(\''+tier.key+'\')" id="budget-'+tier.key+'" style="padding:10px 12px;margin-bottom:6px;background:var(--surface2);border-radius:var(--radius);cursor:pointer;border:2px solid var(--border2);transition:all .15s">';
+    html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">';
+    html+='<span style="font-size:12px;font-weight:600;color:var(--text)">'+tier.icon+' '+tier.label+'</span>';
+    html+='</div>';
+    html+='<div style="display:flex;gap:6px;flex-wrap:wrap">';
+    providers.forEach(function(p){
+      html+='<div style="flex:1;min-width:100px;padding:6px 8px;background:var(--bg);border-radius:4px;text-align:center">';
+      html+='<div style="font-size:11px;font-weight:600;color:var(--text)">'+escHtml(p.name)+'</div>';
+      html+='<div style="font-size:9px;color:var(--muted);margin-top:1px">'+escHtml(p.desc.slice(0,20))+'</div>';
+      html+='<div style="font-size:9px;color:var(--text2);margin-top:2px">'+t('providerEstimated')+': '+escHtml(p.est_monthly[tier.descKey]||'—')+'</div>';
+      if(p.free_credit)html+='<div style="font-size:8px;color:var(--accent);margin-top:1px">'+escHtml(p.free_credit)+'</div>';
+      html+='</div>';
+    });
+    html+='</div></div>';
+  });
+  container.innerHTML=html;
+}
+
+function selectBudget(budget){
+  _wizardBudget=budget;
+  // highlight
+  document.querySelectorAll('.budget-tier-card').forEach(function(el){el.style.borderColor='var(--border2)'});
+  var sel=document.getElementById('budget-'+budget);
+  if(sel)sel.style.borderColor='var(--accent)';
+
+  // auto-pick best provider
+  var providers=getProvidersForRegionBudget(_wizardRegion,budget);
+  if(providers.length>0){
+    var best=providers[0];
+    _wizardProvider=best.key;
+    var fillDiv=document.getElementById('provider-auto-fill');
+    if(fillDiv){
+      fillDiv.style.display='block';
+      fillDiv.innerHTML='✅ '+t('providerAutoFilled')+' <b>'+escHtml(best.name)+'</b> — API: <code style="font-size:9px">'+escHtml(best.api_base)+'</code> — 模型: <code style="font-size:9px">'+escHtml(best.default_model)+'</code>'+
+        (best.register_url?' <a href="'+escHtml(best.register_url)+'" target="_blank" style="color:var(--accent);font-size:10px">📝 '+t('providerRegister')+'</a>':'');
+    }
+    // store provider value in hidden input
+    var providerInput=document.getElementById('setup-provider');
+    if(providerInput)providerInput.value=best.key;
+  }
+}
+
+function getProvidersForRegionBudget(region,budget){
+  var result=[];
+  Object.keys(PROVIDER_DB).forEach(function(key){
+    var p=PROVIDER_DB[key];
+    var regionMatch=(region==='cn')?(p.region==='cn'||p.region==='any'):(p.region==='global'||p.region==='any');
+    if(!regionMatch)return;
+    if(budget==='free' && p.price_tier!=='free')return;
+    if(budget==='mid' && (p.price_tier==='free'||p.price_tier==='mid')){/*pass*/}
+    else if(budget==='high'){/*all pass*/}
+    else if(budget!=='mid' && p.price_tier!==budget)return;
+    result.push(Object.assign({key:key},p));
+  });
+  // sort: free first, then mid, then high; within same tier, recommended ones first
+  result.sort(function(a,b){
+    var tierOrder={free:0,mid:1,high:2,any:3};
+    return (tierOrder[a.price_tier]||0)-(tierOrder[b.price_tier]||0);
+  });
+  return result;
+}
+
+function renderAllProvidersDropdown(){
+  var container=document.getElementById('all-providers-list');
+  if(!container)return;
+  var html='<select class="proj-input" id="setup-provider-select" style="margin:0;font-size:11px" onchange="onProviderSelect(this.value)">';
+  html+='<option value="">— 手动选择 Provider —</option>';
+  Object.keys(PROVIDER_DB).forEach(function(key){
+    var p=PROVIDER_DB[key];
+    var label=(p.price_tier==='free'?'💰 ':p.price_tier==='mid'?'💳 ':'') + p.name + ' — ' + p.desc;
+    html+='<option value="'+escHtml(key)+'">'+escHtml(label)+'</option>';
+  });
+  html+='</select>';
+  container.innerHTML=html;
+}
+
+function toggleAllProviders(){
+  var list=document.getElementById('all-providers-list');
+  var toggle=document.getElementById('provider-toggle-all');
+  if(!list||!toggle)return;
+  if(list.style.display==='none'){
+    list.style.display='block';
+    toggle.textContent=t('providerHideAll');
+  }else{
+    list.style.display='none';
+    toggle.textContent=t('providerShowAll');
+  }
+}
+
+function onProviderSelect(key){
+  if(!key)return;
+  _wizardProvider=key;
+  var p=PROVIDER_DB[key];
+  if(!p)return;
+  var fillDiv=document.getElementById('provider-auto-fill');
+  if(fillDiv){
+    fillDiv.style.display='block';
+    fillDiv.innerHTML='✅ '+t('providerAutoFilled')+' <b>'+escHtml(p.name)+'</b> — API: <code style="font-size:9px">'+escHtml(p.api_base)+'</code> — 模型: <code style="font-size:9px">'+escHtml(p.default_model)+'</code>'+
+      (p.register_url?' <a href="'+escHtml(p.register_url)+'" target="_blank" style="color:var(--accent);font-size:10px">📝 '+t('providerRegister')+'</a>':'');
+  }
+  var providerInput=document.getElementById('setup-provider');
+  if(providerInput)providerInput.value=key;
+  // clear budget selection
+  _wizardBudget='';
+  document.querySelectorAll('.budget-tier-card').forEach(function(el){el.style.borderColor='var(--border2)'});
+}
+
+/* ── 步骤跳转逻辑 ── */
 function setupNext(){
   if(_setupStep===1){
     var key=$('setup-key').value.trim();
+    var provider=$('setup-provider').value;
     if(!key){showToast('请输入 API Key 或点击"跳过"体验 Demo',true);return}
+    if(!provider){
+      // try to get from select dropdown
+      var sel=$('setup-provider-select');
+      if(sel&&sel.value)provider=sel.value;
+    }
+    if(!provider){
+      showToast('请选择 Provider（点击预算档位或手动选择）',true);return
+    }
     setupData._api_key=key;
-    setupData._api_provider=$('setup-provider').value;
+    setupData._api_provider=provider;
   } else if(_setupStep===2){
     var dirEl=$('setup-proj-dir');
     if(dirEl){
@@ -174,19 +342,14 @@ function enterDemoMode(){
   _demoMode=true;
   $('setupOverlay').classList.remove('on');
   showToast('🎮 Demo 模式 — 无 Key 也能浏览完整界面');
-  // 在第一个面板显示欢迎消息
-  if(panels.length>0){
-    var p=panels[0];
-    addMsg(p,'assistant',
-      '👋 **欢迎来到 Agency！**\n\n'+
-      '这是 Demo 模式 — 你可以浏览所有功能，但 Agent 不会实际执行。\n\n'+
-      '**快速上手：**\n'+
-      '1. 左侧边栏 — 查看 31 个 Agent 和 40+ Skills\n'+
-      '2. 📊 仪表盘 — 费用追踪、权限日志\n'+
-      '3. 🔧 设置 — 配置 API Key、Agent 工厂\n'+
-      '4. 🧠 智能调度 — 复杂任务自动拆解\n'+
-      '5. 📱 远端访问 — 手机也能操控\n\n'+
-      '准备好了？点右上角 🔧 → 填入你的 API Key → 开始干活！'
-    );
-  }
+
+  // 注入假数据到侧边栏
+  if(typeof renderDemoAgentsInSidebar==='function')renderDemoAgentsInSidebar();
+  if(typeof renderDemoSkillsInSidebar==='function')renderDemoSkillsInSidebar();
+  if(typeof renderDemoHistoryInSidebar==='function')renderDemoHistoryInSidebar();
+
+  // 聊天区显示 Demo 欢迎消息
+  if(typeof renderDemoWelcome==='function')renderDemoWelcome();
+
+  // 仪表盘提示（用户点开时由 dashboard.js 检测 _demoMode）
 }

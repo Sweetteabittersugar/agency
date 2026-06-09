@@ -1,6 +1,10 @@
 /* Agency — 仪表盘5标签页 + 成本 */
 var harnessActive=!1,_lastHarnessTab='overview',_ctxTimer=null,_subTimer=null;
 function toggleDashboard(){
+  if(!isFeatureUnlocked('dashboard')){
+    showToast(t('featureLocked').replace('{day}', FEATURE_UNLOCK_DAYS['dashboard']||1), false, 'warn');
+    return;
+  }
   harnessActive=!harnessActive;
   var ov=$('harnessOverlay'),btn=$('dashboardBtn');
   ov.classList.toggle('on',harnessActive);
@@ -21,8 +25,15 @@ function toggleDashboard(){
 document.querySelectorAll('.harness-overlay-tab').forEach(function(t){t.addEventListener('click',function(){document.querySelectorAll('.harness-overlay-tab').forEach(function(x){x.classList.remove('active')});t.classList.add('active');_lastHarnessTab=t.dataset.htab;renderHarnessTab(t.dataset.htab)})});
 function renderHarnessTab(tab){
   var domEl=$('harnessContent');if(!domEl)return;
+  // 功能门控：某些仪表盘标签页需要更高解锁等级
+  var gatedTabs = {subagents:'routing',hooks:'routing'};
+  if(gatedTabs[tab] && !isFeatureUnlocked(gatedTabs[tab])){
+    domEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:24px;margin-bottom:8px">🔒</div><p>'+t('featureLocked').replace('{day}', FEATURE_UNLOCK_DAYS[gatedTabs[tab]]||3)+'</p></div>';
+    return;
+  }
+  if(typeof _demoMode!=='undefined'&&_demoMode){renderDemoDashboard(tab,domEl);return}
   if(tab==='overview'){
-    domEl.innerHTML='<div class="cost-kpis" style="margin-bottom:10px"><div class="cost-kpi"><span class="kpi-val" id="hov-cost-today">—</span><span class="kpi-label">今日费用</span></div><div class="cost-kpi"><span class="kpi-val" id="hov-cost-30d">—</span><span class="kpi-label">30天</span></div><div class="cost-kpi"><span class="kpi-val" id="hov-calls">—</span><span class="kpi-label">调用</span></div></div><div style="margin-bottom:8px"><span style="font-size:11px;color:var(--muted);font-weight:600">每日费用趋势</span><canvas id="cost-trend-canvas" width="440" height="100" style="width:100%;height:100px;display:block;background:var(--surface2);border-radius:6px;margin-top:4px"></canvas></div><div style="margin-bottom:8px"><span style="font-size:11px;color:var(--muted);font-weight:600">模型费用分布</span><div id="model-bars" style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;color:var(--muted);min-height:60px">—</div></div><div style="margin-bottom:8px;padding:8px 10px;background:var(--surface2);border-radius:6px" id="opus-panel"><span style="font-size:11px;color:var(--muted);font-weight:600">Opus 调用占比</span><div id="opus-ratio" style="margin-top:4px;font-size:10px;color:var(--muted)">加载中…</div></div><div style="display:flex;gap:6px;margin-bottom:8px"><div class="cost-kpi" style="flex:1"><span class="kpi-val" id="hov-cache-saved" style="color:var(--warn)">$0</span><span class="kpi-label">缓存节省</span></div><div class="cost-kpi" style="flex:1"><span class="kpi-val" id="hov-cache-tokens" style="font-size:11px">0</span><span class="kpi-label">缓存Token</span></div></div><div id="cost-alerts" style="margin-bottom:6px;font-size:10px"></div><h4 style="font-size:11px;color:var(--muted);margin-bottom:6px">上下文窗口</h4><div class="ctx-gauge" style="height:14px;margin-bottom:4px"><div class="ctx-gauge-fill" id="hctx-fill" style="width:0%"></div></div><div style="font-size:11px;display:flex;justify-content:space-between"><span id="hctx-text">0 / 500K</span><span id="hctx-cache" style="color:var(--muted)">缓存: —</span></div><div id="hctx-detail" style="font-size:10px;color:var(--muted);margin-top:4px"></div>';
+    domEl.innerHTML='<div class="cost-kpis" style="margin-bottom:10px"><div class="cost-kpi"><span class="kpi-val" id="hov-cost-today">—</span><span class="kpi-label">今日费用</span></div><div class="cost-kpi"><span class="kpi-val" id="hov-cost-30d">—</span><span class="kpi-label">30天</span></div><div class="cost-kpi"><span class="kpi-val" id="hov-calls">—</span><span class="kpi-label">调用</span></div></div><div style="margin-bottom:8px"><span style="font-size:11px;color:var(--muted);font-weight:600">每日费用趋势</span><canvas id="cost-trend-canvas" width="440" height="100" style="width:100%;height:100px;display:block;background:var(--surface2);border-radius:6px;margin-top:4px"></canvas></div><div style="margin-bottom:8px"><span style="font-size:11px;color:var(--muted);font-weight:600">模型费用分布</span><div id="model-bars" style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;color:var(--muted);min-height:60px">—</div></div><div style="margin-bottom:8px;padding:8px 10px;background:var(--surface2);border-radius:6px" id="opus-panel"><span style="font-size:11px;color:var(--muted);font-weight:600">Opus 调用占比 <span data-tooltip="tooltipOpus" style="cursor:help">?</span></span><div id="opus-ratio" style="margin-top:4px;font-size:10px;color:var(--muted)">加载中…</div></div><div style="display:flex;gap:6px;margin-bottom:8px"><div class="cost-kpi" style="flex:1"><span class="kpi-val" id="hov-cache-saved" style="color:var(--warn)">$0</span><span class="kpi-label">缓存节省</span></div><div class="cost-kpi" style="flex:1"><span class="kpi-val" id="hov-cache-tokens" style="font-size:11px">0</span><span class="kpi-label">缓存Token</span></div></div><div id="cost-alerts" style="margin-bottom:6px;font-size:10px"></div><h4 style="font-size:11px;color:var(--muted);margin-bottom:6px">上下文窗口</h4><div class="ctx-gauge" style="height:14px;margin-bottom:4px"><div class="ctx-gauge-fill" id="hctx-fill" style="width:0%"></div></div><div style="font-size:11px;display:flex;justify-content:space-between"><span id="hctx-text">0 / 500K</span><span id="hctx-cache" style="color:var(--muted)">缓存: —</span></div><div id="hctx-detail" style="font-size:10px;color:var(--muted);margin-top:4px"></div>';
     loadContextDetail();loadCostOverview();
   }
   else if(tab==='permission'){domEl.innerHTML='<h3 style="margin-bottom:8px">权限管线</h3><div id="hperm-log" style="font-size:11px">加载中…</div><h4 style="margin-top:12px;margin-bottom:6px;font-size:11px;color:var(--muted)">审计日志</h4><div id="perm-audit-list" style="font-size:11px">加载中…</div>';loadPermHistory();loadPermissionAudit()}
@@ -52,7 +63,7 @@ function drawCostTrend(byDate){
   var c=document.getElementById('cost-trend-canvas');if(!c)return;
   var ctx=c.getContext('2d'),W=c.width,H=c.height,pad=28;
   ctx.clearRect(0,0,W,H);
-  if(!byDate.length){ctx.fillStyle='#5f6877';ctx.font='10px sans-serif';ctx.fillText('暂无数据',W/2-20,H/2);return}
+  if(!byDate.length){ctx.fillStyle='#5f6877';ctx.font='10px sans-serif';var txt=t('dashboardEmpty');ctx.fillText(txt,W/2-ctx.measureText(txt).width/2,H/2);return}
   var maxCost=0;byDate.forEach(function(d){maxCost=Math.max(maxCost,d.cost||0)});
   if(maxCost===0)maxCost=0.01;
   var barW=(W-pad*2)/byDate.length-2;if(barW<1)barW=1;
@@ -74,7 +85,7 @@ function drawCostTrend(byDate){
 }
 function drawModelBars(models){
   var domEl=document.getElementById('model-bars');if(!domEl)return;
-  if(!models.length){domEl.innerHTML='暂无数据';return}
+  if(!models.length){domEl.innerHTML='<div class="empty-state"><div class="es-icon">📊</div><div class="es-text">'+t('dashboardEmpty')+'</div></div>';return}
   var totalCost=0;models.forEach(function(m){totalCost+=m.cost||0});
   domEl.innerHTML=models.map(function(m,i){
     var pct=totalCost>0?((m.cost||0)/totalCost*100):0;
@@ -90,7 +101,7 @@ function drawModelBars(models){
 }
 function drawOpusRatio(models){
   var domEl=document.getElementById('opus-ratio');if(!domEl)return;
-  if(!models||!models.length){domEl.innerHTML='暂无数据';return}
+  if(!models||!models.length){domEl.innerHTML='<div class="empty-state"><div class="es-text">'+t('dashboardEmpty')+'</div></div>';return}
   var totalCost=0,opusCost=0,opusCalls=0,totalCalls=0;
   models.forEach(function(m){
     totalCost+=m.cost||0;totalCalls+=m.calls||0;
@@ -312,4 +323,83 @@ function pollTestStatus(){
       screenshot.innerHTML='<div style="margin-top:8px"><span style="font-size:10px;color:var(--muted)">截图预览：</span><br><img src="/api/files?path='+encodeURIComponent(d.screenshot)+'" style="max-width:100%;max-height:220px;border-radius:4px;border:1px solid var(--border);margin-top:4px" onerror="this.style.display=\'none\'"></div>';
     }
   }).catch(function(e){var statusEl=$('test-status');if(statusEl)statusEl.textContent='查询失败';var btn=$('test-run-btn');if(btn){btn.disabled=false;btn.textContent='▶ 开始测试'}});
+}
+
+/* ── Demo 仪表盘 ── */
+function renderDemoDashboard(tab,domEl){
+  if(tab==='overview'){
+    domEl.innerHTML=
+      '<div style="margin-bottom:10px;font-size:10px;color:var(--warn);text-align:center;border-bottom:1px dashed var(--warn);padding-bottom:6px;opacity:.7">⚠ '+escHtml(t('demoTooltip'))+'</div>'+
+      '<div class="cost-kpis demo-block" style="margin-bottom:10px"><div class="cost-kpi"><span class="kpi-val" style="color:var(--accent)">$0.2341</span><span class="kpi-label">今日费用</span></div><div class="cost-kpi"><span class="kpi-val" style="color:var(--text2)">$3.1240</span><span class="kpi-label">30天</span></div><div class="cost-kpi"><span class="kpi-val" style="color:var(--text2)">42</span><span class="kpi-label">调用</span></div></div>'+
+      '<div style="margin-bottom:8px" class="demo-block">'+
+        '<span style="font-size:11px;color:var(--muted);font-weight:600">每日费用趋势</span>'+
+        '<canvas id="cost-trend-canvas" width="440" height="100" style="width:100%;height:100px;display:block;background:var(--surface2);border-radius:6px;margin-top:4px"></canvas>'+
+      '</div>'+
+      '<div style="margin-bottom:8px" class="demo-block">'+
+        '<span style="font-size:11px;color:var(--muted);font-weight:600">模型费用分布</span>'+
+        '<div id="model-bars" style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;color:var(--muted);min-height:60px">'+
+          buildDemoModelBars()+
+        '</div>'+
+      '</div>'+
+      '<div style="margin-bottom:8px;padding:8px 10px;background:var(--surface2);border-radius:6px" class="demo-block">'+
+        '<span style="font-size:11px;color:var(--muted);font-weight:600">Opus 调用占比 <span data-tooltip="tooltipOpus" style="cursor:help">?</span></span>'+
+        '<div style="margin-top:4px;font-size:10px;color:var(--muted)"><div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden"><div style="height:100%;width:42%;background:var(--accent);border-radius:4px"></div></div><div style="font-size:9px;color:var(--text2);margin-top:2px">$0.98 / 占总费用 31%</div></div>'+
+      '</div>'+
+      '<div style="margin-bottom:8px;padding:8px 10px;background:var(--surface2);border-radius:6px" class="demo-block">'+
+        '<span style="font-size:11px;color:var(--muted);font-weight:600">上下文窗口</span>'+
+        '<div class="ctx-gauge" style="height:14px;margin:6px 0 4px"><div class="ctx-gauge-fill" style="width:32%"></div></div>'+
+        '<div style="font-size:11px;display:flex;justify-content:space-between"><span>160,000 / 500K</span><span style="color:var(--muted)">缓存: 78%</span></div>'+
+      '</div>'+
+      '<div style="display:flex;gap:6px;margin-bottom:8px" class="demo-block"><div class="cost-kpi" style="flex:1"><span class="kpi-val" style="color:var(--warn)">$0.8560</span><span class="kpi-label">缓存节省</span></div><div class="cost-kpi" style="flex:1"><span class="kpi-val" style="font-size:11px">12,500</span><span class="kpi-label">缓存Token</span></div></div>';
+    setTimeout(function(){drawDemoCostTrend()},100);
+  } else {
+    domEl.innerHTML=
+      '<div style="margin-bottom:10px;font-size:10px;color:var(--warn);text-align:center;border-bottom:1px dashed var(--warn);padding-bottom:6px;opacity:.7">⚠ '+escHtml(t('demoTooltip'))+'</div>'+
+      '<div style="text-align:center;padding:40px 16px;color:var(--muted);font-size:12px">Demo 模式 — 此面板需配置 API Key 后加载真实数据</div>';
+  }
+}
+
+function buildDemoModelBars(){
+  var models=[
+    {model:'deepseek-v4',cost:1.52,calls:18},
+    {model:'claude-sonnet',cost:0.98,calls:10},
+    {model:'gpt-4o',cost:0.35,calls:6},
+    {model:'gemini-flash',cost:0.18,calls:5},
+    {model:'claude-haiku',cost:0.09,calls:3}
+  ];
+  var totalCost=models.reduce(function(s,m){return s+m.cost},0);
+  var colors=['#22d3a0','#60a5fa','#fbbf20','#f87171','#a78bfa'];
+  return models.map(function(m,i){
+    var pct=totalCost>0?(m.cost/totalCost*100):0;
+    return'<div style="display:flex;align-items:center;margin:3px 0;gap:6px">'+
+      '<span style="min-width:80px;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(m.model)+'</span>'+
+      '<div style="flex:1;height:12px;background:var(--bg);border-radius:6px;overflow:hidden">'+
+        '<div style="height:100%;width:'+pct+'%;background:'+colors[i%colors.length]+';border-radius:6px;min-width:2px"></div>'+
+      '</div>'+
+      '<span style="font-size:9px;min-width:44px;text-align:right">$'+m.cost.toFixed(4)+'</span>'+
+    '</div>';
+  }).join('');
+}
+
+function drawDemoCostTrend(){
+  var c=document.getElementById('cost-trend-canvas');if(!c)return;
+  var ctx=c.getContext('2d'),W=c.width,H=c.height,pad=28;
+  ctx.clearRect(0,0,W,H);
+  var data=[0.02,0.15,0.08,0.04,0.01,0.06,0.12,0.18,0.09,0.03,0.07,0.14,0.22,0.05];
+  var maxCost=0.25;
+  var barW=(W-pad*2)/data.length-2;
+  ctx.strokeStyle='rgba(251,191,32,.3)';ctx.setLineDash([3,3]);
+  var warnY=H-pad-(0.2/maxCost*(H-pad*2));
+  ctx.beginPath();ctx.moveTo(pad,warnY);ctx.lineTo(W-pad,warnY);ctx.stroke();
+  ctx.setLineDash([]);
+  data.forEach(function(cost,i){
+    var h=cost/maxCost*(H-pad*2);
+    var x=pad+i*((W-pad*2)/data.length),y=H-pad-h;
+    ctx.fillStyle=cost>0.2?'#f87171':'#22d3a0';
+    ctx.fillRect(x,y,barW,h);
+    if(i%3===0){
+      ctx.fillStyle='#9ca3b4';ctx.font='8px sans-serif';
+      ctx.fillText('06-'+(9+i),x-2,H-6);
+    }
+  });
 }

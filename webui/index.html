@@ -28,12 +28,14 @@
 <div style="flex:1;overflow-y:auto" id="history-list"></div>
 </div>
 </nav>
+<div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar()"></div>
 <div class="main">
 <div class="header">
+<button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebar()">☰</button>
 <h1><span class="dot"></span>Agency</h1>
 <div class="header-actions">
 <span style="font-size:10px;color:var(--muted)" id="summary"></span>
-<button class="btn" onclick="toggleHelpOverlay()">❓</button>
+<button class="btn" onclick="toggleHelpOverlay()" data-tooltip="tooltipSend">❓</button>
 <button class="btn" id="dashboardBtn" onclick="toggleDashboard()">📊</button>
 <button class="btn" id="devBtn" onclick="toggleDevOverlay()">🔧</button>
 <button class="btn" id="profileQuickBtn" onclick="cycleProfile()" title="切换 Profile 级别" style="font-size:10px;font-weight:600">⚙</button>
@@ -41,6 +43,12 @@
 <button class="btn" id="gridBtn" onclick="cycleGrid()">⊞</button>
 <button class="btn" onclick="addPanel()">＋</button>
 </div>
+</div>
+<div class="mobile-tabs" id="mobile-tabs">
+<div class="mobile-tab active" data-mtab="chat" onclick="switchMobileTab('chat')">💬 聊天</div>
+<div class="mobile-tab" data-mtab="dashboard" onclick="switchMobileTab('dashboard')">📊 仪表盘</div>
+<div class="mobile-tab" data-mtab="settings" onclick="switchMobileTab('settings')">⚙️ 设置</div>
+<div class="mobile-tab" data-mtab="agents" onclick="switchMobileTab('agents')">👤 Agent</div>
 </div>
 <div class="page-bar" id="pageBar" style="display:none">
 <button id="pgPrev" onclick="prevPage()">◀</button>
@@ -72,7 +80,8 @@
 <h3 style="font-size:12px;color:var(--text);margin-bottom:8px">🔑 API Key</h3>
 <p style="font-size:10px;color:var(--muted);margin-bottom:6px">支持 DeepSeek / Anthropic / OpenAI 兼容 · 🔒 Key 仅存本地，永不上传</p>
 <input class="proj-input" id="api-key" type="password" placeholder="sk-…" autocomplete="off" style="width:100%">
-<select class="proj-input" id="api-provider" style="width:100%;margin:4px 0">
+<button class="btn" id="key-toggle-btn" onclick="toggleKeyVisibility()" style="position:absolute;right:3px;top:50%;transform:translateY(-50%);font-size:14px;padding:2px 6px;background:transparent;border:none;cursor:pointer;z-index:1" title="显示/隐藏">👁</button>
+<select class="proj-input" id="api-provider" style="width:100%;margin:4px 0" onchange="onProviderChange()">
 <option value="deepseek">DeepSeek</option>
 <option value="anthropic">Anthropic</option>
 <option value="openai">OpenAI</option>
@@ -99,7 +108,7 @@
 <p id="trust-mode-desc" style="font-size:10px;color:var(--text2);margin-top:4px"></p>
 </div>
 <div class="settings-section" style="margin-top:16px">
-<h3 style="font-size:12px;color:var(--text);margin-bottom:8px">📊 Profile 级别</h3>
+<h3 style="font-size:12px;color:var(--text);margin-bottom:8px">📊 Profile 级别 <span data-tooltip="tooltipProfile" style="cursor:help;font-size:12px">?</span></h3>
 <p style="font-size:10px;color:var(--muted);margin-bottom:8px">控制 Agent 处理能力、Token 预算和可用功能</p>
 <div style="display:flex;gap:4px;margin-bottom:4px">
 <button class="btn profile-quick-btn" data-profile="minimal" onclick="setProfile('minimal')" style="flex:1;font-size:10px;padding:6px 4px">⚡ 轻量</button>
@@ -113,7 +122,7 @@
 <p style="font-size:9px;color:var(--muted);margin-top:4px">轻量: 3K token · 标准: 8K · 全功能: 20K</p>
 </div>
 <div class="settings-section" style="margin-top:16px">
-<h3 style="font-size:12px;color:var(--text);margin-bottom:8px">🔌 MCP 服务</h3>
+<h3 style="font-size:12px;color:var(--text);margin-bottom:8px">🔌 MCP 服务 <span data-tooltip="tooltipMCP" style="cursor:help;font-size:12px">?</span></h3>
 <p style="font-size:10px;color:var(--muted);margin-bottom:8px">Agent 可用的外部工具</p>
 <div id="mcp-config-list">加载中…</div>
 </div>
@@ -124,7 +133,7 @@
 <div id="agent-factory-output"></div>
 </div>
 <div class="settings-section" style="margin-top:16px">
-<h3 style="font-size:12px;color:var(--text);margin-bottom:8px">🧩 Skills</h3>
+<h3 style="font-size:12px;color:var(--text);margin-bottom:8px">🧩 Skills <span data-tooltip="tooltipSkill" style="cursor:help;font-size:12px">?</span></h3>
 <p style="font-size:11px;color:var(--muted)">Skills 管理请移步侧边栏 Skills 标签</p>
 </div>
 <div class="settings-section" style="margin-top:16px">
@@ -134,6 +143,17 @@
 <div class="settings-section" style="margin-top:16px">
 <h3 style="font-size:12px;color:var(--text);margin-bottom:8px">🔌 集成</h3>
 <div id="integration-panel" style="font-size:11px;color:var(--muted)">加载中…</div>
+</div>
+<div class="settings-section" style="margin-top:16px" id="settings-sticky-agent">
+<h3 style="font-size:12px;color:var(--text);margin-bottom:8px">📌 默认 Agent</h3>
+<div id="sticky-agent-container"></div>
+</div>
+<div class="settings-section" style="margin-top:16px">
+<h3 style="font-size:12px;color:var(--text);margin-bottom:8px">⌨️ 快捷键</h3>
+<div id="shortcut-editor-container"></div>
+</div>
+<div class="settings-section" style="margin-top:16px danger-zone">
+<button class="btn danger" onclick="clearAllHistory()" style="width:100%;font-size:12px;padding:10px">🗑 清空全部对话历史</button>
 </div>
 <div class="settings-section" style="margin-top:16px">
 <h3 style="font-size:12px;color:var(--text);margin-bottom:8px">📝 记忆</h3>
@@ -146,6 +166,28 @@
 <input class="proj-input" id="output-dir" type="text" placeholder="D:/output" autocomplete="off" style="width:100%">
 <button class="new-chat-btn" style="margin-top:4px;font-size:11px;padding:6px" onclick="saveOutputDir()">💾 保存</button>
 </div>
+  <div class="settings-section" style="margin-top:16px">
+	<h3 style="font-size:12px;color:var(--text);margin-bottom:8px">🎨 主题</h3>
+	<div class="contrast-hint" id="contrast-hint">💡 检测到系统偏好高对比度，已自动推荐高对比度主题</div>
+	<div class="theme-selector" id="theme-selector">
+	<div class="theme-opt active" data-theme-val="dark" onclick="setTheme('dark')"><span class="to-icon">🌙</span><span class="to-label">暗色</span></div>
+	<div class="theme-opt" data-theme-val="light" onclick="setTheme('light')"><span class="to-icon">☀️</span><span class="to-label">亮色</span></div>
+	<div class="theme-opt" data-theme-val="high-contrast" onclick="setTheme('high-contrast')"><span class="to-icon">◐</span><span class="to-label">高对比度</span></div>
+	</div>
+	</div>
+	<div class="settings-section" style="margin-top:16px" id="feature-unlock-section">
+	<h3 style="font-size:12px;color:var(--text);margin-bottom:8px">🔓 功能解锁</h3>
+	<div id="feature-unlock-content"></div>
+	</div>
+	<div class="settings-section" style="margin-top:16px">
+	<h3 style="font-size:12px;color:var(--text);margin-bottom:8px">💾 配置管理</h3>
+	<div style="display:flex;gap:6px;flex-wrap:wrap">
+	<button class="btn" onclick="exportConfig()" style="font-size:11px;padding:6px 12px">📤 导出配置</button>
+	<button class="btn" onclick="importConfig()" style="font-size:11px;padding:6px 12px">📥 导入配置</button>
+	<button class="btn" onclick="resetConfig()" style="font-size:11px;padding:6px 12px;color:var(--danger);border-color:var(--danger)">🔄 重置为默认</button>
+	</div>
+	<div id="config-export-preview"></div>
+	</div>
 <div class="resize-handle"></div>
 </div>
 </div>
@@ -195,6 +237,8 @@
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="js/undo.js"></script>
+<script src="js/command-palette.js"></script>
 <script src="js/utils.js"></script>
 <script src="js/markdown.js"></script>
 <script src="js/wizard.js"></script>
