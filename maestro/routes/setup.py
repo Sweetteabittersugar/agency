@@ -53,7 +53,9 @@ def handle_save(handler, body):
             return
         found = False
         for i, line in enumerate(lines):
-            if line.strip().startswith(f"{key}="):
+            stripped = line.strip()
+            # 匹配活跃行或注释行（替换而非追加，防止重复）
+            if stripped.startswith(f"{key}=") or stripped.startswith(f"# {key}=") or stripped.startswith(f"#{key}="):
                 lines[i] = f"{key}={value}"
                 found = True
                 break

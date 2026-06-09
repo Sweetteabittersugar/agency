@@ -55,7 +55,8 @@ def _save_env_token(token: str):
     if env_file.exists():
         lines = env_file.read_text(encoding="utf-8").split("\n")
         for i, line in enumerate(lines):
-            if line.strip().startswith("AGENCY_TOKEN="):
+            stripped = line.strip()
+            if stripped.startswith("AGENCY_TOKEN=") or stripped.startswith("# AGENCY_TOKEN=") or stripped.startswith("#AGENCY_TOKEN="):
                 lines[i] = f"AGENCY_TOKEN={token}"
                 found = True
                 break
