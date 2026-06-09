@@ -78,7 +78,7 @@ body{font:14px/1.55 "DM Sans","Segoe UI",system-ui,sans-serif;background:var(--b
 .empty-panel{text-align:center;color:var(--muted);margin-top:3vh}
 .empty-panel .logo{font-size:22px;margin-bottom:3px}
 .empty-panel h3{font-size:12px;margin-bottom:2px;color:#fff}
-.toast{position:fixed;top:12px;right:12px;background:var(--surface2);border:1px solid var(--border);padding:8px 14px;border-radius:var(--radius);font-size:12px;z-index:99;animation:fadeIn .2s;max-width:340px}
+.toast{position:fixed;top:12px;right:12px;background:var(--surface2);border:1px solid var(--border);padding:8px 14px;border-radius:var(--radius);font-size:12px;z-index:9999;animation:fadeIn .2s;max-width:340px}
 .toast.error{border-color:var(--danger)}
 .toast.warn{border-color:var(--warn)}
 .toast-acts{display:flex;gap:4px;margin-top:6px}
@@ -95,7 +95,7 @@ body{font:14px/1.55 "DM Sans","Segoe UI",system-ui,sans-serif;background:var(--b
 .perm-item.deny{border-left-color:var(--danger)}
 .perm-item.block{border-left-color:var(--warn)}
 .perm-item .pdec{font-weight:600}
-.harness-overlay{position:fixed;top:80px;left:300px;width:480px;height:360px;background:var(--bg);z-index:100;display:none;flex-direction:column;border-radius:var(--radius);border:1px solid var(--border);box-shadow:0 8px 32px rgba(0,0,0,.5);resize:both;overflow:hidden;min-width:320px;min-height:240px}
+.harness-overlay{position:fixed;top:80px;left:300px;width:480px;height:360px;background:var(--bg);z-index:100;display:none;flex-direction:column;border-radius:var(--radius);border:1px solid var(--border);box-shadow:0 8px 32px rgba(0,0,0,.5);resize:both;overflow:auto;min-width:320px;min-height:240px}
 .harness-overlay.on{display:flex}
 .harness-overlay .harness-overlay-tabs{cursor:move;font-size:10px}
 .harness-overlay .harness-overlay-tab{padding:6px 10px;font-size:10px}
@@ -137,3 +137,23 @@ body{font:14px/1.55 "DM Sans","Segoe UI",system-ui,sans-serif;background:var(--b
 .agent-prompt-modal .apm-body{flex:1;overflow-y:auto;padding:10px 14px}
 .agent-prompt-modal .apm-body textarea{width:100%;min-height:320px;max-height:55vh;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:11px;padding:10px;font-family:"JetBrains Mono",monospace;outline:none;resize:vertical;line-height:1.5}
 .agent-prompt-modal .apm-footer{display:flex;gap:6px;padding:10px 14px;border-top:1px solid var(--border);justify-content:flex-end;flex-shrink:0}
+/* 思考过程折叠块 */
+.msg details.think{background:rgba(128,128,128,.08);border-left:3px solid var(--muted);padding:4px 8px;margin:4px 0;border-radius:4px;font-size:10px}
+.msg details.think summary{color:var(--text2);cursor:pointer;font-size:10px;padding:2px 0}
+.msg details.think .think-body{color:var(--muted);margin-top:4px;white-space:pre-wrap;line-height:1.5}
+/* 响应式 */
+@media (max-width:768px){
+  body{flex-direction:column}
+  .sidebar{width:100%;min-width:auto;max-height:200px;flex-shrink:0;border-right:none;border-bottom:1px solid var(--border)}
+  .sidebar-tab{font-size:10px;padding:8px}
+  .main{min-width:100%}
+  .header{padding:7px 8px}
+  .header h1{font-size:13px}
+  .header-actions{gap:2px}
+  .header-actions button{padding:3px 5px;font-size:10px}
+  .harness-overlay{left:10px;top:220px;width:calc(100vw - 20px);min-width:auto}
+  .grid.g2,.grid.g4{grid-template-columns:1fr}
+  .agent-prompt-modal{width:95vw}
+  .agent-prompt-modal[style]{width:95vw!important}
+  .panel-route{font-size:8px}
+}

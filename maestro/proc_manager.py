@@ -1,5 +1,6 @@
 """子进程追踪 — 防止 Claude Code 子进程泄漏"""
 import threading
+import time
 
 _proc_lock = threading.Lock()
 MAX_PROCS = 8
@@ -48,3 +49,23 @@ def cleanup_all_procs():
                 except Exception:
                     pass
         _proc_registry.clear()
+
+
+def _watchdog_loop():
+    """守护线程：每 60 秒清理已退出进程"""
+    while True:
+        time.sleep(60)
+        with _proc_lock:
+            _proc_registry[:] = [p for p in _proc_registry if p.poll() is None]
+
+
+_watchdog_started = False
+
+
+def start_watchdog():
+    global _watchdog_started
+    if _watchdog_started:
+        return
+    _watchdog_started = True
+    t = threading.Thread(target=_watchdog_loop, daemon=True)
+    t.start()

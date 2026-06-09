@@ -1,7 +1,7 @@
 {
   "coder": {
     "name": "coder",
-    "description": "写代码、修bug、重构",
+    "description": "写代码、修bug、重构、代码清理",
     "system_prompt_file": "agents/coder.md",
     "allowed_tools": "Read,Write,Edit,Bash(git *),Bash(ls *),Bash(python *),Glob,Grep",
     "model": "sonnet",
@@ -34,7 +34,7 @@
   },
   "test-runner": {
     "name": "test-runner",
-    "description": "运行测试和验证",
+    "description": "运行测试、验证、测试策略、边界用例",
     "system_prompt_file": "agents/test-runner.md",
     "allowed_tools": "Read,Bash(python *),Bash(ls *),Bash(npm *),Glob,Grep",
     "model": "haiku",
@@ -153,17 +153,6 @@
     "isolation": "none",
     "parallel_safe": true
   },
-  "refactor-cleaner": {
-    "name": "refactor-cleaner",
-    "description": "代码清理：死代码、重复代码、未使用依赖的安全删除",
-    "system_prompt_file": "agents/refactor-cleaner.md",
-    "allowed_tools": "Read,Write,Edit,Grep,Glob,Bash",
-    "model": "sonnet",
-    "collaborates_with": [],
-    "output_type": "cleanup_result",
-    "isolation": "none",
-    "parallel_safe": false
-  },
   "database-reviewer": {
     "name": "database-reviewer",
     "description": "数据库审查：SQL性能、Schema设计、索引策略",
@@ -230,17 +219,6 @@
     "isolation": "none",
     "parallel_safe": true
   },
-  "qa": {
-    "name": "qa",
-    "description": "QA工程师：测试策略、边界用例、回归检查",
-    "system_prompt_file": "agents/qa.md",
-    "allowed_tools": "Read,Bash,Grep,Glob",
-    "model": "sonnet",
-    "collaborates_with": ["coder", "test-runner"],
-    "output_type": "test_plan",
-    "isolation": "none",
-    "parallel_safe": true
-  },
   "devops": {
     "name": "devops",
     "description": "DevOps工程师：CI/CD、Docker、环境配置、部署检查",
@@ -258,7 +236,7 @@
     "system_prompt_file": "agents/release-manager.md",
     "allowed_tools": "Read,Write,Edit,Bash,Grep,Glob",
     "model": "haiku",
-    "collaborates_with": ["qa", "devops"],
+    "collaborates_with": ["devops"],
     "output_type": "release_notes",
     "isolation": "none",
     "parallel_safe": true
@@ -273,5 +251,93 @@
     "output_type": "orchestration_report",
     "isolation": "none",
     "parallel_safe": false
+  },
+  "architect": {
+    "name": "architect",
+    "description": "软件架构师：系统设计、技术选型、接口契约，只出方案不写代码",
+    "system_prompt_file": "agents/architect.md",
+    "allowed_tools": "Read,Grep,Glob,Bash",
+    "model": "opus",
+    "collaborates_with": ["planner", "coder"],
+    "output_type": "design_doc",
+    "isolation": "none",
+    "parallel_safe": true
+  },
+  "debugger": {
+    "name": "debugger",
+    "description": "调试专家：证据驱动诊断，收集日志/栈跟踪后定位根因，不修复只诊断",
+    "system_prompt_file": "agents/debugger.md",
+    "allowed_tools": "Read,Grep,Glob,Bash",
+    "model": "sonnet",
+    "collaborates_with": ["coder", "verifier"],
+    "output_type": "diagnosis_report",
+    "isolation": "none",
+    "parallel_safe": true
+  },
+  "verifier": {
+    "name": "verifier",
+    "description": "实施验证员：检查代码改动是否真的解决问题，有无引入新问题",
+    "system_prompt_file": "agents/verifier.md",
+    "allowed_tools": "Read,Grep,Glob,Bash",
+    "model": "sonnet",
+    "collaborates_with": ["coder", "debugger"],
+    "output_type": "verification_report",
+    "isolation": "none",
+    "parallel_safe": true
+  },
+  "designer": {
+    "name": "designer",
+    "description": "UI/UX设计师：界面设计、交互流程、HTML/CSS原型生成",
+    "system_prompt_file": "agents/designer.md",
+    "allowed_tools": "Read,Grep,Glob,Bash,Write",
+    "model": "sonnet",
+    "collaborates_with": ["coder"],
+    "output_type": "design_spec",
+    "isolation": "none",
+    "parallel_safe": true
+  },
+  "test-generator": {
+    "name": "test-generator",
+    "description": "测试生成器：自动生成单元/集成/API测试用例，不运行只生成",
+    "system_prompt_file": "agents/test-generator.md",
+    "allowed_tools": "Read,Write,Edit,Grep,Glob,Bash",
+    "model": "sonnet",
+    "collaborates_with": ["test-runner"],
+    "output_type": "test_code",
+    "isolation": "none",
+    "parallel_safe": true
+  },
+  "critic": {
+    "name": "critic",
+    "description": "输出评估员：三维评估Agent输出（格式/安全/质量），放行或打回",
+    "system_prompt_file": "agents/critic.md",
+    "allowed_tools": "Read,Grep,Glob",
+    "model": "sonnet",
+    "collaborates_with": [],
+    "output_type": "critic_report",
+    "isolation": "none",
+    "parallel_safe": true
+  },
+  "memory-keeper": {
+    "name": "memory-keeper",
+    "description": "记忆管理者：长任务摘要、上下文压缩、关键信息持久化",
+    "system_prompt_file": "agents/memory-keeper.md",
+    "allowed_tools": "Read,Write,Grep,Glob",
+    "model": "haiku",
+    "collaborates_with": [],
+    "output_type": "memory_snapshot",
+    "isolation": "none",
+    "parallel_safe": true
+  },
+  "router": {
+    "name": "router",
+    "description": "智能路由器：意图识别、最优Agent匹配、成本优化路由",
+    "system_prompt_file": "agents/router.md",
+    "allowed_tools": "Read,Grep,Glob",
+    "model": "haiku",
+    "collaborates_with": [],
+    "output_type": "routing_decision",
+    "isolation": "none",
+    "parallel_safe": true
   }
 }

@@ -14,25 +14,16 @@
 <nav class="sidebar">
 <div class="sidebar-tabs">
 <div class="sidebar-tab active" data-tab="agents">Agent</div>
-<div class="sidebar-tab" data-tab="project">项目</div>
+<div class="sidebar-tab" data-tab="skills">Skills</div>
 <div class="sidebar-tab" data-tab="history">历史</div>
 </div>
 <div class="sidebar-panel active" id="panel-agents">
 <input class="agent-search" id="agent-search" placeholder="搜索 Agent…" autocomplete="off">
 <div class="agent-list" id="agent-list"></div>
 </div>
-<div class="sidebar-panel" id="panel-project">
-<div style="display:flex;gap:4px;margin-bottom:6px">
-<button class="proj-btn" onclick="document.getElementById('folderPicker').click()" title="选择本地文件夹">📁</button>
-<input class="proj-input" id="proj-dir" placeholder="例: D:\ai" style="flex:1">
-<button class="proj-btn" onclick="clearProjDir()" title="清除项目目录">✕</button>
-</div>
-<input type="file" id="folderPicker" webkitdirectory hidden onchange="onFolderPicked(event)">
-<div style="font-size:10px;color:var(--muted);margin-bottom:4px;display:flex;gap:4px">
-<span id="file-breadcrumb">/</span>
-</div>
-<div style="flex:1;overflow-y:auto;font-size:11px" id="file-tree"></div>
-</div>
+	<div class="sidebar-panel" id="panel-skills">
+	<div style="flex:1;overflow-y:auto;font-size:11px" id="sidebar-skills-list">点击 Skills 标签加载...</div>
+	</div>
 <div class="sidebar-panel" id="panel-history">
 <div style="flex:1;overflow-y:auto" id="history-list"></div>
 </div>
@@ -42,6 +33,7 @@
 <h1><span class="dot"></span>Agency</h1>
 <div class="header-actions">
 <span style="font-size:10px;color:var(--muted)" id="summary"></span>
+<button class="btn" onclick="toggleHelpOverlay()">❓</button>
 <button class="btn" id="dashboardBtn" onclick="toggleDashboard()">📊</button>
 <button class="btn" id="devBtn" onclick="toggleDevOverlay()">🔧</button>
 <button class="btn" id="orchBtn" onclick="toggleOrchMode()">🧠</button>
@@ -80,7 +72,15 @@
 <select class="proj-input" id="api-provider" style="width:100%;margin:4px 0">
 <option value="deepseek">DeepSeek</option>
 <option value="anthropic">Anthropic</option>
-<option value="openai">OpenAI 兼容</option>
+<option value="openai">OpenAI</option>
+<option value="google">Google</option>
+<option value="xai">xAI (Grok)</option>
+<option value="siliconflow">硅基流动</option>
+<option value="qwen">通义千问</option>
+<option value="kimi">Kimi</option>
+<option value="glm">智谱 GLM</option>
+<option value="minimax">MiniMax</option>
+<option value="custom">自定义</option>
 </select>
 <button class="new-chat-btn" style="margin-bottom:4px;font-size:11px;padding:6px" onclick="saveApiKey()">💾 保存</button>
 <span id="api-status" style="font-size:10px;color:var(--accent)"></span>
@@ -127,7 +127,36 @@
 <div class="apm-footer" id="setup-footer"></div>
 </div>
 </div>
-<script src="app.js"></script>
+<!-- 帮助覆盖层 -->
+<div class="agent-prompt-overlay" id="helpOverlay">
+<div class="agent-prompt-modal" style="width:560px">
+<div class="apm-header"><span>帮助</span><button class="btn" onclick="toggleHelpOverlay()">✕</button></div>
+<div class="apm-body" style="max-height:420px;overflow-y:auto">
+<div class="help-tabs" style="display:flex;gap:4px;margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:8px">
+<button class="help-tab active" onclick="switchHelpTab('quickstart')">快速入门</button>
+<button class="help-tab" onclick="switchHelpTab('features')">功能介绍</button>
+<button class="help-tab" onclick="switchHelpTab('faq')">常见问题</button>
+<button class="help-tab" onclick="switchHelpTab('shortcuts')">快捷键</button>
+</div>
+<div id="helpContent"></div>
+</div>
+</div>
+</div>
+<!-- 远端登录覆盖层 -->
+<div class="agent-prompt-overlay" id="remoteLoginOverlay">
+<div class="agent-prompt-modal" style="width:360px">
+<div class="apm-header"><span>远程访问认证</span></div>
+<div class="apm-body">
+<p style="font-size:12px;color:var(--text2);margin-bottom:12px">请输入访问密码以继续</p>
+<input class="proj-input" id="remote-login-token" type="password" placeholder="访问密码" autocomplete="off" style="width:100%">
+<p id="remote-login-error" style="font-size:10px;color:var(--danger);margin-top:4px;display:none"></p>
+</div>
+<div class="apm-footer">
+<button class="new-chat-btn" onclick="submitRemoteLogin()" style="width:auto;font-size:11px;padding:5px 20px">登录</button>
+</div>
+</div>
+</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="app.js"></script>
 </body>
 </html>

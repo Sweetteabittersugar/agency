@@ -6,47 +6,65 @@ try{projDir=localStorage.getItem('agency_proj_dir')||''}catch(_){}
 try{apiKey=localStorage.getItem('agency_api_key')||''}catch(_){}
 try{apiProvider=localStorage.getItem('agency_api_provider')||'deepseek'}catch(_){}
 try{authToken=localStorage.getItem('agency_auth_token')||''}catch(_){}
-/* ── 首次配置向导 ── */
-var setupData=null;
+var _saveTimer=null,_lastHarnessTab='overview';
+/* ── 首次配置向导（4步）── */
+var setupData=null,_setupStep=1;
 fetch('/api/setup/status').then(function(r){return r.json()}).then(function(d){
   setupData=d;
   if(d.needs_setup){showSetupStep(1)}
 }).catch(function(){});
 function showSetupStep(step){
+  _setupStep=step;
   var body=$('setup-body'),footer=$('setup-footer'),ov=$('setupOverlay');
   if(step===1){
     $('setup-title').textContent='欢迎使用 Agency';
     body.innerHTML='<p style=\"font-size:12px;color:var(--text2);margin-bottom:12px\">第一步：配置 API Key 以连接 AI 模型</p>'+
-      '<select class=\"proj-input\" id=\"setup-provider\" style=\"margin-bottom:8px\"><option value=\"deepseek\">DeepSeek（推荐，便宜）</option><option value=\"anthropic\">Anthropic</option><option value=\"openai\">OpenAI 兼容</option></select>'+
+      '<select class=\"proj-input\" id=\"setup-provider\" style=\"margin-bottom:8px\"><option value=\"deepseek\">DeepSeek（推荐，便宜）</option><option value=\"anthropic\">Anthropic</option><option value=\"openai\">OpenAI</option><option value=\"google\">Google</option><option value=\"xai\">xAI (Grok)</option><option value=\"siliconflow\">硅基流动</option><option value=\"qwen\">通义千问</option><option value=\"kimi\">Kimi</option><option value=\"glm\">智谱 GLM</option><option value=\"minimax\">MiniMax</option><option value=\"custom\">自定义</option></select>'+
       '<input class=\"proj-input\" id=\"setup-key\" type=\"password\" placeholder=\"sk-…\" autocomplete=\"off\">'+
       '<p style=\"font-size:10px;color:var(--muted);margin-top:4px\">Key 仅存在本地 .env 文件，不会上传</p>';
     footer.innerHTML='<button class=\"btn\" onclick=\"$(\'setupOverlay\').classList.remove(\'on\')\" style=\"font-size:11px\">跳过</button><button class=\"new-chat-btn\" onclick=\"setupNext()\" style=\"width:auto;font-size:11px;padding:5px 20px\">下一步</button>';
     ov.classList.add('on');
   } else if(step===2){
+    $('setup-title').textContent='项目文件夹（可选）';
+    body.innerHTML='<p style=\"font-size:12px;color:var(--text2);margin-bottom:12px\">设置项目文件夹后可浏览文件、自动感知上下文</p>'+
+      '<input class=\"proj-input\" id=\"setup-proj-dir\" placeholder=\"例: D:\\ai\" value=\"'+escHtml(projDir)+'\">'+
+      '<p style=\"font-size:10px;color:var(--muted);margin-top:4px\">可跳过，之后在设置面板随时修改</p>';
+    footer.innerHTML='<button class=\"btn\" onclick=\"showSetupStep(1)\" style=\"font-size:11px\">上一步</button><button class=\"new-chat-btn\" onclick=\"setupNext()\" style=\"width:auto;font-size:11px;padding:5px 20px\">下一步</button><button class=\"btn\" onclick=\"setupNext()\" style=\"font-size:11px;margin-left:4px\">跳过</button>';
+  } else if(step===3){
     $('setup-title').textContent='远端访问（可选）';
-    // 自动生成密码（只生成一次）
+    body.innerHTML='<p style=\"font-size:12px;color:var(--text2);margin-bottom:12px\">开启后可从手机/平板远程操作</p>'+
+      '<label style=\"display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:8px\"><input type=\"checkbox\" id=\"setup-remote\"> 启用远端访问</label>';
+    footer.innerHTML='<button class=\"btn\" onclick=\"showSetupStep(2)\" style=\"font-size:11px\">上一步</button><button class=\"new-chat-btn\" onclick=\"setupNext()\" style=\"width:auto;font-size:11px;padding:5px 20px\">下一步</button><button class=\"btn\" onclick=\"setupFinish()\" style=\"font-size:11px;margin-left:4px\">跳过</button>';
+  } else if(step===4){
     if(!setupData._remote_token){
       setupData._remote_token=Array(16).fill(0).map(function(){return'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'.charAt(Math.floor(Math.random()*62))}).join('');
     }
-    body.innerHTML='<p style=\"font-size:12px;color:var(--text2);margin-bottom:12px\">开启后可从手机/平板远程操作</p>'+
-      '<label style=\"display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:8px\"><input type=\"checkbox\" id=\"setup-remote\" onchange=\"document.getElementById(\"setup-remote-info\").style.display=this.checked?\"block\":\"none\"\"> 启用远端访问</label>'+
-      '<div id=\"setup-remote-info\" style=\"display:none\">'+
+    body.innerHTML='<p style=\"font-size:12px;color:var(--text2);margin-bottom:12px\">配置远端密码与连接信息</p>'+
       '<p style=\"font-size:10px;color:var(--muted);margin-bottom:4px\">访问密码（已自动生成，可修改）</p>'+
       '<div style=\"display:flex;gap:4px\"><input class=\"proj-input\" id=\"setup-remote-token\" style=\"flex:1;margin:0;font-size:11px;font-family:monospace\" value=\"'+escHtml(setupData._remote_token)+'\"><button class=\"btn\" onclick=\"setupData._remote_token=Array(16).fill(0).map(function(){return\"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789\".charAt(Math.floor(Math.random()*62))}).join(\"\");$(\"setup-remote-token\").value=setupData._remote_token\" style=\"font-size:10px\">随机</button></div>'+
-      '</div>';
-    footer.innerHTML='<button class=\"btn\" onclick=\"showSetupStep(1)\" style=\"font-size:11px\">上一步</button><button class=\"new-chat-btn\" onclick=\"setupFinish()\" style=\"width:auto;font-size:11px;padding:5px 20px\">完成</button>';
+      '<p style=\"font-size:10px;color:var(--muted);margin-top:8px\">启动后访问地址将在设置面板「远端访问」中显示</p>';
+    footer.innerHTML='<button class=\"btn\" onclick=\"showSetupStep(3)\" style=\"font-size:11px\">上一步</button><button class=\"new-chat-btn\" onclick=\"setupFinish()\" style=\"width:auto;font-size:11px;padding:5px 20px\">完成</button>';
   }
 }
 function setupNext(){
-  var key=$('setup-key').value.trim();
-  if(!key){showToast('请输入 API Key',!0);return}
-  setupData._api_key=key;
-  setupData._api_provider=$('setup-provider').value;
-  showSetupStep(2);
+  if(_setupStep===1){
+    var key=$('setup-key').value.trim();
+    if(!key){showToast('请输入 API Key',!0);return}
+    setupData._api_key=key;
+    setupData._api_provider=$('setup-provider').value;
+  } else if(_setupStep===2){
+    var dirEl=$('setup-proj-dir');
+    if(dirEl){
+      var dir=dirEl.value.trim();
+      if(dir){projDir=dir;localStorage.setItem('agency_proj_dir',projDir)}
+    }
+  }
+  if(_setupStep<4){showSetupStep(_setupStep+1)}
+  else{setupFinish()}
 }
 function setupFinish(){
-  var remoteOn=$('setup-remote')&&$('setup-remote').checked;
-  var remoteToken=remoteOn?($('setup-remote-token').value.trim()||setupData._remote_token||''):'';
+  var remoteOn=!!($('setup-remote')&&$('setup-remote').checked);
+  var remoteToken=remoteOn?(($('setup-remote-token')&&$('setup-remote-token').value.trim())||setupData._remote_token||''):'';
   var body={api_key:setupData._api_key||'',api_provider:setupData._api_provider||'deepseek',remote_enabled:remoteOn,remote_token:remoteToken};
   fetch('/api/setup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){return r.json()}).then(function(d){
     if(d.ok){
@@ -56,43 +74,52 @@ function setupFinish(){
       if(remoteToken){authToken=remoteToken;localStorage.setItem('agency_auth_token',remoteToken)}
       showToast('配置完成！');
     } else showToast(d.error||'保存失败',!0);
-  });
+  }).catch(function(e){showToast('保存失败: '+e.message,!0)});
 }
-// API 请求包装：自动注入认证头
+// API 请求包装：自动注入认证头（不可变 opts）
 function apiFetch(url, opts){
-  opts = opts || {};
-  opts.headers = opts.headers || {};
-  if (authToken) opts.headers['Authorization'] = 'Bearer ' + authToken;
-  return fetch(url, opts).then(function(r){
-    if (r.status === 401 && authToken) {
-      // token 过期或无效，提示重新输入
-      var nt = prompt('认证令牌无效，请输入新的访问令牌:');
-      if (nt) {
-        authToken = nt.trim();
-        localStorage.setItem('agency_auth_token', authToken);
-        opts.headers['Authorization'] = 'Bearer ' + authToken;
-        return fetch(url, opts);
+  opts=Object.assign({},opts);
+  opts.headers=Object.assign({},opts.headers||{});
+  if(authToken)opts.headers['Authorization']='Bearer '+authToken;
+  return fetch(url,opts).then(function(r){
+    if(r.status===401){
+      if(authToken){
+        authToken='';
+        localStorage.removeItem('agency_auth_token');
       }
+      showRemoteLogin();
+      throw new Error('需要认证');
     }
     return r;
   });
 }
+
 if(apiKey){var ak=$('api-key');if(ak)ak.value=apiKey;var ap=$('api-provider');if(ap)ap.value=apiProvider;$('api-status').textContent='已配置'}
 function saveApiKey(){apiKey=$('api-key').value.trim();apiProvider=$('api-provider').value;localStorage.setItem('agency_api_key',apiKey);localStorage.setItem('agency_api_provider',apiProvider);$('api-status').textContent=apiKey?'已保存':'已清除';if(!apiKey){localStorage.removeItem('agency_api_key');localStorage.removeItem('agency_api_provider')}}
 function $(id){return document.getElementById(id)}
 var grid=$('grid'),pageBar=$('pageBar'),agentList=$('agent-list'),historyList=$('history-list');
 document.querySelectorAll('.sidebar-tab').forEach(function(tab){tab.addEventListener('click',function(){document.querySelectorAll('.sidebar-tab').forEach(function(t){t.classList.remove('active')});document.querySelectorAll('.sidebar-panel').forEach(function(p){p.classList.remove('active')});tab.classList.add('active');var p=$('panel-'+tab.dataset.tab);if(p)p.classList.add('active');})});
-async function loadAgents(){try{agents=await(await fetch('/api/agents')).json();renderAgents(agents)}catch(e){agentList.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px">加载失败</div>'}}
+document.querySelector('.sidebar-tab[data-tab="skills"]')&&document.querySelector('.sidebar-tab[data-tab="skills"]').addEventListener('click',function(){loadSidebarSkills()});
+// 加载 Agents（三态：加载中/成功/失败）
+async function loadAgents(){
+  agentList.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px">加载中…</div>';
+  try{agents=await(await fetch('/api/agents')).json();renderAgents(agents)}catch(e){agentList.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px">加载失败</div>'}
+}
 loadAgents();
-function renderAgents(list){agentList.innerHTML=list.map(function(a){var ns=a.name.replace(/'/g,"\\'"),nh=escHtml(a.name);return'<div class="agent-card" onclick="pickAgent(\''+ns+'\')" oncontextmenu="pickAgentNew(\''+ns+'\',event)"><div style="display:flex;justify-content:space-between;align-items:center"><div class="name">'+nh+'<span class="model">'+(a.model||'auto')+'</span></div><button class="btn" style="font-size:10px;padding:1px 5px;flex-shrink:0;margin-left:4px" onclick="event.stopPropagation();viewAgentPrompt(\''+ns+'\')" title="查看/编辑提示词">📝</button></div><div class="desc">'+escHtml(a.description||'')+'</div>'+(a.keywords&&a.keywords.length?'<div class="kw">'+a.keywords.slice(0,5).join(', ')+'</div>':'')+'</div>'}).join('')}
+// 渲染 Agent 卡片（含删除按钮 + tools 标签）
+function renderAgents(list){agentList.innerHTML=list.map(function(a){var ns=a.name.replace(/'/g,"\\'"),nh=escHtml(a.name);return'<div class="agent-card" onclick="pickAgent(\''+ns+'\')" oncontextmenu="pickAgentNew(\''+ns+'\',event)"><div style="display:flex;justify-content:space-between;align-items:center"><div class="name">'+nh+'<span class="model">'+(a.model||'auto')+'</span></div><div style="display:flex;gap:2px;flex-shrink:0;margin-left:4px"><button class="btn" style="font-size:10px;padding:1px 5px" onclick="event.stopPropagation();viewAgentPrompt(\''+ns+'\')" title="查看/编辑提示词">📝</button><button class="btn" style="font-size:10px;padding:1px 5px;color:var(--danger)" onclick="event.stopPropagation();deleteAgent(\''+ns+'\')" title="删除 Agent">🗑</button></div></div><div class="desc">'+escHtml(a.description||'')+'</div>'+(a.keywords&&a.keywords.length?'<div class="kw">'+a.keywords.slice(0,5).join(', ')+'</div>':'')+(a.tools&&a.tools.length?'<div class="kw" style="margin-top:2px">'+a.tools.slice(0,6).map(function(t){return'<span class="tool-tag">'+escHtml(t)+'</span>'}).join('')+'</div>':'')+'</div>'}).join('')}
 $('agent-search').addEventListener('input',function(){var q=$('agent-search').value.toLowerCase();renderAgents(agents.filter(function(a){return a.name.includes(q)||(a.description||'').includes(q)||(a.keywords||[]).some(function(k){return k.includes(q)})}))});
 function pickAgent(name){var p=getFocusedPanel();p.dom.input.value='@'+name+' ';p.dom.input.focus()}
 function pickAgentNew(name,e){e.preventDefault();var p=addPanel();p.dom.input.value='@'+name+' ';p.dom.input.focus()}
-function getFocusedPanel(){if(focusedPid){var p=panels.find(function(x){return x.id===focusedPid});if(p&&p.dom.wrapper.classList.contains('on'))return p}var start=curPage*perPage;return panels[start]||panels[0]}
+// getFocusedPanel 兜底
+function getFocusedPanel(){if(focusedPid){var p=panels.find(function(x){return x.id===focusedPid});if(p&&p.dom.wrapper.classList.contains('on'))return p}var start=curPage*perPage;var panel=panels[start]||panels[0];if(!panel)panel=addPanel();return panel}
+// Agent 删除
+function deleteAgent(name){if(!confirm('确认删除 Agent "'+name+'"？此操作不可撤销。'))return;fetch('/api/agent-delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name})}).then(function(r){return r.json()}).then(function(d){if(d.ok){showToast('Agent 已删除: '+name);loadAgents()}else showToast(d.error||'删除失败',!0)}).catch(function(e){showToast('删除失败: '+e.message,!0)})}
 var pInput=$('proj-dir');if(pInput)pInput.value=projDir;
 pInput&&pInput.addEventListener('change',function(){projDir=pInput.value.trim();localStorage.setItem('agency_proj_dir',projDir);loadFileTree(projDir)});
-function mkPanel(){return{id:++pidSeq,isStreaming:!1,abortController:null,currentConvo:{id:Date.now(),title:'',messages:[],sessionId:''},currentAssistantMsg:null,dom:{}}}
-function addPanel(){var s=mkPanel();panels.push(s);buildPanelDOM(s);curPage=Math.floor((panels.length-1)/perPage);refreshUI();setTimeout(function(){s.dom.input&&s.dom.input.focus()},80);return s}
+// mkPanel 含 _lastAgent
+function mkPanel(){return{id:++pidSeq,isStreaming:!1,abortController:null,_lastAgent:null,currentConvo:{id:Date.now(),title:'',messages:[],sessionId:''},currentAssistantMsg:null,dom:{}}}
+function addPanel(){var s=mkPanel();panels.push(s);buildPanelDOM(s);curPage=Math.floor((panels.length-1)/perPage);refreshUI();return s}
 function removePanel(pid){if(panels.length<=1)return;var idx=panels.findIndex(function(p){return p.id===pid});if(idx<0)return;var p=panels[idx];if(p.isStreaming&&p.abortController)p.abortController.abort();panels.splice(idx,1);p.dom.wrapper.remove();if(focusedPid===pid)focusedPid=null;var total=Math.ceil(panels.length/perPage);if(curPage>=total)curPage=Math.max(0,total-1);refreshUI()}
 function clearAllPanels(){panels.forEach(function(p){if(p.isStreaming&&p.abortController)p.abortController.abort()});while(panels.length>1){var p=panels.pop();p.dom.wrapper&&p.dom.wrapper.remove()}var p=panels[0];p.currentConvo={id:Date.now(),title:'',messages:[],sessionId:''};p.dom.messages.innerHTML='<div class="empty-panel"><div class="logo">⚡</div><h3>就绪</h3></div>';p.dom.route.innerHTML='';p.dom.agentName.textContent='就绪';curPage=0;refreshUI()}
 function buildPanelDOM(s){var w=document.createElement('div');w.className='panel on';w.innerHTML='<div class="panel-bar"><span class="pinfo"><span class="pdot"></span><span class="pagent">就绪</span></span><button class="pclose">✕</button></div><div class="panel-msgs"><div class="empty-panel"><div class="logo">⚡</div><h3>就绪</h3></div></div><div class="panel-route"></div><div class="panel-inp"><textarea placeholder="输入任务或 @agent名…" rows="1"></textarea><button>发送</button></div>';grid.appendChild(w);s.dom={wrapper:w,messages:w.querySelector('.panel-msgs'),route:w.querySelector('.panel-route'),input:w.querySelector('textarea'),sendBtn:w.querySelector('.panel-inp button'),dot:w.querySelector('.pdot'),agentName:w.querySelector('.pagent'),empty:w.querySelector('.empty-panel')};w.querySelector('.pclose').addEventListener('click',function(e){e.stopPropagation();removePanel(s.id)});s.dom.input.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleSend(s.id)}});s.dom.input.addEventListener('focus',function(){focusedPid=s.id});s.dom.input.addEventListener('input',function(){s.dom.input.style.height='auto';s.dom.input.style.height=Math.min(s.dom.input.scrollHeight,100)+'px'});s.dom.sendBtn.addEventListener('click',function(){handleSend(s.id)});}
@@ -100,8 +127,8 @@ function cycleGrid(){var s=[1,2,4];perPage=s[(s.indexOf(perPage)+1)%3];curPage=0
 function prevPage(){if(curPage>0){curPage--;refreshUI()}}
 function nextPage(){if(curPage<Math.ceil(panels.length/perPage)-1){curPage++;refreshUI()}}
 function refreshUI(){var total=Math.ceil(panels.length/perPage),start=curPage*perPage;grid.className='grid g'+perPage;$('gridBtn').textContent='⊞';if(total>1){pageBar.style.display='flex';$('pgNum').textContent=(curPage+1)+'/'+total;$('pgPrev').disabled=curPage<=0;$('pgNext').disabled=curPage>=total-1}else{pageBar.style.display='none'}panels.forEach(function(p,i){p.dom.wrapper.classList.toggle('on',i>=start&&i<start+perPage)});$('summary').textContent=panels.length+'窗'+(total>1?' '+(curPage+1)+'/'+total:'')}
-function handleSend(pid){var p=panels.find(function(x){return x.id===pid});if(!p)return;if(p.isStreaming){stopStream(pid);return}if(orchMode){handleOrchSend(p);return}var task=p.dom.input.value.trim();if(!task)return;var isNew=!p.currentConvo.sessionId;if(isNew)p.currentConvo.sessionId='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16)});var forceAgent='',actualTask=task;var m=task.match(/^@(\S+)\s+/);if(m){forceAgent=m[1];actualTask=task.slice(m[0].length)}setStreaming(p,!0);p.dom.input.value='';p.dom.input.style.height='auto';p.dom.route.innerHTML='<span>…</span>';p.dom.agentName.textContent='…';if(p.dom.empty)p.dom.empty.style.display='none';addMsg(p,'user',task);p.currentConvo.messages.push({role:'user',content:task});p.currentAssistantMsg=addMsg(p,'assistant','<span class="cursor"></span>');p._receivedDone=!1;p.abortController=new AbortController();apiFetch('/api/route',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task:actualTask,force_agent:forceAgent,proj_dir:projDir||undefined,api_key:apiKey||undefined,api_provider:apiProvider||undefined}),signal:p.abortController.signal}).then(function(r){return r.json()}).then(function(route){if(route.error)throw new Error(route.error);p.dom.route.innerHTML='<span>🤖 '+route.agent+'</span><span>🧠 '+route.model+'</span>';p.dom.agentName.textContent=route.agent;var c=p.currentAssistantMsg.querySelector('.cursor');if(c)c.remove();return apiFetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task:actualTask,force_agent:forceAgent,model:route.model,proj_dir:projDir||undefined,session_id:p.currentConvo.sessionId,is_new_session:isNew,api_key:apiKey||undefined,api_provider:apiProvider||undefined}),signal:p.abortController.signal})}).then(function(resp){var reader=resp.body.getReader();p._reader=reader;var decoder=new TextDecoder(),buf='',txt='';function read(){reader.read().then(function(result){if(result.done){p._reader=null;if(!p._receivedDone&&p.isStreaming){p.currentAssistantMsg.innerHTML+='<div style="color:var(--warn);margin-top:4px;font-size:11px;cursor:pointer" onclick="retrySend('+pid+')">⚠ 连接中断 — 点击重试</div>'}finish();return}buf+=decoder.decode(result.value,{stream:!0});var lines=buf.split('\n');buf=lines.pop()||'';for(var i=0;i<lines.length;i++){var line=lines[i];if(line.indexOf('event:')===0)continue;if(line.indexOf('data: ')!==0)continue;try{var d=JSON.parse(line.slice(6));if(d.content){txt+=d.content;p.currentAssistantMsg.innerHTML=renderMD(txt)+'<span class="cursor"></span>';p.dom.messages.scrollTop=p.dom.messages.scrollHeight}else if(d.elapsed){p._receivedDone=!0;p.dom.route.innerHTML+='<span>⏱ '+d.elapsed+'s</span><span>💰 $'+d.cost+'</span>'}else if(d.error){p.currentAssistantMsg.innerHTML='<span style="color:var(--danger)">❌ '+escHtml(d.error)+'</span>'}}catch(_){}}read()})}function finish(){var c=p.currentAssistantMsg.querySelector('.cursor');if(c)c.remove();p.currentConvo.messages.push({role:'assistant',content:txt});saveAllConvos();setStreaming(p,!1);p.dom.agentName.textContent='就绪';highlightCode(p.currentAssistantMsg);loadCostOverview()}read()}).catch(function(e){if(e.name==='AbortError'){var c=p.currentAssistantMsg.querySelector('.cursor');if(c)c.remove();p.currentAssistantMsg.innerHTML+=' <span style="color:var(--warn)">⏹ 已停止</span>';var partial=(p.currentAssistantMsg.textContent||'').replace('⏹ 已停止','').trim();if(partial){p.currentConvo.messages.push({role:'assistant',content:partial});saveAllConvos()}}else{if(p.currentAssistantMsg)p.currentAssistantMsg.innerHTML='<span style="color:var(--danger)">❌ '+escHtml(e.message)+'</span>'}setStreaming(p,!1);p._reader=null;p.dom.agentName.textContent='就绪'})}
-function handleOrchSend(p){var task=p.dom.input.value.trim();if(!task)return;setStreaming(p,!0);p.dom.input.value='';p.dom.input.style.height='auto';p.dom.route.innerHTML='<span>🧠 智能调度</span>';if(p.dom.empty)p.dom.empty.style.display='none';addMsg(p,'user',task);p.currentConvo.messages.push({role:'user',content:task});p.currentAssistantMsg=addMsg(p,'assistant','<span class="cursor"></span>');p.abortController=new AbortController();var planReceived=!1;fetch('/api/orchestrate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task:task,proj_dir:projDir||undefined,api_key:apiKey||undefined,api_provider:apiProvider||undefined}),signal:p.abortController.signal}).then(function(resp){var reader=resp.body.getReader();p._reader=reader;var decoder=new TextDecoder(),buf='',txt='',planData=null;function read(){reader.read().then(function(result){if(result.done){p._reader=null;finish();return}buf+=decoder.decode(result.value,{stream:!0});var lines=buf.split('\n');buf=lines.pop()||'';for(var i=0;i<lines.length;i++){var line=lines[i],eventType='';if(line.indexOf('event: ')===0){eventType=line.slice(7);continue}if(line.indexOf('data: ')!==0)continue;try{var d=JSON.parse(line.slice(6));if(eventType==='plan'){planData=d;return}if(d.content){txt+=d.content;p.currentAssistantMsg.innerHTML=renderMD(txt)+'<span class="cursor"></span>';p.dom.messages.scrollTop=p.dom.messages.scrollHeight}else if(d.summary){txt+=d.summary}}catch(_){}}read()})}function finish(){var c=p.currentAssistantMsg.querySelector('.cursor');if(c)c.remove();p.currentConvo.messages.push({role:'assistant',content:txt||'调度完成'});saveAllConvos();setStreaming(p,!1);if(planData&&planData.phases){executePlan(planData)};loadCostOverview()}read()}).catch(function(e){if(e.name==='AbortError'){var c=p.currentAssistantMsg.querySelector('.cursor');if(c)c.remove();p.currentAssistantMsg.innerHTML+=' <span style="color:var(--warn)">⏹ 已停止</span>'}else{if(p.currentAssistantMsg)p.currentAssistantMsg.innerHTML='<span style="color:var(--danger)">❌ '+escHtml(e.message)+'</span>'}setStreaming(p,!1);p._reader=null})}
+function handleSend(pid){var p=panels.find(function(x){return x.id===pid});if(!p)return;if(p.isStreaming){stopStream(pid);return}if(orchMode){handleOrchSend(p);return}var task=p.dom.input.value.trim();if(!task)return;var isNew=!p.currentConvo.sessionId;if(isNew)p.currentConvo.sessionId='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16)});var forceAgent='',actualTask=task;var m=task.match(/^@(\S+)\s+/);if(m){forceAgent=m[1];actualTask=task.slice(m[0].length);p._lastAgent=forceAgent}else if(p._lastAgent){forceAgent=p._lastAgent}setStreaming(p,!0);p.dom.input.value='';p.dom.input.style.height='auto';p.dom.route.innerHTML='<span>…</span>';p.dom.agentName.textContent='…';if(p.dom.empty)p.dom.empty.style.display='none';addMsg(p,'user',task);p.currentConvo.messages.push({role:'user',content:task});p.currentAssistantMsg=addMsg(p,'assistant','<span class="cursor"></span>');p._receivedDone=!1;p.abortController=new AbortController();apiFetch('/api/route',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task:actualTask,force_agent:forceAgent,proj_dir:projDir||undefined,api_key:apiKey||undefined,api_provider:apiProvider||undefined}),signal:p.abortController.signal}).then(function(r){return r.json()}).then(function(route){if(route.error)throw new Error(route.error);p.dom.route.innerHTML='<span>🤖 '+route.agent+'</span><span>🧠 '+route.model+'</span>';p.dom.agentName.textContent=route.agent;var c=p.currentAssistantMsg.querySelector('.cursor');if(c)c.remove();return apiFetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task:actualTask,force_agent:forceAgent,model:route.model,proj_dir:projDir||undefined,session_id:p.currentConvo.sessionId,is_new_session:isNew,api_key:apiKey||undefined,api_provider:apiProvider||undefined}),signal:p.abortController.signal})}).then(function(resp){var reader=resp.body.getReader();p._reader=reader;var decoder=new TextDecoder(),buf='',txt='';function read(){reader.read().then(function(result){if(result.done){p._reader=null;if(!p._receivedDone&&p.isStreaming){p.currentAssistantMsg.innerHTML+='<div style="color:var(--warn);margin-top:4px;font-size:11px;cursor:pointer" onclick="retrySend('+pid+')">⚠ 连接中断 — 点击重试</div>'}finish();return}buf+=decoder.decode(result.value,{stream:!0});buf=buf.replace(/\r\n/g,'\n');var lines=buf.split('\n');buf=lines.pop()||'';for(var i=0;i<lines.length;i++){var line=lines[i];if(line.indexOf('event:')===0)continue;if(line.indexOf('data: ')!==0)continue;try{var d=JSON.parse(line.slice(6));if(d.content){txt+=d.content;p.currentAssistantMsg.innerHTML=renderMD(txt)+'<span class="cursor"></span>';p.dom.messages.scrollTop=p.dom.messages.scrollHeight}else if(d.elapsed){p._receivedDone=!0;p.dom.route.innerHTML+='<span>⏱ '+d.elapsed+'s</span><span>💰 $'+d.cost+'</span>'}else if(d.error){p.currentAssistantMsg.innerHTML='<span style="color:var(--danger)">❌ '+escHtml(d.error)+'</span>'}}catch(_){}}read()})}function finish(){var c=p.currentAssistantMsg.querySelector('.cursor');if(c)c.remove();p.currentConvo.messages.push({role:'assistant',content:txt});saveAllConvos();setStreaming(p,!1);p.dom.agentName.textContent='就绪';highlightCode(p.currentAssistantMsg);loadCostOverview()}read()}).catch(function(e){if(e.name==='AbortError'){var c=p.currentAssistantMsg.querySelector('.cursor');if(c)c.remove();p.currentAssistantMsg.innerHTML+=' <span style="color:var(--warn)">⏹ 已停止</span>';var partial=(p.currentAssistantMsg.textContent||'').replace('⏹ 已停止','').trim();if(partial){p.currentConvo.messages.push({role:'assistant',content:partial});saveAllConvos()}}else{if(p.currentAssistantMsg)p.currentAssistantMsg.innerHTML='<span style="color:var(--danger)">❌ '+escHtml(e.message)+'</span>'}setStreaming(p,!1);p._reader=null;p.dom.agentName.textContent='就绪'})}
+function handleOrchSend(p){var task=p.dom.input.value.trim();if(!task)return;setStreaming(p,!0);p.dom.input.value='';p.dom.input.style.height='auto';p.dom.route.innerHTML='<span>🧠 智能调度</span>';if(p.dom.empty)p.dom.empty.style.display='none';addMsg(p,'user',task);p.currentConvo.messages.push({role:'user',content:task});p.currentAssistantMsg=addMsg(p,'assistant','<span class="cursor"></span>');p.abortController=new AbortController();var planReceived=!1;fetch('/api/orchestrate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task:task,proj_dir:projDir||undefined,api_key:apiKey||undefined,api_provider:apiProvider||undefined}),signal:p.abortController.signal}).then(function(resp){var reader=resp.body.getReader();p._reader=reader;var decoder=new TextDecoder(),buf='',txt='',planData=null;function read(){reader.read().then(function(result){if(result.done){p._reader=null;finish();return}buf+=decoder.decode(result.value,{stream:!0});buf=buf.replace(/\r\n/g,'\n');var lines=buf.split('\n');buf=lines.pop()||'';for(var i=0;i<lines.length;i++){var line=lines[i],eventType='';if(line.indexOf('event: ')===0){eventType=line.slice(7);continue}if(line.indexOf('data: ')!==0)continue;try{var d=JSON.parse(line.slice(6));if(eventType==='plan'){planData=d;return}if(d.content){txt+=d.content;p.currentAssistantMsg.innerHTML=renderMD(txt)+'<span class="cursor"></span>';p.dom.messages.scrollTop=p.dom.messages.scrollHeight}else if(d.summary){txt+=d.summary}}catch(_){}}read()})}function finish(){var c=p.currentAssistantMsg.querySelector('.cursor');if(c)c.remove();p.currentConvo.messages.push({role:'assistant',content:txt||'调度完成'});saveAllConvos();setStreaming(p,!1);if(planData&&planData.phases){executePlan(planData)};loadCostOverview()}read()}).catch(function(e){if(e.name==='AbortError'){var c=p.currentAssistantMsg.querySelector('.cursor');if(c)c.remove();p.currentAssistantMsg.innerHTML+=' <span style="color:var(--warn)">⏹ 已停止</span>'}else{if(p.currentAssistantMsg)p.currentAssistantMsg.innerHTML='<span style="color:var(--danger)">❌ '+escHtml(e.message)+'</span>'}setStreaming(p,!1);p._reader=null})}
 function executePlan(plan){
   if(!plan||!plan.phases)return;
   showToast('调度计划: '+plan.title+' ('+plan.phases.length+'阶段)');
@@ -141,11 +168,22 @@ function executePlan(plan){
   }
   setTimeout(runNextPhase,1000);
 }
-function stopStream(pid){var p=panels.find(function(x){return x.id===pid});if(p){if(p.abortController){p.abortController.abort();p.abortController=null}if(p._reader){try{p._reader.cancel()}catch(_){}p._reader=null}}}
+// 停止按钮：立即 UI 重置空消息
+function stopStream(pid){var p=panels.find(function(x){return x.id===pid});if(p){if(p.abortController){p.abortController.abort();p.abortController=null}if(p._reader){try{p._reader.cancel()}catch(_){}p._reader=null}}if(p&&p.currentAssistantMsg&&(!p.currentAssistantMsg.textContent||p.currentAssistantMsg.textContent.trim()==='')){p.currentAssistantMsg.innerHTML='<span style="color:var(--warn)">⏹ 已停止</span>'}}
 function retrySend(pid){var p=panels.find(function(x){return x.id===pid});if(!p)return;stopStream(pid);setStreaming(p,!1);var lastUser=p.currentConvo.messages.filter(function(m){return m.role==='user'}).pop();if(lastUser){p.dom.input.value=lastUser.content;setTimeout(function(){handleSend(pid)},300)}}
-function setStreaming(p,v){p.isStreaming=v;p.dom.input.disabled=v;p.dom.sendBtn.textContent=v?'停止':'发送';if(v){p.dom.sendBtn.classList.add('stopping');if(p.dom.dot)p.dom.dot.classList.add('busy')}else{p.dom.sendBtn.classList.remove('stopping');if(p.dom.dot)p.dom.dot.classList.remove('busy');p.abortController=null}if(!v)setTimeout(function(){p.dom.input.focus();p.dom.input.disabled=!1},50)}
+// setStreaming：删除 input.focus()，不抢焦点
+function setStreaming(p,v){p.isStreaming=v;p.dom.input.disabled=v;p.dom.sendBtn.textContent=v?'停止':'发送';if(v){p.dom.sendBtn.classList.add('stopping');if(p.dom.dot)p.dom.dot.classList.add('busy')}else{p.dom.sendBtn.classList.remove('stopping');if(p.dom.dot)p.dom.dot.classList.remove('busy');p.abortController=null}if(!v)setTimeout(function(){p.dom.input.disabled=!1},50)}
 function addMsg(p,role,content){var w=document.createElement('div');w.className='msg '+role;w.innerHTML='<div class="msg-label">'+(role==='user'?'你':'Agency')+'</div><div class="bubble">'+content+'</div>';p.dom.messages.appendChild(w);p.dom.messages.scrollTop=p.dom.messages.scrollHeight;return w.querySelector('.bubble')}
-function saveAllConvos(){panels.forEach(function(p){if(p.currentConvo.messages.length===0)return;if(!p.currentConvo.title||p.currentConvo.title==='新对话'){var f=p.currentConvo.messages.find(function(m){return m.role==='user'});if(f)p.currentConvo.title=f.content.slice(0,40)}var idx=conversations.findIndex(function(c){return c.id===p.currentConvo.id});if(idx>=0){conversations[idx]={id:p.currentConvo.id,title:p.currentConvo.title,messages:p.currentConvo.messages,sessionId:p.currentConvo.sessionId}}else{conversations.unshift({id:p.currentConvo.id,title:p.currentConvo.title,messages:p.currentConvo.messages,sessionId:p.currentConvo.sessionId})}});var json=JSON.stringify(conversations);if(json.length>4*1024*1024){while(json.length>4*1024*1024&&conversations.length>0){conversations.pop();json=JSON.stringify(conversations)}showToast('存储空间不足，已清理旧会话',!1,'warn')}try{localStorage.setItem('agency_convos',json)}catch(e){showToast('存储空间不足，请清理历史会话',!0)}renderHistory()}
+// saveAllConvos：debounce + 删除4MB自动清理
+function saveAllConvos(){
+  if(_saveTimer)clearTimeout(_saveTimer);
+  _saveTimer=setTimeout(function(){
+    _saveTimer=null;
+    panels.forEach(function(p){if(p.currentConvo.messages.length===0)return;if(!p.currentConvo.title||p.currentConvo.title==='新对话'){var f=p.currentConvo.messages.find(function(m){return m.role==='user'});if(f)p.currentConvo.title=f.content.slice(0,40)}var idx=conversations.findIndex(function(c){return c.id===p.currentConvo.id});if(idx>=0){conversations[idx]={id:p.currentConvo.id,title:p.currentConvo.title,messages:p.currentConvo.messages,sessionId:p.currentConvo.sessionId}}else{conversations.unshift({id:p.currentConvo.id,title:p.currentConvo.title,messages:p.currentConvo.messages,sessionId:p.currentConvo.sessionId})}});
+    try{localStorage.setItem('agency_convos',JSON.stringify(conversations))}catch(e){}
+    renderHistory();
+  },500);
+}
 function renderHistory(){historyList.innerHTML=conversations.slice(0,30).map(function(c){return'<div class="history-item" onclick="loadConvo(\''+c.id+'\')"><div style="display:flex;align-items:center"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">'+escHtml(c.title||'新对话')+'</span><button class="del-btn" onclick="delConvo(\''+c.id+'\',event)">×</button></div><div class="time">'+new Date(c.id).toLocaleDateString('zh-CN')+'</div><div class="preview">'+escHtml((c.messages[0]&&c.messages[0].content||'').slice(0,30))+'</div></div>'}).join('')||'<div style="color:var(--muted);font-size:12px;padding:8px">暂无历史</div>'}
 renderHistory();
 function loadConvo(id){var c=conversations.find(function(x){return x.id===Number(id)});if(!c)return;var p=getFocusedPanel();p.currentConvo={id:c.id,title:c.title,messages:c.messages.slice(),sessionId:c.sessionId||''};p.dom.messages.innerHTML='';p.dom.route.innerHTML='';c.messages.forEach(function(m){addMsg(p,m.role,m.content)});p.dom.messages.scrollTop=p.dom.messages.scrollHeight;setTimeout(function(){p.dom.messages.querySelectorAll('.bubble').forEach(highlightCode)},100)}
@@ -153,23 +191,36 @@ function delConvo(id,e){e.stopPropagation();conversations=conversations.filter(f
 function toggleDevOverlay(){devMode=!devMode;var ov=$('devOverlay'),btn=$('devBtn');ov.classList.toggle('on',devMode);btn.classList.toggle('on',devMode);if(devMode){var ak=$('api-key');if(ak&&apiKey)ak.value=apiKey;var ap=$('api-provider');if(ap&&apiProvider)ap.value=apiProvider;loadSkillsList();loadMemList();loadRemotePanel();loadIntegrationPanel()}}
 function loadSkillsList(){var el=$('skills-list');if(!el)return;fetch('/api/skills').then(function(r){return r.json()}).then(function(skills){el.innerHTML=skills.length?skills.map(function(s){return'<div style="padding:4px 0;font-size:11px"><span>'+escHtml(s.name)+'</span> <span style="color:var(--muted);font-size:10px">'+escHtml(s.description||'').slice(0,40)+'</span></div>'}).join(''):'暂无 Skills'}).catch(function(){el.innerHTML='加载失败'})}
 function loadMemList(){var el=$('mem-list');if(!el)return;fetch('/api/memory').then(function(r){return r.json()}).then(function(d){var files=d.files||[];el.innerHTML=files.length?files.map(function(f){return'<div class="mem-file" onclick="openMemEditor(\''+escHtml(f.path)+'\',\''+escHtml(f.name)+'\')"><span class="icon">📄</span><span>'+escHtml(f.name)+'</span><span style="color:var(--muted);font-size:10px;margin-left:auto">'+(f.size||0)+'B</span></div>'}).join(''):'暂无记忆文件'}).catch(function(){el.innerHTML='加载失败'})}
-function generateAgent(){var input=$('agent-factory-input'),output=$('agent-factory-output');var req=input.value.trim();if(!req)return;output.innerHTML='生成中…';fetch('/api/agent-generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requirement:req,api_key:apiKey||undefined,api_provider:apiProvider||undefined})}).then(function(resp){var reader=resp.body.getReader(),decoder=new TextDecoder(),buf='',txt='';function read(){reader.read().then(function(result){if(result.done){finish();return}buf+=decoder.decode(result.value,{stream:!0});var lines=buf.split('\n');buf=lines.pop()||'';for(var i=0;i<lines.length;i++){if(lines[i].indexOf('data: ')!==0)continue;try{var d=JSON.parse(lines[i].slice(6));if(d.content)txt+=d.content;if(d.error){output.innerHTML='<span style=color:var(--danger)>'+escHtml(d.error)+'</span>';return}}catch(_){}}read()})}function finish(){output.innerHTML='<pre style=\"font-size:10px;max-height:200px;overflow:auto;background:var(--bg);padding:8px;border-radius:4px\">'+escHtml(txt)+'</pre><button class=\"new-chat-btn\" style=\"margin-top:4px\" onclick=\"saveAgent()\">保存此 Agent</button>';output._agentContent=txt}read()}).catch(function(){output.innerHTML='生成失败'})}
+// generateAgent SSE 兼容 rn
+function generateAgent(){var input=$('agent-factory-input'),output=$('agent-factory-output');var req=input.value.trim();if(!req)return;output.innerHTML='生成中…';fetch('/api/agent-generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requirement:req,api_key:apiKey||undefined,api_provider:apiProvider||undefined})}).then(function(resp){var reader=resp.body.getReader(),decoder=new TextDecoder(),buf='',txt='';function read(){reader.read().then(function(result){if(result.done){finish();return}buf+=decoder.decode(result.value,{stream:!0});buf=buf.replace(/\r\n/g,'\n');var lines=buf.split('\n');buf=lines.pop()||'';for(var i=0;i<lines.length;i++){if(lines[i].indexOf('data: ')!==0)continue;try{var d=JSON.parse(lines[i].slice(6));if(d.content)txt+=d.content;if(d.error){output.innerHTML='<span style=color:var(--danger)>'+escHtml(d.error)+'</span>';return}}catch(_){}}read()})}function finish(){output.innerHTML='<pre style=\"font-size:10px;max-height:200px;overflow:auto;background:var(--bg);padding:8px;border-radius:4px\">'+escHtml(txt)+'</pre><button class=\"new-chat-btn\" style=\"margin-top:4px\" onclick=\"saveAgent()\">保存此 Agent</button>';output._agentContent=txt}read()}).catch(function(){output.innerHTML='生成失败'})}
 function saveAgent(){var txt=$('agent-factory-output')._agentContent;if(!txt)return;var m=txt.match(/name:\s*"?([a-z0-9-]+)"?/i);var name=m?m[1]:('agent-'+Date.now().toString(36));fetch('/api/agent-create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,content:txt})}).then(function(r){return r.json()}).then(function(d){if(d.ok){showToast('Agent 已保存: '+name);loadAgents()}else{showToast(d.error||'保存失败',!0)}}).catch(function(){showToast('保存失败',!0)})}
 function toggleOrchMode(){orchMode=!orchMode;var btn=$('orchBtn');btn.classList.toggle('on',orchMode);btn.textContent=orchMode?'🧠 调度中':'🧠 调度';if(orchMode&&perPage<4){perPage=4;refreshUI()}}
 /* 全局快捷键已移除 — 避免与浏览器冲突 */
-function renderMD(t){if(!t)return'';var h=t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');var p=0,o='';while(p<h.length){if(h.charAt(p)==='['){var e=h.indexOf(']',p);if(e!==-1&&h.charAt(e+1)==='('){var ue=h.indexOf(')',e+2);if(ue!==-1){var url=h.substring(e+2,ue);if(/^(https?:|mailto:|\/|#)/i.test(url))o+='<a href="'+url+'" target="_blank">'+h.substring(p+1,e)+'</a>';else o+=h.substring(p,ue+1);p=ue+1;continue}}}o+=h.charAt(p++)}h=o;h=h.replace(/\[Thinking\]([\s\S]*?)\[\/Thinking\]/gi,'<details class="think"><summary>思考过程</summary>$1</details>');h=h.replace(/```(\w*)\n([\s\S]*?)```/g,function(_,lang,code){return'<pre><code class="language-'+(lang||'plaintext')+'">'+code+'</code></pre>'});h=h.replace(/(\|.+\|\n?)+/gm,function(m){var r=m.trim().split('\n'),o='<table>';for(var i=0;i<r.length;i++){var c=r[i].split('|').filter(function(x){return!!x.trim()});var t=i?'td':'th';o+='<tr>'+c.map(function(x){return'<'+t+'>'+x.trim()+'</'+t+'>'}).join('')+'</tr>'}return o+'</table>'});h=h.replace(/`([^`]+)`/g,'<code>$1</code>');h=h.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');h=h.replace(/\*(.+?)\*/g,'<em>$1</em>');h=h.replace(/^### (.+)$/gm,'<h3>$1</h3>');h=h.replace(/^## (.+)$/gm,'<h2>$1</h2>');h=h.replace(/^# (.+)$/gm,'<h1>$1</h1>');h=h.replace(/^(\d+)\. (.+)$/gm,'<li style="margin-left:16px;list-style-type:decimal">$2</li>');h=h.replace(/^- (.+)$/gm,'<li style="margin-left:16px">$1</li>');h=h.replace(/\n/g,'<br>');return h}
+// Thinking 块折叠：灰底左边框
+function renderMD(t){if(!t)return'';var h=t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');var p=0,o='';while(p<h.length){if(h.charAt(p)==='['){var e=h.indexOf(']',p);if(e!==-1&&h.charAt(e+1)==='('){var ue=h.indexOf(')',e+2);if(ue!==-1){var url=h.substring(e+2,ue);if(/^(https?:|mailto:|\/|#)/i.test(url))o+='<a href="'+url+'" target="_blank">'+h.substring(p+1,e)+'</a>';else o+=h.substring(p,ue+1);p=ue+1;continue}}}o+=h.charAt(p++)}h=o;h=h.replace(/\[Thinking\]([\s\S]*?)\[\/Thinking\]/gi,'<details class="think"><summary>💭 思考过程</summary><div class="think-body">$1</div></details>');h=h.replace(/```(\w*)\n([\s\S]*?)```/g,function(_,lang,code){return'<pre><code class="language-'+(lang||'plaintext')+'">'+code+'</code></pre>'});h=h.replace(/(\|.+\|\n?)+/gm,function(m){var r=m.trim().split('\n'),o='<table>';for(var i=0;i<r.length;i++){var c=r[i].split('|').filter(function(x){return!!x.trim()});var t=i?'td':'th';o+='<tr>'+c.map(function(x){return'<'+t+'>'+x.trim()+'</'+t+'>'}).join('')+'</tr>'}return o+'</table>'});h=h.replace(/`([^`]+)`/g,'<code>$1</code>');h=h.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');h=h.replace(/\*(.+?)\*/g,'<em>$1</em>');h=h.replace(/^### (.+)$/gm,'<h3>$1</h3>');h=h.replace(/^## (.+)$/gm,'<h2>$1</h2>');h=h.replace(/^# (.+)$/gm,'<h1>$1</h1>');h=h.replace(/^(\d+)\. (.+)$/gm,'<li style="margin-left:16px;list-style-type:decimal">$2</li>');h=h.replace(/^- (.+)$/gm,'<li style="margin-left:16px">$1</li>');h=h.replace(/\n/g,'<br>');return h}
 function highlightCode(el){if(!el)return;el.querySelectorAll('pre code').forEach(function(b){if(window.hljs)try{hljs.highlightElement(b)}catch(_){}})}
-function escHtml(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function escHtml(s){var d=document.createElement('div');d.textContent=s??'';return d.innerHTML}
 function showToast(m,err,level){var t=document.createElement('div');t.className='toast'+(err?' error':'')+(level==='warn'?' warn':'');t.textContent=m;document.body.appendChild(t);setTimeout(function(){t.style.opacity='0';t.style.transition='opacity .3s'},2500);setTimeout(function(){t.remove()},3000)}
 /* ── Harness: 仪表盘 ── */
 var harnessActive=!1;
+// 标签焦点保持
 function toggleDashboard(){
   harnessActive=!harnessActive;
   var ov=$('harnessOverlay'),btn=$('dashboardBtn');
   ov.classList.toggle('on',harnessActive);
   btn.classList.toggle('on',harnessActive);
-  if(harnessActive){renderHarnessTab('overview')}
-  else{[_subTimer,_ctxTimer].forEach(function(t){if(t){clearInterval(t)}});_subTimer=_ctxTimer=null}
+  if(harnessActive){
+    var activeTab=document.querySelector('.harness-overlay-tab[data-htab="'+_lastHarnessTab+'"]');
+    if(activeTab){
+      document.querySelectorAll('.harness-overlay-tab').forEach(function(x){x.classList.remove('active')});
+      activeTab.classList.add('active');
+    }
+    renderHarnessTab(_lastHarnessTab);
+  }else{
+    var cur=document.querySelector('.harness-overlay-tab.active');
+    if(cur)_lastHarnessTab=cur.dataset.htab;
+    [_subTimer,_ctxTimer].forEach(function(t){if(t){clearInterval(t)}});_subTimer=_ctxTimer=null;
+  }
 }
 var dragTarget=null,dragOX=0,dragOY=0;
 function onDrag(e){if(!dragTarget)return;dragTarget.style.left=(e.clientX-dragOX)+'px';dragTarget.style.top=(e.clientY-dragOY)+'px'}
@@ -179,7 +230,7 @@ function offDrag(){dragTarget=null;document.removeEventListener('mousemove',onDr
   var tab=el.querySelector('.harness-overlay-tabs');if(!tab)return;
   tab.addEventListener('mousedown',function(e){if(e.target.tagName==='BUTTON')return;dragTarget=el;dragOX=e.clientX-el.offsetLeft;dragOY=e.clientY-el.offsetTop;document.addEventListener('mousemove',onDrag);document.addEventListener('mouseup',offDrag);e.preventDefault()})
 });
-document.querySelectorAll('.harness-overlay-tab').forEach(function(t){t.addEventListener('click',function(){document.querySelectorAll('.harness-overlay-tab').forEach(function(x){x.classList.remove('active')});t.classList.add('active');renderHarnessTab(t.dataset.htab)})});
+document.querySelectorAll('.harness-overlay-tab').forEach(function(t){t.addEventListener('click',function(){document.querySelectorAll('.harness-overlay-tab').forEach(function(x){x.classList.remove('active')});t.classList.add('active');_lastHarnessTab=t.dataset.htab;renderHarnessTab(t.dataset.htab)})});
 function renderHarnessTab(tab){
   var el=$('harnessContent');if(!el)return;
   if(tab==='overview'){
@@ -269,11 +320,10 @@ function showPermToast(data){
   setTimeout(function(){if(document.body.contains(t)){sendPermDecision(data,'deny');t.remove()}},30000);
 }
 function sendPermDecision(data,decision){
-  fetch('/api/permissions/decision',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tool_name:data.tool_name,decision:decision,risk:data.risk||{},reason:decision})});
+  fetch('/api/permissions/decision',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tool_name:data.tool_name,decision:decision,risk:data.risk||{},reason:decision})}).catch(function(){});
 }
 function addAllowRule(data){
-  fetch('/api/permissions/allowlist',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rule:data.tool_name})});
-  showToast('已添加规则: '+data.tool_name);
+  fetch('/api/permissions/allowlist',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rule:data.tool_name})}).then(function(){showToast('已添加规则: '+data.tool_name)}).catch(function(){});
 }
 function loadPermHistory(){
   fetch('/api/permissions/history?limit=100').then(function(r){return r.json()}).then(function(d){
@@ -281,7 +331,7 @@ function loadPermHistory(){
     if(d.history&&d.history.length){el.innerHTML=d.history.map(function(e){return'<div class="perm-item '+e.decision+'"><span class="pdec">'+(e.decision==='allow'?'✓':e.decision==='deny'?'✗':'⚠')+'</span> '+escHtml(e.tool||'?')+' <span style="color:var(--muted);font-size:9px">'+e.time+(e.reason?' · '+escHtml(e.reason):'')+'</span></div>'}).join('')}else{el.innerHTML='暂无权限记录'}
   }).catch(function(){var el=$('hperm-log');if(el)el.innerHTML='加载失败'});
 }
-/* ── 上下文工程 ── */
+/* ── 上下文工程（每会话独立进度条）── */
 var _ctxTimer=null;
 function loadContextDetail(){
   fetch('/api/harness/context').then(function(r){return r.json()}).then(function(d){
@@ -291,11 +341,19 @@ function loadContextDetail(){
     if(text)text.textContent=ttl.toLocaleString()+' / 500K';
     if(cache)cache.textContent='缓存命中: '+(d.cache_hit_rate||0)+'% · 省 $'+(d.cost_est?d.cost_est.cache_saved.toFixed(6):'0');
     if(detail){
-      var comp=d.composition||{};
-      detail.innerHTML='输入 '+(d.input_tokens||0).toLocaleString()+' · 输出 '+(d.output_tokens||0).toLocaleString()+'<br>'+
-        '组成: 系统 ~'+comp.system_pct+'% · 对话 ~'+comp.conversation_pct+'% · 工具 ~'+comp.tool_pct+'%<br>'+
-        '会话: '+d.messages+'条消息 · '+d.tool_calls+'次工具 · 费用 $'+(d.cost_est?d.cost_est.total.toFixed(6):'0')+
-        (d.duration_s?' · '+d.duration_s+'s':'')+(d.last_update?' · '+d.last_update:'');
+      var sessions=d.sessions||[];
+      var html='';
+      if(sessions.length){
+        sessions.forEach(function(s){
+          var spct=s.tokens>0?Math.min(100,Math.round(s.tokens/(s.max||500000)*100)):0;
+          html+='<div style="margin-bottom:4px">'+
+            '<div style="display:flex;justify-content:space-between;font-size:9px;margin-bottom:1px"><span style="color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px">'+escHtml(s.name||s.id||'会话')+'</span><span style="color:var(--muted)">'+(s.tokens||0).toLocaleString()+'/'+Math.round((s.max||500000)/1000)+'K</span></div>'+
+            '<div class="ctx-gauge" style="height:5px;margin-bottom:2px"><div class="ctx-gauge-fill'+(spct>85?' danger':spct>60?' warn':'')+'" style="width:'+spct+'%"></div></div>'+
+          '</div>';
+        });
+      }
+      html+='输入 '+(d.input_tokens||0).toLocaleString()+' · 输出 '+(d.output_tokens||0).toLocaleString()+' · 费用 $'+(d.cost_est?d.cost_est.total.toFixed(6):'0')+(d.last_update?' · '+d.last_update:'');
+      detail.innerHTML=html;
     }
   }).catch(function(){var el=$('hctx-detail');if(el)el.innerHTML='加载失败'});
   if(_ctxTimer)clearInterval(_ctxTimer);
@@ -313,7 +371,6 @@ function loadSubagents(){
       html+='<details style="margin:2px 0;background:var(--surface2);border-radius:4px;font-size:11px"><summary style="padding:4px 8px;cursor:pointer"><span style="color:'+color+'">'+icon+'</span> '+escHtml(a.name)+' <span style="color:var(--muted);font-size:10px">'+escHtml(a.type||'')+'</span></summary><div style="padding:4px 12px 8px;font-size:10px;color:var(--text2)">'+escHtml(a.description||'无描述')+'<br>项目: '+escHtml(a.project||'')+'</div></details>';
     });
     el.innerHTML=html}else{el.innerHTML='<span style="color:var(--muted)">暂无 SubAgent 记录</span>'}
-    // 自动刷新
     if(_subTimer)clearInterval(_subTimer);
     _subTimer=setInterval(function(){if($('harnessOverlay').classList.contains('on'))loadSubagents()},5000);
   }).catch(function(){var el=$('hsub-tree');if(el)el.innerHTML='加载失败'});
@@ -345,7 +402,7 @@ function openMemEditor(path,name){
 }
 function saveMemFile(name){
   var content=document.getElementById('mem-edit-area');if(!content)return;
-  fetch('/api/memory/'+encodeURIComponent(name),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:content.value})}).then(function(r){return r.json()}).then(function(d){if(d.ok){showToast('已保存: '+d.name);document.getElementById('mem-editor').innerHTML='';loadMemList()}else{showToast(d.error||'保存失败',!0)}});
+  fetch('/api/memory/'+encodeURIComponent(name),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:content.value})}).then(function(r){return r.json()}).then(function(d){if(d.ok){showToast('已保存: '+d.name);document.getElementById('mem-editor').innerHTML='';loadMemList()}else{showToast(d.error||'保存失败',!0)}}).catch(function(e){showToast('保存失败: '+e.message,!0)});
 }
 /* ── 文件浏览器 ── */
 function loadFileTree(path){
@@ -431,16 +488,66 @@ function setRemoteToken(){
   fetch('/api/remote/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:true,token:t})}).then(function(r){return r.json()}).then(function(d){
     if(d.ok){authToken=d.token;localStorage.setItem('agency_auth_token',d.token);$('remote-token-input').value='';showToast('密码已更新');}
     else showToast(d.error||'更新失败',!0);
-  });
+  }).catch(function(e){showToast('更新失败: '+e.message,!0)});
 }
 function genRemoteToken(){
   fetch('/api/remote/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:true,token:''})}).then(function(r){return r.json()}).then(function(d){
     if(d.ok){authToken=d.token;localStorage.setItem('agency_auth_token',d.token);$('remote-token-input').value=d.token;showToast('新密码: '+d.token);}
     else showToast(d.error||'生成失败',!0);
-  });
+  }).catch(function(e){showToast('生成失败: '+e.message,!0)});
 }
 function copyRemoteUrl(){
   var el=$('remote-url');if(!el)return;
   el.select();document.execCommand('copy');showToast('已复制连接地址');
+}
+/* ── 侧边栏 Skills ── */
+function loadSidebarSkills(){
+  var el=$('sidebar-skills-list');if(!el)return;
+  el.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px">加载中…</div>';
+  fetch('/api/skills').then(function(r){return r.json()}).then(function(skills){
+    renderSidebarSkills(skills||[]);
+  }).catch(function(){el.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px">加载失败</div>'});
+}
+function renderSidebarSkills(skills){
+  var el=$('sidebar-skills-list');if(!el)return;
+  el.innerHTML=skills.length?skills.map(function(s){
+    return'<div style="padding:8px 10px;margin-bottom:4px;background:var(--surface2);border-radius:var(--radius-sm);font-size:12px;transition:background .15s;cursor:default">'+
+      '<div style="font-weight:600;color:var(--text)">'+escHtml(s.name)+'</div>'+
+      '<div style="font-size:10px;color:var(--muted);margin-top:2px">'+escHtml((s.description||'').slice(0,80))+'</div>'+
+    '</div>';
+  }).join(''):'<div style="color:var(--muted);font-size:12px;padding:8px">暂无 Skills</div>';
+}
+/* ── 帮助覆盖层 ── */
+function toggleHelpOverlay(){
+  var ov=$('helpOverlay');
+  if(!ov)return;
+  ov.classList.toggle('on');
+  if(ov.classList.contains('on')){switchHelpTab('quickstart')}
+}
+function switchHelpTab(tab){
+  var el=$('helpContent');if(!el)return;
+  document.querySelectorAll('.help-tab').forEach(function(t){t.classList.toggle('active',t.textContent.includes(tab))});
+  var tabs={
+    quickstart:'<h3>快速入门</h3><p style="font-size:11px;color:var(--text2)">1. 在左侧 Agent 面板选择或搜索 Agent<br>2. 输入框中输入任务，可 @agent名 指定<br>3. 点击发送或按 Enter 开始对话<br>4. 使用 ⊞ 切换布局（1/2/4窗）</p>',
+    features:'<h3>功能介绍</h3><p style="font-size:11px;color:var(--text2)">🧠 智能路由：自动选择最合适的 Agent<br>📊 仪表盘：费用、上下文、SubAgent 状态<br>🔧 设置：API Key、Agent 工厂、远端访问<br>📝 记忆：编辑持久化记忆文件<br>🔌 集成：Webhook 外部调用接口</p>',
+    faq:'<h3>常见问题</h3><p style="font-size:11px;color:var(--text2)"><b>Q: 如何切换模型？</b><br>A: 在设置面板中选择 Provider<br><b>Q: 如何添加 Agent？</b><br>A: 使用 Agent 工厂生成，或手动创建<br><b>Q: 支持哪些 AI 服务商？</b><br>A: DeepSeek/Anthropic/OpenAI/Google/xAI/SiliconFlow/Qwen/Kimi/GLM/MiniMax</p>',
+    shortcuts:'<h3>快捷键</h3><p style="font-size:11px;color:var(--text2)">Enter: 发送消息<br>Shift+Enter: 换行<br>Ctrl+点击 Agent: 新窗口打开<br>📊: 仪表盘<br>🔧: 设置<br>🧠: 智能调度<br>⊞: 切换布局<br>＋: 新建面板</p>'
+  };
+  el.innerHTML=tabs[tab]||'';
+}
+/* ── 远端登录 ── */
+function showRemoteLogin(){
+  var ov=$('remoteLoginOverlay');if(!ov)return;
+  ov.classList.add('on');
+  var inp=$('remote-login-token');if(inp){inp.value='';inp.focus()}
+  var err=$('remote-login-error');if(err)err.style.display='none';
+}
+function submitRemoteLogin(){
+  var token=$('remote-login-token').value.trim();
+  if(!token){var err=$('remote-login-error');if(err){err.textContent='请输入访问密码';err.style.display='block'}return}
+  authToken=token;
+  localStorage.setItem('agency_auth_token',token);
+  $('remoteLoginOverlay').classList.remove('on');
+  showToast('已登录');
 }
 addPanel();

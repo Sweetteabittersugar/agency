@@ -71,7 +71,8 @@ def get_permission_stats():
     return {"total": total, "allowed": allowed, "denied": denied, "blocked": blocked}
 
 # ── 子进程清理 ──
-from maestro.proc_manager import cleanup_all_procs
+from maestro.proc_manager import cleanup_all_procs, start_watchdog
+start_watchdog()
 
 
 class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
@@ -121,6 +122,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json({"error": "not found"}, 404)
 
     def do_POST(self):
+        path = urlparse(self.path).path
+        log.info(f"AUDIT POST {path} from {self.client_address[0]}")
         if not self._check_auth():
             return
         length = int(self.headers.get("Content-Length", 0))

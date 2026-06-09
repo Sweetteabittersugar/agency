@@ -13,11 +13,13 @@ log = logging.getLogger(__name__)
 def handle_route(handler, body):
     """POST /api/route — 关键词路由建议"""
     task = body.get("task", "")
+    from maestro.routes.category import classify
+    category = classify(task)
     route_info = simple_route(task)
     if route_info:
-        handler.send_json({"agent": route_info["agent"], "model": route_info["model"], "method": "keyword"})
+        handler.send_json({"agent": route_info["agent"], "model": route_info["model"], "method": "keyword", "category": category})
     else:
-        handler.send_json({"agent": "coder", "model": "", "method": "keyword"})
+        handler.send_json({"agent": "coder", "model": "", "method": "keyword", "category": category})
     return True
 
 

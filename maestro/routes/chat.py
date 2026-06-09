@@ -64,12 +64,19 @@ def handle_chat(handler, body):
         handler.send_json({"error": "Claude Code CLI 未安装。请安装后重试。"})
         return True
 
+    # ── 思考/工具输出过滤 ──
+    show_thinking = os.environ.get("SHOW_THINKING", "false").lower() == "true"
+    show_tools = os.environ.get("SHOW_TOOLS", "false").lower() == "true"
+
     # SSE
     handler.send_response(200)
     handler.send_header("Content-Type", "text/event-stream")
     handler.send_header("Cache-Control", "no-cache")
     handler.send_header("Connection", "close")
     handler.end_headers()
+    # 即时回复 ack
+    handler.wfile.write(f"event: ack\ndata: {json.dumps({'ok': True})}\n\n".encode())
+    handler.wfile.flush()
 
     try:
         session_id = body.get("session_id", "")
@@ -85,6 +92,19 @@ def handle_chat(handler, body):
         if agent_name: cmd += ["--agent", agent_name]
         if model: cmd += ["--model", model]
         if agent_tools_override: cmd += ["--tools", ",".join(agent_tools_override)]
+        # MCP 权限注入：如果 agent 配置有 mcp_servers，追加 mcp__* 权限
+        if agent_tools_override:
+            for t in agent_tools_override:
+                if t.startswith("mcp__"):
+                    break
+            else:
+                # 没有 MCP 工具则检查 agent 配置
+                mcp_servers = body.get("mcp_servers", "")
+                if mcp_servers:
+                    if isinstance(mcp_servers, str):
+                        mcp_servers = [s.strip() for s in mcp_servers.split(",") if s.strip()]
+                    if mcp_servers:
+                        cmd += ["--tools", ",".join(agent_tools_override + ["mcp__" + s for s in mcp_servers])]
         if proj_dir and os.path.isdir(proj_dir): cmd += ["--add-dir", proj_dir]
 
         log.info(f'CHAT start agent={agent_name or "auto"} task="{actual_task[:40]}…"')
@@ -109,6 +129,15 @@ def handle_chat(handler, body):
                 if not line: break
                 stripped = line.rstrip('\n\r')
                 if not stripped: continue
+                # 思考/工具过滤
+                if not show_thinking and (
+                    stripped.startswith("[Thinking]") or stripped.startswith("Thinking:")
+                ):
+                    continue
+                if not show_tools and (
+                    stripped.startswith("[Tool:") or stripped.startswith("Tool:")
+                ):
+                    continue
                 out_chars += len(stripped)
                 display = stripped
                 if len(stripped) > 500:

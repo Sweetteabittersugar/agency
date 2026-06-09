@@ -8,7 +8,7 @@ agents:
     file: agents/coder.md
     model: sonnet
     tools: [Read, Grep, Glob, Bash, Write, Edit, NotebookEdit]
-    routing: ["写", "改", "重构", "代码", "实现", "开发"]
+    routing: ["写", "改", "重构", "代码", "实现", "开发", "死代码", "清理代码", "简化代码"]
 
   code-reviewer:
     file: agents/code-reviewer.md
@@ -26,7 +26,7 @@ agents:
     file: agents/test-runner.md
     model: haiku
     tools: [Read, Bash, Grep, Glob]
-    routing: ["测试", "验证", "跑", "确认", "test"]
+    routing: ["测试", "验证", "跑", "确认", "test", "测试策略", "边界用例", "回归测试"]
 
   general-worker:
     file: agents/general-worker.md
@@ -88,12 +88,6 @@ agents:
     tools: [Read, Write, Edit, Grep, Glob, Bash]
     routing: ["更新文档", "README", "CHANGELOG", "文档同步"]
 
-  refactor-cleaner:
-    file: agents/refactor-cleaner.md
-    model: sonnet
-    tools: [Read, Write, Edit, Grep, Glob, Bash]
-    routing: ["清理", "死代码", "重复", "未用依赖", "重构清理"]
-
   database-reviewer:
     file: agents/database-reviewer.md
     model: sonnet
@@ -130,12 +124,6 @@ agents:
     tools: [Read, Grep, Glob]
     routing: ["产品", "需求", "优先级", "用户故事", "验收标准", "功能范围"]
 
-  qa:
-    file: agents/qa.md
-    model: sonnet
-    tools: [Read, Bash, Grep, Glob]
-    routing: ["测试策略", "边界用例", "回归", "QA", "质量保证", "测试计划"]
-
   devops:
     file: agents/devops.md
     model: sonnet
@@ -153,3 +141,51 @@ agents:
     model: sonnet
     tools: [Read, Write, Bash, Grep, Glob]
     routing: ["委派", "领导", "异步", "后台执行", "大任务", "lead"]
+
+  architect:
+    file: agents/architect.md
+    model: opus
+    tools: [Read, Grep, Glob, Bash]
+    routing: ["系统设计", "架构设计", "技术选型", "接口设计", "模块划分", "架构方案"]
+
+  debugger:
+    file: agents/debugger.md
+    model: sonnet
+    tools: [Read, Grep, Glob, Bash]
+    routing: ["调试", "debug", "排查bug", "定位问题", "错误分析", "堆栈跟踪", "根因分析"]
+
+  verifier:
+    file: agents/verifier.md
+    model: sonnet
+    tools: [Read, Grep, Glob, Bash]
+    routing: ["验证改动", "检查修复", "确认修复", "改动验证", "回归检查"]
+
+  designer:
+    file: agents/designer.md
+    model: sonnet
+    tools: [Read, Grep, Glob, Bash, Write]
+    routing: ["界面设计", "UI设计", "UX设计", "交互设计", "页面设计", "原型", "网页设计"]
+
+  test-generator:
+    file: agents/test-generator.md
+    model: sonnet
+    tools: [Read, Write, Edit, Grep, Glob, Bash]
+    routing: ["生成测试", "写测试用例", "测试生成", "单元测试生成", "mock"]
+
+  critic:
+    file: agents/critic.md
+    model: sonnet
+    tools: [Read, Grep, Glob]
+    routing: ["评估输出", "质量检查", "输出审查", "格式检查"]
+
+  memory-keeper:
+    file: agents/memory-keeper.md
+    model: haiku
+    tools: [Read, Write, Grep, Glob]
+    routing: ["压缩上下文", "摘要", "记忆管理", "会话总结"]
+
+  router:
+    file: agents/router.md
+    model: haiku
+    tools: [Read, Grep, Glob]
+    routing: ["路由", "意图识别", "agent选择"]

@@ -49,25 +49,37 @@ def load_agents():
 
 # ── 简单关键词路由 ──
 ROUTING_KEYWORDS = {
-    "coder": ["写", "改", "重构", "实现", "开发", "代码", "修复", "fix", "bug"],
-    "code-reviewer": ["审查", "review", "检查代码", "代码审查"],
-    "explorer": ["查", "找", "分析", "定位", "搜索", "grep", "探索"],
-    "test-runner": ["测试", "验证", "跑测试", "test", "跑一下"],
-    "security-reviewer": ["安全", "漏洞", "注入", "密钥", "扫描", "审计安全"],
-    "webnovel-writer": ["小说", "章节", "大纲", "人物", "写作", "故事", "世界观"],
-    "planner": ["规划", "设计", "架构", "方案", "计划"],
-    "general-worker": ["整理", "配置", "杂务", "文件", "清理", "文档"],
-    "python-reviewer": ["python", "py", "pip", "django", "flask", "fastapi"],
-    "go-reviewer": ["go", "golang", "go mod", "goroutine", "channel"],
-    "typescript-reviewer": ["ts", "typescript", "js", "javascript", "react", "vue", "node", "npm"],
-    "database-reviewer": ["sql", "数据库", "mysql", "postgres", "sqlite", "mongodb", "orm"],
-    "performance-optimizer": ["性能", "优化", "加速", "慢", "卡", "性能问题", "profiling"],
-    "devops": ["部署", "docker", "k8s", "ci", "cd", "容器", "镜像", "流水线"],
-    "qa": ["质量", "qa", "验收", "检查清单", "审核"],
-    "doc-updater": ["文档更新", "readme", "注释", "api文档", "doc"],
-    "refactor-cleaner": ["清理代码", "死代码", "重构清理", "简化"],
-    "build-error-resolver": ["构建", "编译", "build", "编译错误", "构建失败", "报错"],
-    "e2e-runner": ["e2e", "端到端", "浏览器测试", "playwright", "界面测试"],
+    "coder": [("写",10),("改",10),("重构",9),("实现",9),("开发",9),("代码",10),("修复",10),("fix",8),("bug",8),("死代码",7),("清理代码",7),("简化代码",6)],
+    "code-reviewer": [("审查",10),("review",9),("检查代码",9),("代码审查",10)],
+    "explorer": [("查",9),("找",8),("分析",7),("定位",8),("搜索",9),("grep",8),("探索",8)],
+    "test-runner": [("测试",10),("验证",7),("跑测试",9),("test",7),("跑一下",6),("测试策略",9),("边界用例",8),("回归测试",9)],
+    "security-reviewer": [("安全",10),("漏洞",10),("注入",9),("密钥",9),("扫描",7),("审计安全",9)],
+    "webnovel-writer": [("小说",10),("章节",9),("大纲",8),("人物",8),("写作",9),("故事",9),("世界观",8)],
+    "planner": [("规划",9),("设计",8),("架构",10),("方案",8),("计划",7)],
+    "general-worker": [("整理",7),("配置",7),("杂务",5),("文件",6),("清理",7),("文档",7)],
+    "python-reviewer": [("python",10),("py",8),("pip",7),("django",10),("flask",9),("fastapi",10)],
+    "go-reviewer": [("go",10),("golang",10),("go mod",8),("goroutine",9),("channel",8)],
+    "typescript-reviewer": [("ts",9),("typescript",10),("js",8),("javascript",9),("react",10),("vue",8),("node",8),("npm",7)],
+    "database-reviewer": [("sql",10),("数据库",10),("mysql",9),("postgres",9),("sqlite",8),("mongodb",8),("orm",8)],
+    "performance-optimizer": [("性能",10),("优化",9),("加速",8),("慢",7),("卡",6),("性能问题",10),("profiling",7)],
+    "devops": [("部署",10),("docker",10),("k8s",9),("ci",8),("cd",8),("容器",8),("镜像",8),("流水线",8)],
+    "doc-updater": [("文档更新",10),("readme",8),("注释",7),("api文档",9),("doc",7)],
+    "build-error-resolver": [("构建",10),("编译",10),("build",8),("编译错误",10),("构建失败",10),("报错",7)],
+    "e2e-runner": [("e2e",10),("端到端",10),("浏览器测试",9),("playwright",10),("界面测试",8)],
+    "cost-analyst": [("费用",10),("用量",9),("成本",10),("花费",9),("账单",8)],
+    "tdd-guide": [("tdd",10),("测试驱动",10),("先写测试",9)],
+    "orchestrator": [("拆解",10),("分配",9),("协作",9),("多个任务",10),("全部",7),("整套",8),("编排",9)],
+    "ceo": [("产品",10),("需求",9),("优先级",9),("用户故事",10),("验收标准",9),("功能范围",8)],
+    "release-manager": [("发布",10),("版本",9),("changelog",8),("tag",7),("release",9),("回滚",8),("semver",7)],
+    "lead": [("委派",10),("领导",9),("异步",8),("后台执行",9),("大任务",9),("lead",10)],
+    "architect": [("系统设计",10),("架构设计",10),("技术选型",10),("接口设计",9),("模块划分",9),("架构方案",10),("系统架构",10)],
+    "debugger": [("调试",9),("debug",9),("排查bug",10),("定位问题",9),("错误分析",10),("堆栈跟踪",10),("根因分析",10),("排查",8)],
+    "verifier": [("验证改动",10),("检查修复",10),("确认修复",9),("改动验证",10),("回归检查",9)],
+    "designer": [("界面设计",10),("UI设计",10),("UX设计",10),("交互设计",10),("页面设计",9),("原型",8),("网页设计",10)],
+    "test-generator": [("生成测试",10),("写测试用例",10),("测试生成",10),("单元测试生成",10),("mock",7)],
+    "critic": [("评估输出",10),("质量检查",9),("输出审查",9),("格式检查",8)],
+    "memory-keeper": [("压缩上下文",10),("摘要",8),("记忆管理",9),("会话总结",9)],
+    "router": [("路由",8),("意图识别",9),("agent选择",9)],
 }
 
 _agent_models = {}
@@ -84,14 +96,14 @@ _init_agent_models()
 
 
 def simple_route(task):
-    """简单关键词匹配"""
+    """简单关键词匹配（加权）"""
     tl = task.lower()
     best, best_score = None, 0
     for name, keywords in ROUTING_KEYWORDS.items():
-        score = sum(2 for kw in keywords if kw.lower() in tl)
+        score = sum(weight for kw, weight in keywords if kw.lower() in tl)
         if score > best_score:
             best, best_score = name, score
-    if best_score < 2:
+    if best_score == 0:
         return None
     model = _agent_models.get(best, "")
     return {"agent": best, "model": model}
@@ -145,8 +157,43 @@ PROVIDER_MAP = {
         "ANTHROPIC_DEFAULT_HAIKU_MODEL": "deepseek-v4-flash",
         "ANTHROPIC_MODEL": "deepseek-v4-pro",
     },
-    "anthropic": {},
-    "openai": {"ANTHROPIC_BASE_URL": "https://api.openai.com/v1"},
+    "anthropic": {
+        "ANTHROPIC_BASE_URL": "https://api.anthropic.com",
+        "ANTHROPIC_MODEL": "claude-sonnet-4-6",
+    },
+    "openai": {
+        "ANTHROPIC_BASE_URL": "https://api.openai.com/v1",
+        "ANTHROPIC_MODEL": "gpt-4o",
+    },
+    "google": {
+        "ANTHROPIC_BASE_URL": "https://generativelanguage.googleapis.com/v1beta/openai",
+        "ANTHROPIC_MODEL": "gemini-2.5-pro",
+    },
+    "xai": {
+        "ANTHROPIC_BASE_URL": "https://api.x.ai/v1",
+        "ANTHROPIC_MODEL": "grok-3",
+    },
+    "siliconflow": {
+        "ANTHROPIC_BASE_URL": "https://api.siliconflow.cn/v1",
+        "ANTHROPIC_MODEL": "Pro/deepseek-ai/DeepSeek-V3",
+    },
+    "qwen": {
+        "ANTHROPIC_BASE_URL": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        "ANTHROPIC_MODEL": "qwen-plus",
+    },
+    "kimi": {
+        "ANTHROPIC_BASE_URL": "https://api.moonshot.cn/v1",
+        "ANTHROPIC_MODEL": "moonshot-v1-8k",
+    },
+    "glm": {
+        "ANTHROPIC_BASE_URL": "https://open.bigmodel.cn/api/paas/v4",
+        "ANTHROPIC_MODEL": "glm-4-plus",
+    },
+    "minimax": {
+        "ANTHROPIC_BASE_URL": "https://api.minimax.chat/v1",
+        "ANTHROPIC_MODEL": "abab7-chat",
+    },
+    "custom": {},
 }
 
 

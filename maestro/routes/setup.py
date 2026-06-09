@@ -68,8 +68,43 @@ def handle_save(handler, body):
                 "ANTHROPIC_DEFAULT_HAIKU_MODEL": "deepseek-v4-flash",
                 "ANTHROPIC_MODEL": "deepseek-v4-pro",
             },
-            "anthropic": {},
-            "openai": {"ANTHROPIC_BASE_URL": "https://api.openai.com/v1"},
+            "anthropic": {
+                "ANTHROPIC_BASE_URL": "https://api.anthropic.com",
+                "ANTHROPIC_MODEL": "claude-sonnet-4-6",
+            },
+            "openai": {
+                "ANTHROPIC_BASE_URL": "https://api.openai.com/v1",
+                "ANTHROPIC_MODEL": "gpt-4o",
+            },
+            "google": {
+                "ANTHROPIC_BASE_URL": "https://generativelanguage.googleapis.com/v1beta/openai",
+                "ANTHROPIC_MODEL": "gemini-2.5-pro",
+            },
+            "xai": {
+                "ANTHROPIC_BASE_URL": "https://api.x.ai/v1",
+                "ANTHROPIC_MODEL": "grok-3",
+            },
+            "siliconflow": {
+                "ANTHROPIC_BASE_URL": "https://api.siliconflow.cn/v1",
+                "ANTHROPIC_MODEL": "Pro/deepseek-ai/DeepSeek-V3",
+            },
+            "qwen": {
+                "ANTHROPIC_BASE_URL": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+                "ANTHROPIC_MODEL": "qwen-plus",
+            },
+            "kimi": {
+                "ANTHROPIC_BASE_URL": "https://api.moonshot.cn/v1",
+                "ANTHROPIC_MODEL": "moonshot-v1-8k",
+            },
+            "glm": {
+                "ANTHROPIC_BASE_URL": "https://open.bigmodel.cn/api/paas/v4",
+                "ANTHROPIC_MODEL": "glm-4-plus",
+            },
+            "minimax": {
+                "ANTHROPIC_BASE_URL": "https://api.minimax.chat/v1",
+                "ANTHROPIC_MODEL": "abab7-chat",
+            },
+            "custom": {},
         }
         for k, v in provider_map.get(api_provider, provider_map["deepseek"]).items():
             set_env(k, v)
