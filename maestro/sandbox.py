@@ -85,8 +85,10 @@ def execute_in_sandbox(
         f' --append-system-prompt "{result_instruction}"'
         f' --model "{model}"'
         f' --allowedTools "{tools}"'
-        f' --output-format text'
-        f' --permission-mode auto'
+        f' --output-format stream-json'
+        f' --max-turns 50'
+        f' --max-budget-usd 0.50'
+        f' --permission-mode acceptEdits'
     )
 
     # Write launch script

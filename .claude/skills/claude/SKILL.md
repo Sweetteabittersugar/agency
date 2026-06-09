@@ -1,6 +1,7 @@
 ---
 name: claude
 description: "项目规范查阅。当用户提到架构、规范、格式或需要查阅项目约定时使用。"
+disable-model-invocation: true
 ---
 
 # Claude — 项目规范

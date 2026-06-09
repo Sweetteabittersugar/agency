@@ -1,5 +1,13 @@
 {
   "env": {
     "CLAUDE_CODE_ATTRIBUTION_HEADER": "0"
-  }
+  },
+  "claudeMdExcludes": [
+    "**/node_modules/**/CLAUDE.md",
+    "**/.git/**/CLAUDE.md"
+  ],
+  "attribution": {
+    "commit": "Co-authored-by: Claude Code <noreply@anthropic.com>"
+  },
+  "includeCoAuthoredBy": false
 }
