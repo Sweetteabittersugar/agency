@@ -9,6 +9,9 @@ from pathlib import Path
 
 log = logging.getLogger(__name__)
 
+# ── 聊天上下文缓存（按 session_id 索引）──
+_chat_contexts: dict[str, "ContextLayer"] = {}
+
 # ── 进程池执行辅助 ──
 _POOL_FAILURES = 0  # 连续失败计数，超过阈值后降级为直接 subprocess
 _POOL_FAILURE_THRESHOLD = 3
@@ -99,6 +102,18 @@ def handle_chat(handler, body):
         if len(m) > 1 and m[0].startswith("@"):
             actual_task = m[1]
 
+    # ── 会话上下文注入 ──
+    session_id = body.get("session_id", "")
+    chat_ctx = None
+    if session_id:
+        from maestro.context_layer import ContextLayer
+        if session_id not in _chat_contexts:
+            _chat_contexts[session_id] = ContextLayer(session_id, PROJECT_ROOT)
+        chat_ctx = _chat_contexts[session_id]
+        ctx_summary = chat_ctx.get_context_for_agent(agent_name or "chat")
+        if ctx_summary:
+            actual_task = f"[上文摘要]\n{ctx_summary}\n\n[当前问题]\n{actual_task}"
+
     # ── Agent 注入：显式读取 agent .md，注入 model / tools ──
     agent_model_override = ""
     agent_tools_override = []
@@ -162,6 +177,7 @@ def handle_chat(handler, body):
 
         proc = None
         out_chars = 0
+        chat_output_text = ""
         used_pool = False
 
         try:
@@ -182,6 +198,7 @@ def handle_chat(handler, body):
                     ):
                         continue
                     out_chars += len(stripped)
+                    chat_output_text += stripped + "\n"
                     display = stripped
                     if len(stripped) > 500:
                         display = '<details><summary>📄 展开 (' + str(len(stripped)) + '字符)</summary><pre>' + stripped.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;') + '</pre></details>'
@@ -233,6 +250,7 @@ def handle_chat(handler, body):
                     ):
                         continue
                     out_chars += len(stripped)
+                    chat_output_text += stripped + "\n"
                     display = stripped
                     if len(stripped) > 500:
                         display = '<details><summary>📄 展开 (' + str(len(stripped)) + '字符)</summary><pre>' + stripped.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;') + '</pre></details>'
@@ -290,6 +308,20 @@ def handle_chat(handler, body):
             record_cost(PROJECT_ROOT, time.strftime("%Y-%m-%d %H:%M:%S"), detected_model, in_tokens, out_tokens, cost, elapsed, agent_name, proj_dir or "",
                         cache_read, cache_write, cache_saved, is_estimated, session_id or "")
             log.info(f'CHAT done elapsed={elapsed:.1f}s cost=${cost:.4f} model={detected_model} estimated={is_estimated} via={"pool" if used_pool else "subprocess"}')
+
+            # ── 保存会话上下文 ──
+            if chat_ctx and chat_output_text:
+                turn_key = f"turn_{int(time.time())}"
+                chat_ctx.set_short_term(turn_key, {
+                    "q": actual_task[:1000],
+                    "a": chat_output_text[:2000],
+                })
+                chat_ctx.set_short_term("last_turn", turn_key)
+                chat_ctx.log_episodic(
+                    agent_name or "chat", "chat_turn",
+                    f"Q: {actual_task[:200]} | A: {chat_output_text[:200]}",
+                    elapsed_ms=elapsed * 1000,
+                )
         finally:
             if proc:
                 kill_proc(proc)

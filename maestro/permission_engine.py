@@ -13,6 +13,8 @@ PermissionEngine — 三级权限审批引擎
   - trusted:   仅拦截高危操作（ALWAYS_DENY）
 """
 
+import fnmatch
+import json
 import re
 import time
 import threading
@@ -82,6 +84,26 @@ ALWAYS_DENY_PATTERNS = [
 TRUST_MODE_CAUTIOUS = "cautious"    # 所有需确认操作都询问
 TRUST_MODE_NORMAL = "normal"        # 同类操作只问一次
 TRUST_MODE_TRUSTED = "trusted"      # 仅拦截高危操作
+
+# ── 策略门常量 ──
+DEFAULT_TOKEN_LIMIT = 100_000; DEFAULT_DAILY_BUDGET = 5.0; BATCH_DELETE_THRESHOLD = 5
+SENSITIVE_FILES = [".env", ".env.local", ".gitignore", "settings.json",
+    "*.key", "*.pem", "*.p12", "credentials*", "secret*"]
+SECRET_PATTERNS = [
+    (r'sk-[A-Za-z0-9-_]{20,}', "疑似 API Key"),
+    (r'api_key\s*=\s*["\'][^"\']{10,}', "疑似硬编码 Key"),
+    (r'password\s*=\s*["\']', "疑似硬编码密码"),
+    (r'token\s*=\s*["\'][A-Za-z0-9-_]{15,}', "疑似硬编码 Token"),
+]
+_AGENT_BASE_TOOLS = {
+    "coder": "Read,Grep,Glob,Write,Edit,Bash,NotebookEdit",
+    "reviewer": "Read,Grep,Glob", "test": "Read,Grep,Glob,Write,Edit,Bash",
+    "writer": "Read,Grep,Glob,Write,Edit", "explorer": "Read,Grep,Glob,WebSearch,WebFetch",
+    "reasonix": "Read,Grep,Glob,Write,Edit,Bash,NotebookEdit",
+    "general-worker": "Read,Grep,Glob,Write,Edit,Bash",
+    "docker_worker": "Read,Grep,Glob,Write,Edit,Bash",
+}
+DRY_RUN_DENY = {"Write", "Edit", "NotebookEdit", "Bash"}
 
 
 class PermissionEngine:
@@ -309,6 +331,61 @@ class PermissionEngine:
         except Exception as e:
             log.warning(f"审计日志查询失败: {e}")
             return []
+
+    # ── a) 成本预算检查 ──
+    def check_cost_budget(self, task_estimate_tokens: int) -> tuple[bool, str]:
+        if task_estimate_tokens > DEFAULT_TOKEN_LIMIT:
+            return False, f"token {task_estimate_tokens} 超上限 {DEFAULT_TOKEN_LIMIT}"
+        today_key = time.strftime("%Y%m%d")
+        with self._stats_lock:
+            daily_tokens = self._stats.get(f"daily_{today_key}", 0)
+        if daily_tokens * 0.000002 > DEFAULT_DAILY_BUDGET:
+            return False, f"日预算 ${DEFAULT_DAILY_BUDGET} 已超"
+        with self._stats_lock:
+            self._stats[f"daily_{today_key}"] = daily_tokens + task_estimate_tokens
+        return True, ""
+
+    # ── b) 权限范围限制 ──
+    def get_effective_permissions(self, agent_name: str, task_category: str = "",
+                                   dry_run: bool = False) -> list[str]:
+        base = _AGENT_BASE_TOOLS.get(agent_name, "Read,Grep,Glob").split(",")
+        if task_category in ("代码审查", "测试质量"):
+            for t in ("WebSearch", "WebFetch"):
+                if t not in base:
+                    base.append(t)
+        if dry_run:
+            base = [t for t in base if t not in DRY_RUN_DENY]
+        return base
+
+    # ── c) 安全扫描检查点 ──
+    def pre_write_check(self, agent_name: str, files_to_modify: list) -> tuple[bool, str]:
+        if not files_to_modify:
+            return True, ""
+        del_cnt = sum(1 for f in files_to_modify if "删除" in str(f) or "delete" in str(f).lower())
+        if len(files_to_modify) > BATCH_DELETE_THRESHOLD:
+            return False, f"批量修改 {len(files_to_modify)} 文件 > {BATCH_DELETE_THRESHOLD}"
+        if del_cnt > BATCH_DELETE_THRESHOLD:
+            return False, f"批量删除 {del_cnt} 文件 > {BATCH_DELETE_THRESHOLD}"
+        for fp in files_to_modify:
+            fname = Path(str(fp)).name
+            for pat in SENSITIVE_FILES:
+                if fnmatch.fnmatch(fname, pat):
+                    return False, f"敏感文件: {fname}"
+        return True, ""
+
+    # ── d) 合规验证 ──
+    def validate_output(self, output_text: str, expected_format: str = "") -> tuple[bool, str]:
+        if not output_text or len(output_text.strip()) < 10:
+            return False, "输出过短"
+        for pattern, desc in SECRET_PATTERNS:
+            if re.search(pattern, output_text):
+                return False, f"禁止内容: {desc}"
+        if expected_format == "json":
+            try:
+                json.loads(output_text)
+            except json.JSONDecodeError:
+                return False, "非 JSON 格式"
+        return True, ""
 
     # ── 便捷方法 ──
     def check_and_log(self, tool_name: str, args=None, trust_mode: str = "",

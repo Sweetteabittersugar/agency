@@ -14,12 +14,14 @@ log = logging.getLogger(__name__)
 TASK_STATES = {
     "research":  {"enter": "信息是否充分？>=3个来源", "exit": "需求理解完整"},
     "plan":      {"enter": "research 通过", "exit": "方案覆盖所有约束"},
-    "implement": {"enter": "plan 通过", "exit": "代码通过 lint+test"},
+    "dry_run":   {"enter": "plan 通过", "exit": "只读分析完成，输出变更计划"},
+    "gate":      {"enter": "dry_run 通过", "exit": "硬门控检查通过"},
+    "implement": {"enter": "gate 通过", "exit": "代码通过 lint+test"},
     "review":    {"enter": "implement 通过", "exit": "pass@3 轻量版通过"},
     "verify":    {"enter": "review 通过", "exit": "原始需求全部满足"},
 }
 
-STAGE_ORDER = ["research", "plan", "implement", "review", "verify"]
+STAGE_ORDER = ["research", "plan", "dry_run", "gate", "implement", "review", "verify"]
 
 # ── Opus 触发条件 ──
 OPUS_CONDITIONS = [
@@ -38,11 +40,12 @@ _HIGH_COMPLEXITY_KW = [
 
 
 class PipelineStateMachine:
-    """五阶段管线状态机"""
+    """五阶段管线状态机（支持自定义阶段列表）"""
 
-    def __init__(self, task: dict):
+    def __init__(self, task: dict, active_stages: list | None = None):
         self.task = task
-        self.current_stage = "research"
+        self.active_stages = active_stages or list(STAGE_ORDER)
+        self.current_stage = self.active_stages[0] if self.active_stages else "research"
         self.stage_history: list[dict] = []
         self.stage_outputs: dict[str, str] = {}
 
@@ -51,10 +54,12 @@ class PipelineStateMachine:
         if stage not in STAGE_ORDER:
             return False, f"未知阶段: {stage}"
 
-        current_idx = STAGE_ORDER.index(stage)
+        current_idx = self.active_stages.index(stage) if stage in self.active_stages else -1
+        if current_idx < 0:
+            return False, f"阶段 {stage} 不在当前管线中"
 
-        # 检查前置阶段是否通过
-        for prev in STAGE_ORDER[:current_idx]:
+        # 检查前置阶段是否通过（仅检查活跃阶段列表中位于当前阶段之前的）
+        for prev in self.active_stages[:current_idx]:
             prev_record = next((h for h in self.stage_history if h["stage"] == prev), None)
             if not prev_record or prev_record.get("status") != "passed":
                 return False, f"前置阶段 {prev} 未通过"
@@ -77,6 +82,17 @@ class PipelineStateMachine:
                 covered = sum(1 for kw in keywords if kw in output)
                 if covered < len(keywords) * 0.5:
                     return False, f"方案未覆盖足够约束（覆盖 {covered}/{len(keywords)}）"
+
+        elif stage == "dry_run":
+            if not output or len(output.strip()) < 50:
+                return False, "dry-run 输出不足"
+            # 检查是否输出结构化计划
+            if "files" not in output.lower() and "文件" not in output:
+                return False, "dry-run 未输出文件级变更计划"
+
+        elif stage == "gate":
+            # gate 阶段由 hard_gate_check 裁决，不需要输出检查
+            return True, "通过（由 hard_gate_check 裁决）"
 
         elif stage == "implement":
             if not output or len(output.strip()) < 50:
@@ -101,9 +117,9 @@ class PipelineStateMachine:
             "output_preview": output[:200],
             "timestamp": time.time(),
         })
-        current_idx = STAGE_ORDER.index(self.current_stage)
-        if current_idx < len(STAGE_ORDER) - 1:
-            self.current_stage = STAGE_ORDER[current_idx + 1]
+        current_idx = self.active_stages.index(self.current_stage)
+        if current_idx < len(self.active_stages) - 1:
+            self.current_stage = self.active_stages[current_idx + 1]
         else:
             self.current_stage = "done"
 
@@ -118,12 +134,15 @@ class PipelineStateMachine:
 
     def rollback(self):
         """退回到上一阶段"""
-        current_idx = STAGE_ORDER.index(self.current_stage)
+        try:
+            current_idx = self.active_stages.index(self.current_stage)
+        except ValueError:
+            return
         if current_idx > 0:
-            self.current_stage = STAGE_ORDER[current_idx - 1]
+            self.current_stage = self.active_stages[current_idx - 1]
             # 清除失败阶段记录
             self.stage_history = [h for h in self.stage_history
-                                  if h["stage"] != STAGE_ORDER[current_idx]]
+                                  if h["stage"] != self.active_stages[current_idx]]
 
     def get_current_prompt(self) -> str:
         """获取当前阶段对应的 Agent prompt"""
@@ -150,11 +169,32 @@ class PipelineStateMachine:
                 f"入口条件: {stage_info.get('enter', '')}\n"
                 f"出口条件: {stage_info.get('exit', '')}"
             ),
+            "dry_run": (
+                f"【只读预演 — 禁止修改任何文件】\n\n"
+                f"方案：\n{self.stage_outputs.get('plan', '无')[:800]}\n\n"
+                f"任务：{task_text}\n\n"
+                f"要求：\n"
+                f"1. 只读分析：阅读相关文件，确认修改范围\n"
+                f"2. 输出结构化变更计划（JSON格式）：\n"
+                f'   {{"files": [{{"path": "相对路径", "action": "create|modify|delete", '
+                f'"summary": "变更摘要", "risk_level": "low|medium|high|critical"}}], '
+                f'"total_changes": N}}\n'
+                f"3. 禁止使用 Write/Edit 工具\n\n"
+                f"入口条件: {stage_info.get('enter', '')}\n"
+                f"出口条件: {stage_info.get('exit', '')}"
+            ),
+            "gate": (
+                f"【硬门控检查 — 自动裁决】\n\n"
+                f"dry_run 计划：\n{self.stage_outputs.get('dry_run', '无')[:1000]}\n\n"
+                f"此阶段为自动检查，不调用 Agent。\n"
+                f"检查项：敏感文件、文件数上限、高风险操作、风险等级汇总。"
+            ),
             "implement": (
-                f"按照方案实施：\n\n任务：{task_text}\n\n"
+                f"按照 dry-run 计划实施：\n\n任务：{task_text}\n\n"
+                f"dry-run 计划：\n{self.stage_outputs.get('dry_run', '无')[:800]}\n\n"
                 f"方案：\n{self.stage_outputs.get('plan', '无')[:800]}\n\n"
                 f"要求：\n"
-                f"1. 严格按照方案执行\n"
+                f"1. 严格按照 dry-run 计划执行\n"
                 f"2. 代码需通过 lint 和测试\n"
                 f"3. 完成后标注修改的文件列表\n\n"
                 f"入口条件: {stage_info.get('enter', '')}\n"
@@ -191,6 +231,55 @@ class PipelineStateMachine:
             "stage_history": self.stage_history,
             "task": self.task,
         }
+
+
+# ── 硬门控检查 ──
+
+SENSITIVE_PATTERNS = [
+    ".env", ".gitignore", "*.pem", "*.key", "credentials.*",
+    "id_rsa", "id_ed25519", "known_hosts", "authorized_keys",
+]
+HIGH_RISK_ACTIONS = [
+    "rm -rf", "rm -r", "chmod 777", "chown", "systemctl",
+    "iptables", "sudo", "mkfs.", "dd if=", ":(){ :|:& };:",
+]
+
+
+def hard_gate_check(dry_run_plan: dict) -> tuple:
+    """硬门控：检查 dry-run 计划是否可以执行。返回 (通过?, 原因)。"""
+    if not dry_run_plan or not isinstance(dry_run_plan, dict):
+        return False, "dry_run 计划为空或格式无效"
+
+    files = dry_run_plan.get("files", [])
+    if not files:
+        return False, "dry_run 计划不包含任何文件变更"
+
+    # 1. 敏感文件检查
+    for f in files:
+        path = f.get("path", "")
+        for pattern in SENSITIVE_PATTERNS:
+            if pattern.replace("*", "") in path.lower():
+                return False, f"涉及敏感文件: {path}（匹配规则 {pattern}）"
+
+    # 2. 单次文件数上限
+    if len(files) > 10:
+        return False, f"单次修改文件数 ({len(files)}) 超过上限 10，请拆分任务"
+
+    # 3. 高风险操作检查
+    for f in files:
+        summary = (f.get("summary", "") + f.get("action", "")).lower()
+        for action in HIGH_RISK_ACTIONS:
+            if action.lower() in summary:
+                return False, f"包含高风险操作: {f.get('summary', '')[:80]}"
+
+    # 4. 风险等级汇总
+    risk_levels = [f.get("risk_level", "low").lower() for f in files]
+    if "critical" in risk_levels:
+        return False, "存在 critical 风险等级 — 触发 Coordinator escalation"
+    if "high" in risk_levels:
+        return False, "存在 high 风险等级 — 需 Coordinator escalation"
+
+    return True, f"门控通过（{len(files)} 文件，风险: {set(risk_levels)}）"
 
 
 # ── pass@k 轻量版验证 ──

@@ -196,6 +196,44 @@ def _init_agent_models():
 _init_agent_models()
 
 
+def classify_task_complexity(task: str) -> str:
+    """评估任务复杂度，决定走哪条管线路径。
+
+    Returns: 'trivial' | 'simple' | 'normal' | 'complex'
+    """
+    task_lower = task.lower()
+
+    # 估算涉及文件数
+    file_patterns = re.findall(r'(\d+)\s*(?:个|处|份)?\s*(?:文件|file)', task)
+    file_count = sum(int(n) for n in file_patterns)
+
+    trivial_kw = ["查找", "搜索", "grep", "查看", "读取", "检查", "查询",
+                  "列出", "显示", "显示所有", "list", "find", "search",
+                  "cat ", "ls ", "dir "]
+    complex_kw = ["重构", "架构", "系统设计", "多模块", "数据库迁移",
+                  "安全审计", "性能优化", "全量", "整体", "refactor",
+                  "architecture", "migration"]
+    simple_kw = ["修复", "修改一行", "小改", "调整", "加个", "删掉",
+                 "改个", "fix", "tweak"]
+
+    task_len = len(task)
+
+    # Trivial: 纯查询/搜索，无写入意图
+    if (task_len < 80 and file_count <= 0 and
+            any(kw in task_lower for kw in trivial_kw)):
+        return "trivial"
+
+    # Complex: 5+ 文件、架构级关键词、或超长描述
+    if file_count >= 5 or any(kw in task_lower for kw in complex_kw) or task_len > 400:
+        return "complex"
+
+    # Simple: 2-3 文件修改、简单重构
+    if file_count <= 3 and (task_len < 150 or any(kw in task_lower for kw in simple_kw)):
+        return "simple"
+
+    return "normal"
+
+
 def simple_route(task):
     """三级路由：关键词(40%) + 语义(48%) + LLM兜底(12%)
 
