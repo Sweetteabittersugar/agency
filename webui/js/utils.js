@@ -1,7 +1,7 @@
 /* Agency — 基础工具函数 */
 function $(id){return document.getElementById(id)}
 function escHtml(s){var d=document.createElement('div');d.textContent=s??'';return d.innerHTML}
-function showToast(m,err,level){var t=document.createElement('div');t.className='toast'+(err?' error':'')+(level==='warn'?' warn':'');t.textContent=m;document.body.appendChild(t);setTimeout(function(){t.style.opacity='0';t.style.transition='opacity .3s'},2500);setTimeout(function(){t.remove()},3000)}
+function showToast(m,err,level,duration){var t=document.createElement('div');t.className='toast'+(err?' error':'')+(level==='warn'?' warn':'');t.textContent=m;document.body.appendChild(t);duration=duration||3000;setTimeout(function(){t.style.opacity='0';t.style.transition='opacity .3s'},duration-500);setTimeout(function(){t.remove()},duration);return t}
 function apiFetch(url, opts){
   opts=Object.assign({},opts);
   opts.headers=Object.assign({},opts.headers||{});
