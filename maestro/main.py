@@ -34,6 +34,10 @@ from models import get_provider_config, resolve_model, get_default_model
 
 DEFAULT_MODEL = get_default_model()
 
+# ── 日志 ──────────────────────────────────────
+import logging
+log = logging.getLogger(__name__)
+
 # ── 路由矩阵（加权关键词）────────────────────────
 ROUTING = {
     "coder": [
@@ -255,27 +259,232 @@ def semantic_match(task):
     return best_agent, best_score
 
 
+# ── LLM 兜底缓存（72h 过期）──
+import threading
+_fallback_cache = {}  # {task_hash: (agent, timestamp)}
+_fallback_cache_lock = threading.Lock()
+_fallback_stats = {"total_routes": 0, "fallback_count": 0}
+
+
+def llm_fallback(task: str, candidates: list[dict], model: str = "deepseek-chat") -> str | None:
+    """用轻量模型做路由兜底。返回 agent name 或 None。
+
+    Args:
+        task: 用户输入的任务描述
+        candidates: 候选 Agent 列表 [{"name": "...", "description": "..."}, ...]
+        model: 使用的轻量模型（light 级别）
+
+    Returns:
+        选中的 agent name，失败返回 None
+    """
+    if not candidates:
+        return None
+
+    # 构建 prompt
+    candidate_lines = [f"- {a['name']}: {a.get('description', '无描述')[:80]}" for a in candidates[:15]]
+    prompt = (
+        f"以下任务该分配给哪个 Agent？只返回 Agent 名称，不要解释。\n\n"
+        f"任务：{task}\n\n"
+        f"可选 Agent：\n" + "\n".join(candidate_lines) +
+        f"\n\nAgent 名称："
+    )
+
+    base_url, api_key, headers = get_provider_config()
+    if not base_url or not api_key:
+        log.warning("llm_fallback: 无 API 配置，无法调用 LLM 兜底")
+        return None
+
+    # 使用 light 模型
+    light_model = os.environ.get("LIGHT_MODEL", resolve_model("haiku"))
+
+    payload = {
+        "model": light_model if light_model and light_model != model else model,
+        "messages": [
+            {"role": "system", "content": "你是一个路由助手。只返回 Agent 名称，不要任何解释。"},
+            {"role": "user", "content": prompt},
+        ],
+        "max_tokens": 16,
+        "temperature": 0.0,
+    }
+
+    try:
+        resp = requests.post(
+            f"{base_url}/chat/completions",
+            headers=headers,
+            json=payload,
+            timeout=15,
+        )
+        if resp.status_code != 200:
+            log.warning(f"llm_fallback: API 返回 {resp.status_code}")
+            return None
+
+        data = resp.json()
+        content = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+        # 去掉可能的标点符号和多余文字
+        for name in [a["name"] for a in candidates]:
+            if name.lower() in content.lower():
+                return name
+
+        # 模糊匹配：取第一行作为 agent 名
+        first_line = content.split("\n")[0].strip().rstrip(".").strip()
+        for name in [a["name"] for a in candidates]:
+            if name.lower() == first_line.lower():
+                return name
+
+        log.info(f"llm_fallback: 无法从输出解析 agent，原始输出: {content[:80]}")
+        return None
+
+    except requests.exceptions.Timeout:
+        log.warning("llm_fallback: 请求超时")
+        return None
+    except Exception as e:
+        log.warning(f"llm_fallback: 异常: {e}")
+        return None
+
+
+def _clean_fallback_cache():
+    """清理超过 72 小时的缓存条目"""
+    now = time.time()
+    expired = [k for k, v in _fallback_cache.items() if now - v[1] > 72 * 3600]
+    for k in expired:
+        del _fallback_cache[k]
+
+
 def route_with_fallback(task, force_agent=None):
-    """三层路由：加权关键词 -> 语义相似 -> 低置信度标记"""
-    # Layer 1: 加权关键词（始终运行）
-    agent, score, confidence = route_task(task, force_agent)
+    """三级路由融合：加权关键词(40%) + 语义匹配(48%) + LLM兜底(12%)
 
-    if confidence >= 0.7 or force_agent:
-        return agent, score, confidence, "keyword"
+    返回格式: {
+        "agent": "...",
+        "model": "...",
+        "confidence": 0.85,
+        "keyword_score": 0.9,
+        "semantic_score": 0.72,
+        "source": "keyword" | "semantic" | "llm",
+        "method": "three_tier",
+    }
+    """
+    # ── 更新统计 ──
+    with _fallback_cache_lock:
+        _fallback_stats["total_routes"] += 1
 
-    # Layer 2: 语义匹配
-    sem_agent, sem_score = semantic_match(task)
-    if sem_agent != agent and sem_score > 0.05:
-        # 语义匹配与关键词不同，且有一定匹配度
-        return sem_agent, sem_score, confidence, "semantic"
+    if force_agent:
+        return {
+            "agent": force_agent,
+            "model": "",
+            "confidence": 0.99,
+            "keyword_score": 0.99,
+            "semantic_score": 0.0,
+            "source": "force",
+            "method": "force",
+        }
 
-    # Layer 3: 低置信度，标记
-    return agent, score, confidence, "keyword_low_confidence"
+    # ── Layer 1: 加权关键词 ──
+    kw_agent, kw_raw_score, kw_confidence = route_task(task)
+
+    # ── Layer 2: 语义匹配 ──
+    from maestro.embedding import semantic_match as embedding_match
+    sem_agent, sem_score = embedding_match(task)
+
+    # ── 归一化 + 融合 ──
+    # keyword_score 归一化（raw score 通常在 0~50 范围）
+    keyword_score = min(1.0, kw_raw_score / 30.0)
+    # semantic_score 已经在 0~1 范围
+
+    final_score = keyword_score * 0.4 + sem_score * 0.48
+
+    # 决定来源和最终 agent
+    if keyword_score > sem_score + 0.15:
+        source = "keyword"
+        best_agent = kw_agent
+        final_score = max(final_score, keyword_score * 0.6)
+    elif sem_score > keyword_score + 0.10:
+        source = "semantic"
+        best_agent = sem_agent
+        final_score = max(final_score, sem_score * 0.7)
+    else:
+        # 接近时优先关键词的 agent
+        source = "keyword" if keyword_score >= sem_score else "semantic"
+        best_agent = kw_agent if keyword_score >= sem_score else sem_agent
+
+    # ── Layer 3: LLM 兜底 ──
+    FALLBACK_THRESHOLD = 4  # 等效于原有阈值
+    llm_used = False
+
+    if kw_raw_score < FALLBACK_THRESHOLD and sem_score < 0.10:
+        task_hash = hashlib.md5(task.encode()).hexdigest()
+
+        # 检查缓存
+        with _fallback_cache_lock:
+            _clean_fallback_cache()
+            if task_hash in _fallback_cache:
+                cached_agent, cached_time = _fallback_cache[task_hash]
+                if time.time() - cached_time < 72 * 3600:
+                    best_agent = cached_agent
+                    source = "llm_cached"
+                    llm_used = True
+
+        if not llm_used:
+            # 构建候选列表（取 Top 10 语义候选 + 关键词候选）
+            from maestro.shared import load_agents
+            all_agents = load_agents()
+            candidate_names = {kw_agent, sem_agent}
+            # 加入 top 语义候选
+            from maestro.embedding import get_embedding_router
+            router = get_embedding_router()
+            for name, _ in router.search(task, top_k=5):
+                candidate_names.add(name)
+            candidates = [{"name": a["name"], "description": a.get("description", "")}
+                          for a in all_agents if a["name"] in candidate_names]
+            if not candidates and all_agents:
+                candidates = all_agents[:10]
+
+            llm_result = llm_fallback(task, candidates)
+            if llm_result:
+                best_agent = llm_result
+                source = "llm"
+                llm_used = True
+
+                # 缓存结果
+                with _fallback_cache_lock:
+                    _fallback_cache[task_hash] = (best_agent, time.time())
+                    # 限制缓存大小
+                    if len(_fallback_cache) > 500:
+                        keys = sorted(_fallback_cache.keys())
+                        for k in keys[:100]:
+                            del _fallback_cache[k]
+
+                # 融合 LLM 分数
+                final_score = final_score * 0.88 + 0.12
+
+        with _fallback_cache_lock:
+            _fallback_stats["fallback_count"] += 1
+
+    # ── 兜底频率监控 ──
+    with _fallback_cache_lock:
+        total = _fallback_stats["total_routes"]
+        fb = _fallback_stats["fallback_count"]
+        if total > 10:
+            rate = fb / total
+            if rate > 0.05:
+                log.warning(f"LLM 兜底频率偏高: {fb}/{total} = {rate:.1%} (阈值 5%)")
+
+    # ── 构建返回 ──
+    from maestro.shared import _agent_models
+    model = _agent_models.get(best_agent, "")
+
+    return {
+        "agent": best_agent,
+        "model": model,
+        "confidence": round(final_score, 4),
+        "keyword_score": round(keyword_score, 4),
+        "semantic_score": round(sem_score, 4),
+        "source": source,
+        "method": "three_tier",
+    }
 
 
 # 简单 LRU 缓存：最近 100 条路由结果
-import threading
-_route_cache = {}  # {task_hash: (agent, score, confidence, method)}
+_route_cache = {}  # {task_hash: route_result_dict}
 _route_lock = threading.Lock()
 
 
@@ -285,18 +494,19 @@ def route_with_cache(task, force_agent=None):
 
     with _route_lock:
         if task_hash in _route_cache and not force_agent:
-            agent, score, confidence, method = _route_cache[task_hash]
-            return agent, score, confidence, "cache"
+            result = dict(_route_cache[task_hash])
+            result["source"] = "cache"
+            return result
 
-    agent, score, confidence, method = route_with_fallback(task, force_agent)
+    result = route_with_fallback(task, force_agent)
 
     with _route_lock:
         if len(_route_cache) > 100:
             oldest = next(iter(_route_cache))
             del _route_cache[oldest]
-        _route_cache[task_hash] = (agent, score, confidence, method)
+        _route_cache[task_hash] = dict(result)
 
-    return agent, score, confidence, method
+    return result
 
 
 # ── Agent 加载 ─────────────────────────────────
@@ -499,10 +709,15 @@ def main():
             return
 
     # 路由
-    agent_name, score, confidence = route_task(task)
-    current_agent = agent_name
+    route_result = route_with_cache(task)
+    current_agent = route_result["agent"]
 
-    print(f"→ 路由: {agent_name} (得分: {score}, 置信度: {confidence:.2f})")
+    print(f"→ 路由: {current_agent} (置信度: {route_result['confidence']:.2f}, 来源: {route_result.get('source', 'N/A')})")
+
+    # 加载 Agent
+    system_prompt, agent_model = load_agent(current_agent)
+    if model == DEFAULT_MODEL:
+        model = agent_model
 
     # 加载 Agent
     system_prompt, agent_model = load_agent(agent_name)

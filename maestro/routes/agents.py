@@ -20,7 +20,7 @@ def handle_detail(handler, parsed):
     """GET /api/agents/{name} — 读取单个 Agent .md"""
     name = parsed.path[len("/api/agents/"):]
     if not re.match(r'^[a-zA-Z0-9_-]+$', name):
-        handler.send_json({"error": "invalid name"}, 400)
+        handler.send_json({"error": "Agent 名称格式无效。请使用英文大小写字母、数字、下划线和连字符"}, 400)
         return True
     agent_content = None
     for search_dir in [
@@ -35,7 +35,7 @@ def handle_detail(handler, parsed):
     if agent_content is not None:
         handler.send_json({"name": name, "content": agent_content})
     else:
-        handler.send_json({"error": f"agent '{name}' not found"}, 404)
+        handler.send_json({"error": f"未找到 Agent '{name}'。请检查 Agent 名称是否正确，或从侧边栏 Agent 列表中选择"}, 404)
     return True
 
 
@@ -43,11 +43,11 @@ def handle_update(handler, body):
     """POST /api/agent-update — 保存 Agent .md 并同步三个目录"""
     name = body.get("name", "")
     if not re.match(r'^[a-zA-Z0-9_-]+$', name):
-        handler.send_json({"error": "invalid name"}, 400)
+        handler.send_json({"error": "Agent 名称格式无效。请使用英文大小写字母、数字、下划线和连字符"}, 400)
         return True
     content = body.get("content", "")
     if not name or not content:
-        handler.send_json({"error": "name and content required"}, 400)
+        handler.send_json({"error": "缺少必填字段。请同时提供 name（Agent 名称）和 content（Agent 内容）"}, 400)
         return True
     try:
         # 写入 agents/ 目录
@@ -72,7 +72,7 @@ def handle_delete(handler, body):
     """POST /api/agent-delete — 删除 Agent"""
     name = body.get("name", "")
     if not re.match(r'^[a-zA-Z0-9_-]+$', name):
-        handler.send_json({"error": "invalid name"}, 400)
+        handler.send_json({"error": "Agent 名称格式无效。请使用英文大小写字母、数字、下划线和连字符"}, 400)
         return True
     deleted = 0
     for base in [PROJECT_ROOT / "agents", PROJECT_ROOT / ".claude" / "agents", PROJECT_ROOT / ".claude-isolated" / "agents"]:

@@ -9,6 +9,64 @@ from pathlib import Path
 
 log = logging.getLogger(__name__)
 
+# ── 进程池执行辅助 ──
+_POOL_FAILURES = 0  # 连续失败计数，超过阈值后降级为直接 subprocess
+_POOL_FAILURE_THRESHOLD = 3
+
+
+def _try_pool_execute(actual_task, agent_name, model, session_id, is_new,
+                      proj_dir, iso_env, agent_tools_override, mcp_servers):
+    """尝试通过进程池执行任务，返回 (output_lines_list, None)。
+    池不可用或失败时返回 (None, None)。"""
+    global _POOL_FAILURES
+    if _POOL_FAILURES >= _POOL_FAILURE_THRESHOLD:
+        return None, None
+
+    try:
+        from maestro.process_pool import get_pool
+    except ImportError:
+        return None, None
+
+    pool = get_pool()
+    if pool is None or not pool.available:
+        _POOL_FAILURES += 1
+        return None, None
+
+    payload = {
+        "task": actual_task,
+        "agent": agent_name or "",
+        "model": model or "",
+        "session_id": session_id or "",
+        "is_new_session": is_new,
+        "proj_dir": proj_dir or "",
+        "tools": agent_tools_override,
+        "mcp_servers": mcp_servers if isinstance(mcp_servers, list) else [],
+        "bare": True,
+        "permission_mode": "auto",
+        "env": iso_env,
+    }
+
+    try:
+        raw = pool.execute(payload, timeout=300)
+    except Exception:
+        _POOL_FAILURES += 1
+        log.debug("POOL execute exception, fallback to subprocess", exc_info=True)
+        return None, None
+
+    if raw is None:
+        _POOL_FAILURES += 1
+        return None, None
+
+    _POOL_FAILURES = 0  # 成功后重置
+    lines = raw.split("\n")
+    output_lines = []
+    for line in lines:
+        s = line.rstrip("\r")
+        if s == '{"type":"done"}' or s == '{"type":"error"}':
+            break
+        output_lines.append(s)
+    return output_lines, None
+
 
 def handle_chat(handler, body):
     from maestro.shared import (
@@ -28,7 +86,7 @@ def handle_chat(handler, body):
     api_provider = body.get("api_provider", "")
 
     if not task:
-        handler.send_json({"error": "Empty request"})
+        handler.send_json({"error": "请求为空。请在消息框中输入任务描述后发送"})
         return True
 
     # 确定 Agent
@@ -85,76 +143,112 @@ def handle_chat(handler, body):
         handler.wfile.write(f"event: meta\ndata: {meta}\n\n".encode())
         handler.wfile.flush()
 
-        cmd = [CLAUDE_BIN, "-p", actual_task, "--bare", "--permission-mode", "auto"]
-        if session_id:
-            if is_new: cmd += ["--session-id", session_id]
-            else: cmd += ["--resume", session_id]
-        if agent_name: cmd += ["--agent", agent_name]
-        if model: cmd += ["--model", model]
-        if agent_tools_override: cmd += ["--tools", ",".join(agent_tools_override)]
-        # MCP 权限注入：如果 agent 配置有 mcp_servers，追加 mcp__* 权限
-        if agent_tools_override:
-            for t in agent_tools_override:
-                if t.startswith("mcp__"):
-                    break
-            else:
-                # 没有 MCP 工具则检查 agent 配置
-                mcp_servers = body.get("mcp_servers", "")
-                if mcp_servers:
-                    if isinstance(mcp_servers, str):
-                        mcp_servers = [s.strip() for s in mcp_servers.split(",") if s.strip()]
-                    if mcp_servers:
-                        cmd += ["--tools", ",".join(agent_tools_override + ["mcp__" + s for s in mcp_servers])]
-        if proj_dir and os.path.isdir(proj_dir): cmd += ["--add-dir", proj_dir]
+        # MCP servers 解析（进程池和 fallback 共用）
+        mcp_servers = body.get("mcp_servers", "")
+        if isinstance(mcp_servers, str):
+            mcp_servers = [s.strip() for s in mcp_servers.split(",") if s.strip()]
 
         log.info(f'CHAT start agent={agent_name or "auto"} task="{actual_task[:40]}…"')
         start_time = time.time()
+        iso_env = build_isolated_env(api_key, api_provider)
+        if api_key:
+            log.info(f'CHAT using user API key provider={api_provider}')
+
+        # ── 优先尝试进程池（长连接复用）──
+        pool_output, _pool_err = _try_pool_execute(
+            actual_task, agent_name, model, session_id, is_new,
+            proj_dir, iso_env, agent_tools_override, mcp_servers,
+        )
+
         proc = None
         out_chars = 0
-        try:
-            iso_env = build_isolated_env(api_key, api_provider)
-            if api_key:
-                log.info(f'CHAT using user API key provider={api_provider}')
-            t0 = time.time()
-            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                    encoding='utf-8', errors='replace', bufsize=1,
-                                    cwd=str(PROJECT_ROOT), env=iso_env)
-            log.info(f'CHAT proc spawn {(time.time()-t0)*1000:.0f}ms PID={proc.pid}')
-            track_proc(proc)
-            first_line = True
-            for line in iter(proc.stdout.readline, ''):
-                if first_line:
-                    log.info(f'CHAT first output after {(time.time()-start_time)*1000:.0f}ms')
-                    first_line = False
-                if not line: break
-                stripped = line.rstrip('\n\r')
-                if not stripped: continue
-                # 思考/工具过滤
-                if not show_thinking and (
-                    stripped.startswith("[Thinking]") or stripped.startswith("Thinking:")
-                ):
-                    continue
-                if not show_tools and (
-                    stripped.startswith("[Tool:") or stripped.startswith("Tool:")
-                ):
-                    continue
-                out_chars += len(stripped)
-                display = stripped
-                if len(stripped) > 500:
-                    display = '<details><summary>📄 展开 (' + str(len(stripped)) + '字符)</summary><pre>' + stripped.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;') + '</pre></details>'
-                elif stripped.startswith('[Tool:') or stripped.startswith('Tool:'):
-                    display = '<div class="tool-tag">🔧 ' + stripped.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;') + '</div>'
-                try:
-                    handler.wfile.write(f"data: {json.dumps({'content': display + chr(10)})}\n\n".encode())
-                    handler.wfile.flush()
-                except (BrokenPipeError, ConnectionResetError):
-                    log.info('CHAT client disconnected, killing proc')
-                    break
+        used_pool = False
 
-            try:
-                proc.wait(timeout=15)
-            except subprocess.TimeoutExpired:
-                pass
+        try:
+            if pool_output is not None:
+                # ── 进程池路径：直接流式输出预读结果 ──
+                used_pool = True
+                log.info(f'CHAT using pool ({len(pool_output)} lines)')
+                for stripped in pool_output:
+                    if not stripped:
+                        continue
+                    # 思考/工具过滤
+                    if not show_thinking and (
+                        stripped.startswith("[Thinking]") or stripped.startswith("Thinking:")
+                    ):
+                        continue
+                    if not show_tools and (
+                        stripped.startswith("[Tool:") or stripped.startswith("Tool:")
+                    ):
+                        continue
+                    out_chars += len(stripped)
+                    display = stripped
+                    if len(stripped) > 500:
+                        display = '<details><summary>📄 展开 (' + str(len(stripped)) + '字符)</summary><pre>' + stripped.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;') + '</pre></details>'
+                    elif stripped.startswith('[Tool:') or stripped.startswith('Tool:'):
+                        display = '<div class="tool-tag">🔧 ' + stripped.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;') + '</div>'
+                    try:
+                        handler.wfile.write(f"data: {json.dumps({'content': display + chr(10)})}\n\n".encode())
+                        handler.wfile.flush()
+                    except (BrokenPipeError, ConnectionResetError):
+                        log.info('CHAT client disconnected (pool)')
+                        break
+            else:
+                # ── 回退路径：传统 subprocess.Popen ──
+                log.info('CHAT falling back to subprocess.Popen')
+                t0 = time.time()
+                cmd = [CLAUDE_BIN, "-p", actual_task, "--bare", "--permission-mode", "auto"]
+                if session_id:
+                    if is_new: cmd += ["--session-id", session_id]
+                    else: cmd += ["--resume", session_id]
+                if agent_name: cmd += ["--agent", agent_name]
+                if model: cmd += ["--model", model]
+                if agent_tools_override: cmd += ["--tools", ",".join(agent_tools_override)]
+                if agent_tools_override:
+                    has_mcp = any(t.startswith("mcp__") for t in agent_tools_override)
+                    if not has_mcp and mcp_servers:
+                        cmd += ["--tools", ",".join(agent_tools_override + ["mcp__plugin_" + s + "_" + s + "__*" for s in mcp_servers])]
+                if proj_dir and os.path.isdir(proj_dir): cmd += ["--add-dir", proj_dir]
+
+                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                        encoding='utf-8', errors='replace', bufsize=1,
+                                        cwd=str(PROJECT_ROOT), env=iso_env)
+                log.info(f'CHAT proc spawn {(time.time()-t0)*1000:.0f}ms PID={proc.pid}')
+                track_proc(proc)
+                first_line = True
+                for line in iter(proc.stdout.readline, ''):
+                    if first_line:
+                        log.info(f'CHAT first output after {(time.time()-start_time)*1000:.0f}ms')
+                        first_line = False
+                    if not line: break
+                    stripped = line.rstrip('\n\r')
+                    if not stripped: continue
+                    # 思考/工具过滤
+                    if not show_thinking and (
+                        stripped.startswith("[Thinking]") or stripped.startswith("Thinking:")
+                    ):
+                        continue
+                    if not show_tools and (
+                        stripped.startswith("[Tool:") or stripped.startswith("Tool:")
+                    ):
+                        continue
+                    out_chars += len(stripped)
+                    display = stripped
+                    if len(stripped) > 500:
+                        display = '<details><summary>📄 展开 (' + str(len(stripped)) + '字符)</summary><pre>' + stripped.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;') + '</pre></details>'
+                    elif stripped.startswith('[Tool:') or stripped.startswith('Tool:'):
+                        display = '<div class="tool-tag">🔧 ' + stripped.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;') + '</div>'
+                    try:
+                        handler.wfile.write(f"data: {json.dumps({'content': display + chr(10)})}\n\n".encode())
+                        handler.wfile.flush()
+                    except (BrokenPipeError, ConnectionResetError):
+                        log.info('CHAT client disconnected, killing proc')
+                        break
+
+                try:
+                    proc.wait(timeout=15)
+                except subprocess.TimeoutExpired:
+                    pass
 
             elapsed = time.time() - start_time
 
@@ -186,13 +280,16 @@ def handle_chat(handler, body):
                         log.debug(f"JSONL analysis failed for session {session_id}, using char estimation")
             cost = estimate_cost(detected_model, in_tokens, out_tokens)
             try:
-                handler.wfile.write(f"event: done\ndata: {json.dumps({'elapsed': round(elapsed,1), 'cost': round(cost,6), 'in_tokens': in_tokens, 'out_tokens': out_tokens})}\n\n".encode())
+                done_payload = {'elapsed': round(elapsed,1), 'cost': round(cost,6), 'in_tokens': in_tokens, 'out_tokens': out_tokens}
+                if used_pool:
+                    done_payload['via'] = 'pool'
+                handler.wfile.write(f"event: done\ndata: {json.dumps(done_payload)}\n\n".encode())
                 handler.wfile.flush()
             except Exception:
                 pass
             record_cost(PROJECT_ROOT, time.strftime("%Y-%m-%d %H:%M:%S"), detected_model, in_tokens, out_tokens, cost, elapsed, agent_name, proj_dir or "",
                         cache_read, cache_write, cache_saved, is_estimated, session_id or "")
-            log.info(f'CHAT done elapsed={elapsed:.1f}s cost=${cost:.4f} model={detected_model} estimated={is_estimated}')
+            log.info(f'CHAT done elapsed={elapsed:.1f}s cost=${cost:.4f} model={detected_model} estimated={is_estimated} via={"pool" if used_pool else "subprocess"}')
         finally:
             if proc:
                 kill_proc(proc)

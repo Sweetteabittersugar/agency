@@ -76,7 +76,7 @@ def handle_context(handler, parsed):
     try:
         sid = parse_qs(parsed.query).get("session", [""])[0]
         if sid and not re.match(r'^[a-fA-F0-9\-]+$', sid):
-            handler.send_json({"total_tokens": 0, "session_id": sid, "error": "invalid session id", "should_compact": False})
+            handler.send_json({"total_tokens": 0, "session_id": sid, "error": "会话 ID 格式无效。请使用正确的 UUID 格式（如 abc12345-def6-...）", "should_compact": False})
             return True
         proj = str(PROJECT_ROOT)
         if sid:
@@ -88,7 +88,7 @@ def handle_context(handler, parsed):
                 result["should_compact"] = result.get("total_tokens", 0) > 300000
                 handler.send_json(result)
             else:
-                handler.send_json({"total_tokens": 0, "session_id": sid, "error": "session not found", "should_compact": False})
+                handler.send_json({"total_tokens": 0, "session_id": sid, "error": "未找到该会话。可能会话已过期或 ID 输入有误，请检查后重试", "should_compact": False})
         else:
             session_info = find_latest_session(proj)
             if session_info and os.path.exists(session_info["path"]):
@@ -146,7 +146,7 @@ def handle_permissions_allowlist_post(handler, body):
     """POST /api/permissions/allowlist — 添加 allow 规则"""
     rule = body.get("rule", "")
     if not rule:
-        handler.send_json({"error": "rule required"}, 400)
+        handler.send_json({"error": "缺少必填字段 rule。请提供要添加的权限规则（如工具名称或匹配模式）"}, 400)
         return True
     settings_path = PROJECT_ROOT / ".claude" / "settings.json"
     settings = {}
@@ -186,9 +186,23 @@ def handle_hooks_config(handler, parsed):
     hooks_dir = PROJECT_ROOT / ".claude" / "hooks"
     scripts = []
     if hooks_dir.exists():
-        for f in sorted(hooks_dir.glob("*.sh")):
-            scripts.append({"name": f.name, "size": f.stat().st_size})
-    handler.send_json({"scripts": scripts, "events": []})
+        for f in sorted(hooks_dir.glob("*")):
+            if f.suffix in (".sh", ".py"):
+                scripts.append({"name": f.name, "size": f.stat().st_size})
+    # 从 settings.json 读取已注册的 Hook 事件
+    settings_path = PROJECT_ROOT / ".claude" / "settings.json"
+    events = []
+    if settings_path.exists():
+        try:
+            s = json.loads(settings_path.read_text(encoding="utf-8"))
+            for event_name, configs in s.get("hooks", {}).items():
+                events.append({
+                    "event": event_name,
+                    "configs": len(configs)
+                })
+        except Exception:
+            pass
+    handler.send_json({"scripts": scripts, "events": events})
     return True
 
 
@@ -196,7 +210,7 @@ def handle_session_delete(handler, body):
     """POST /api/session/delete"""
     session_id = body.get("session_id", "")
     if not session_id or len(session_id) < 8:
-        handler.send_json({"error": "session_id required"}, 400)
+        handler.send_json({"error": "缺少必填字段 session_id。请提供要删除的会话 ID"}, 400)
         return True
     import shutil
     home = Path.home()
@@ -214,4 +228,86 @@ def handle_session_delete(handler, body):
                 shutil.rmtree(str(sd))
                 deleted += 1
     handler.send_json({"ok": True, "deleted": deleted})
+    return True
+
+
+def handle_permission_audit(handler, parsed):
+    """GET /api/permissions/audit — 权限审计日志"""
+    from maestro.web_cost import get_permission_audit_log, get_permission_stats as db_stats
+    limit = int(parse_qs(parsed.query).get("limit", ["100"])[0])
+    decision_filter = parse_qs(parsed.query).get("decision", [""])[0]
+    logs = get_permission_audit_log(PROJECT_ROOT, limit, decision_filter)
+    stats = db_stats(PROJECT_ROOT)
+    handler.send_json({"logs": logs, "stats": stats})
+    return True
+
+
+def handle_permission_confirm(handler, body):
+    """POST /api/permissions/confirm — 用户确认/拒绝权限请求"""
+    tool_name = body.get("tool_name", "")
+    user_choice = body.get("choice", "deny")  # allow / deny
+    trust_mode = body.get("trust_mode", "")
+    path_prefix = body.get("path_prefix", "")
+    args = body.get("args", "")
+
+    if not tool_name:
+        handler.send_json({"error": "缺少必填字段 tool_name。请指定需要确认的工具名称"}, 400)
+        return True
+
+    from maestro.web import _get_permission_engine, record_permission
+    engine = _get_permission_engine()
+
+    if user_choice == "allow":
+        # 记住选择（24h）
+        engine.remember(tool_name, path_prefix)
+        engine.log_audit(tool_name, "allow", "用户确认通过", "medium", user_choice, str(args))
+        record_permission(tool_name, "allow", "medium", "用户确认通过")
+        handler.send_json({"ok": True, "decision": "allow", "message": f"已允许 {tool_name}，24h 内同类操作不再询问"})
+    else:
+        engine.log_audit(tool_name, "deny", "用户拒绝", "medium", user_choice, str(args))
+        record_permission(tool_name, "deny", "medium", "用户拒绝")
+        handler.send_json({"ok": True, "decision": "deny", "message": f"已拒绝 {tool_name}"})
+    return True
+
+
+def handle_permission_memory_clear(handler, body):
+    """POST /api/permissions/memory/clear — 清除权限记忆"""
+    tool_name = body.get("tool_name", "")
+    path_prefix = body.get("path_prefix", "")
+    from maestro.web import _get_permission_engine
+    engine = _get_permission_engine()
+    if tool_name:
+        engine.forget(tool_name, path_prefix)
+    handler.send_json({"ok": True, "message": "权限记忆已清除"})
+    return True
+
+
+def handle_harness_status(handler, parsed):
+    """GET /api/harness/status — 环境状态（env_status.json + Hook 注册状态）"""
+    status_file = PROJECT_ROOT / "maestro" / "env_status.json"
+    data = {}
+    if status_file.exists():
+        try:
+            data = json.loads(status_file.read_text(encoding="utf-8"))
+        except Exception:
+            data = {"error": "env_status.json 读取失败"}
+    else:
+        data = {"error": "env_status.json 未生成，请先运行 SessionStart hook"}
+
+    # 附加 Hook 注册状态
+    settings_path = PROJECT_ROOT / ".claude" / "settings.json"
+    hooks_registered = []
+    if settings_path.exists():
+        try:
+            s = json.loads(settings_path.read_text(encoding="utf-8"))
+            for event_name in s.get("hooks", {}):
+                hooks_registered.append({
+                    "event": event_name,
+                    "scripts": len(s["hooks"][event_name])
+                })
+        except Exception:
+            pass
+    data["hooks_registered"] = hooks_registered
+
+    handler.send_json(data)
     return True

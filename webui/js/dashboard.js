@@ -22,13 +22,15 @@ document.querySelectorAll('.harness-overlay-tab').forEach(function(t){t.addEvent
 function renderHarnessTab(tab){
   var domEl=$('harnessContent');if(!domEl)return;
   if(tab==='overview'){
-    domEl.innerHTML='<div class="cost-kpis" style="margin-bottom:10px"><div class="cost-kpi"><span class="kpi-val" id="hov-cost-today">—</span><span class="kpi-label">今日费用</span></div><div class="cost-kpi"><span class="kpi-val" id="hov-cost-30d">—</span><span class="kpi-label">30天</span></div><div class="cost-kpi"><span class="kpi-val" id="hov-calls">—</span><span class="kpi-label">调用</span></div></div><div style="margin-bottom:8px"><span style="font-size:11px;color:var(--muted);font-weight:600">每日费用趋势</span><canvas id="cost-trend-canvas" width="440" height="100" style="width:100%;height:100px;display:block;background:var(--surface2);border-radius:6px;margin-top:4px"></canvas></div><div style="margin-bottom:8px"><span style="font-size:11px;color:var(--muted);font-weight:600">模型费用分布</span><div id="model-bars" style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;color:var(--muted);min-height:60px">—</div></div><div style="display:flex;gap:6px;margin-bottom:8px"><div class="cost-kpi" style="flex:1"><span class="kpi-val" id="hov-cache-saved" style="color:var(--warn)">$0</span><span class="kpi-label">缓存节省</span></div><div class="cost-kpi" style="flex:1"><span class="kpi-val" id="hov-cache-tokens" style="font-size:11px">0</span><span class="kpi-label">缓存Token</span></div></div><div id="cost-alerts" style="margin-bottom:6px;font-size:10px"></div><h4 style="font-size:11px;color:var(--muted);margin-bottom:6px">上下文窗口</h4><div class="ctx-gauge" style="height:14px;margin-bottom:4px"><div class="ctx-gauge-fill" id="hctx-fill" style="width:0%"></div></div><div style="font-size:11px;display:flex;justify-content:space-between"><span id="hctx-text">0 / 500K</span><span id="hctx-cache" style="color:var(--muted)">缓存: —</span></div><div id="hctx-detail" style="font-size:10px;color:var(--muted);margin-top:4px"></div>';
+    domEl.innerHTML='<div class="cost-kpis" style="margin-bottom:10px"><div class="cost-kpi"><span class="kpi-val" id="hov-cost-today">—</span><span class="kpi-label">今日费用</span></div><div class="cost-kpi"><span class="kpi-val" id="hov-cost-30d">—</span><span class="kpi-label">30天</span></div><div class="cost-kpi"><span class="kpi-val" id="hov-calls">—</span><span class="kpi-label">调用</span></div></div><div style="margin-bottom:8px"><span style="font-size:11px;color:var(--muted);font-weight:600">每日费用趋势</span><canvas id="cost-trend-canvas" width="440" height="100" style="width:100%;height:100px;display:block;background:var(--surface2);border-radius:6px;margin-top:4px"></canvas></div><div style="margin-bottom:8px"><span style="font-size:11px;color:var(--muted);font-weight:600">模型费用分布</span><div id="model-bars" style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;color:var(--muted);min-height:60px">—</div></div><div style="margin-bottom:8px;padding:8px 10px;background:var(--surface2);border-radius:6px" id="opus-panel"><span style="font-size:11px;color:var(--muted);font-weight:600">Opus 调用占比</span><div id="opus-ratio" style="margin-top:4px;font-size:10px;color:var(--muted)">加载中…</div></div><div style="display:flex;gap:6px;margin-bottom:8px"><div class="cost-kpi" style="flex:1"><span class="kpi-val" id="hov-cache-saved" style="color:var(--warn)">$0</span><span class="kpi-label">缓存节省</span></div><div class="cost-kpi" style="flex:1"><span class="kpi-val" id="hov-cache-tokens" style="font-size:11px">0</span><span class="kpi-label">缓存Token</span></div></div><div id="cost-alerts" style="margin-bottom:6px;font-size:10px"></div><h4 style="font-size:11px;color:var(--muted);margin-bottom:6px">上下文窗口</h4><div class="ctx-gauge" style="height:14px;margin-bottom:4px"><div class="ctx-gauge-fill" id="hctx-fill" style="width:0%"></div></div><div style="font-size:11px;display:flex;justify-content:space-between"><span id="hctx-text">0 / 500K</span><span id="hctx-cache" style="color:var(--muted)">缓存: —</span></div><div id="hctx-detail" style="font-size:10px;color:var(--muted);margin-top:4px"></div>';
     loadContextDetail();loadCostOverview();
   }
-  else if(tab==='permission'){domEl.innerHTML='<h3 style="margin-bottom:8px">权限管线</h3><div id="hperm-log" style="font-size:11px">加载中…</div>';loadPermHistory()}
+  else if(tab==='permission'){domEl.innerHTML='<h3 style="margin-bottom:8px">权限管线</h3><div id="hperm-log" style="font-size:11px">加载中…</div><h4 style="margin-top:12px;margin-bottom:6px;font-size:11px;color:var(--muted)">审计日志</h4><div id="perm-audit-list" style="font-size:11px">加载中…</div>';loadPermHistory();loadPermissionAudit()}
   else if(tab==='subagents'){domEl.innerHTML='<h3 style="margin-bottom:8px">SubAgent 任务树</h3><div id="hsub-tree" style="font-size:11px;color:var(--muted)">加载中…</div>';loadSubagents()}
   else if(tab==='hooks'){domEl.innerHTML='<h3 style="margin-bottom:8px">Hooks 生命周期</h3><div id="hhooks-log" style="font-size:11px;color:var(--muted)">从事件日志中加载…</div>';loadHooksLog()}
   else if(tab==='mcp'){domEl.innerHTML='<h3 style="margin-bottom:8px">MCP 集成</h3><div id="hmcp-list" style="font-size:11px;color:var(--muted)">加载中…</div>';loadMCPDetail()}
+  else if(tab==='env'){domEl.innerHTML='<h3 style="margin-bottom:8px">环境状态</h3><div id="henv-status" style="font-size:11px;color:var(--muted)">加载中…</div>';loadEnvStatus()}
+  else if(tab==='test'){domEl.innerHTML='<h3 style="margin-bottom:8px">🧪 测试运行器</h3><div style="margin-bottom:8px"><input class="proj-input" id="test-url" type="text" placeholder="输入测试 URL，如 https://example.com" style="width:100%;margin-bottom:4px"><button class="new-chat-btn" onclick="runTest()" style="font-size:11px;padding:6px 16px;width:auto" id="test-run-btn">▶ 开始测试</button><span id="test-status" style="font-size:11px;color:var(--muted);margin-left:8px"></span></div><div id="test-results" style="font-size:11px;color:var(--muted);margin-top:8px"></div><div id="test-screenshot" style="margin-top:8px"></div>';_testPollTimer=null}
 }
 function loadCostOverview(){
   fetch('/api/cost?days=30').then(function(r){return r.json()}).then(function(d){
@@ -42,6 +44,7 @@ function loadCostOverview(){
     if($('hov-cache-tokens'))$('hov-cache-tokens').textContent=((cache.read_tok||0)+(cache.write_tok||0)).toLocaleString();
     drawCostTrend(d.by_date||[]);
     drawModelBars(d.by_model||[]);
+    drawOpusRatio(d.by_model||[]);
     renderCostAlerts(d.alerts||[]);
   }).catch(function(e){console.debug('loadCostOverview failed',e)});
 }
@@ -85,6 +88,31 @@ function drawModelBars(models){
     '</div>';
   }).join('');
 }
+function drawOpusRatio(models){
+  var domEl=document.getElementById('opus-ratio');if(!domEl)return;
+  if(!models||!models.length){domEl.innerHTML='暂无数据';return}
+  var totalCost=0,opusCost=0,opusCalls=0,totalCalls=0;
+  models.forEach(function(m){
+    totalCost+=m.cost||0;totalCalls+=m.calls||0;
+    if(/opus/i.test(m.model||'')){opusCost+=m.cost||0;opusCalls+=m.calls||0}
+  });
+  if(totalCost===0){domEl.innerHTML='无费用数据';return}
+  var pct=totalCost>0?(opusCost/totalCost*100):0;
+  var color=pct>10?'var(--danger)':pct>5?'var(--warn)':'var(--accent)';
+  var warning=pct>10?'<span style="color:var(--danger);font-weight:600"> ⚠ 超10%告警</span>':'';
+  domEl.innerHTML='<div style="display:flex;align-items:center;gap:10px;margin-top:4px">'+
+    '<div style="font-size:18px;font-weight:700;color:'+color+'">'+(opusCost>0?'$'+opusCost.toFixed(4):'$0')+'</div>'+
+    '<div style="flex:1">'+
+      '<div style="display:flex;justify-content:space-between;font-size:9px;margin-bottom:2px">'+
+        '<span>占比</span><span style="color:'+color+'">'+pct.toFixed(1)+'%</span>'+
+      '</div>'+
+      '<div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden">'+
+        '<div style="height:100%;width:'+Math.min(pct,100)+'%;background:'+color+';border-radius:4px;min-width:2px"></div>'+
+      '</div>'+
+      '<div style="font-size:9px;color:var(--muted);margin-top:2px">调用 '+opusCalls+' 次 / 共 '+totalCalls+' 次</div>'+
+    '</div>'+
+  '</div>'+warning;
+}
 function renderCostAlerts(alerts){
   var domEl=document.getElementById('cost-alerts');if(!domEl)return;
   if(!alerts||!alerts.length){domEl.innerHTML='';return}
@@ -115,7 +143,7 @@ function loadPermHistory(){
   fetch('/api/permissions/history?limit=100').then(function(r){return r.json()}).then(function(d){
     var domEl=$('hperm-log');if(!domEl)return;
     if(d.history&&d.history.length){domEl.innerHTML=d.history.map(function(e){return'<div class="perm-item '+e.decision+'"><span class="pdec">'+(e.decision==='allow'?'✓':e.decision==='deny'?'✗':'⚠')+'</span> '+escHtml(e.tool||'?')+' <span style="color:var(--muted);font-size:9px">'+e.time+(e.reason?' · '+escHtml(e.reason):'')+'</span></div>'}).join('')}else{domEl.innerHTML='暂无权限记录'}
-  }).catch(function(){var domEl=$('hperm-log');if(domEl)domEl.innerHTML='加载失败'});
+  }).catch(function(){var domEl=$('hperm-log');if(domEl)domEl.innerHTML='无法加载权限记录。服务可能未启动，请刷新页面重试'});
 }
 function loadContextDetail(){
   fetch('/api/harness/context').then(function(r){return r.json()}).then(function(d){
@@ -139,7 +167,7 @@ function loadContextDetail(){
       html+='输入 '+(d.input_tokens||0).toLocaleString()+' · 输出 '+(d.output_tokens||0).toLocaleString()+' · 费用 $'+(d.cost_est?d.cost_est.total.toFixed(6):'0')+(d.last_update?' · '+d.last_update:'');
       detail.innerHTML=html;
     }
-  }).catch(function(){var domEl=$('hctx-detail');if(domEl)domEl.innerHTML='加载失败'});
+  }).catch(function(){var domEl=$('hctx-detail');if(domEl)domEl.innerHTML='无法加载上下文数据。服务可能未启动，请刷新页面重试'});
   if(_ctxTimer)clearInterval(_ctxTimer);
   _ctxTimer=setInterval(function(){if($('harnessOverlay').classList.contains('on'))loadContextDetail()},10000);
 }
@@ -155,14 +183,14 @@ function loadSubagents(){
     domEl.innerHTML=html}else{domEl.innerHTML='<span style="color:var(--muted)">暂无 SubAgent 记录</span>'}
     if(_subTimer)clearInterval(_subTimer);
     _subTimer=setInterval(function(){if($('harnessOverlay').classList.contains('on'))loadSubagents()},5000);
-  }).catch(function(){var domEl=$('hsub-tree');if(domEl)domEl.innerHTML='加载失败'});
+  }).catch(function(){var domEl=$('hsub-tree');if(domEl)domEl.innerHTML='无法加载子任务列表。服务可能未启动，请刷新页面重试'});
 }
 function loadHooksLog(){
   var hlogs=window._hlogs||[];
   fetch('/api/harness/events?limit=50').then(function(r){return r.json()}).then(function(d){
     var events=d.events||[],domEl=$('hhooks-log');if(!domEl)return;
     if(events.length){domEl.innerHTML=events.map(function(e){return'<div style="padding:3px 6px;margin:1px 0;font-size:10px;border-left:2px solid var(--accent);background:var(--surface2)"><strong>'+escHtml(e.type)+'</strong> <span style="color:var(--muted)">'+new Date(e.ts*1000).toLocaleTimeString()+'</span></div>'}).join('')}else{domEl.innerHTML='暂无 Hook 事件'}
-  }).catch(function(){var domEl=$('hhooks-log');if(domEl)domEl.innerHTML='加载失败'});
+  }).catch(function(){var domEl=$('hhooks-log');if(domEl)domEl.innerHTML='无法加载 Hook 事件。服务可能未启动，请刷新页面重试'});
 }
 function loadMCPDetail(){
   fetch('/api/mcp/status').then(function(r){return r.json()}).then(function(d){
@@ -170,5 +198,118 @@ function loadMCPDetail(){
     var servers=d.servers||[];
     var html=servers.length?servers.map(function(s){return'<div style="padding:8px 10px;margin:4px 0;background:var(--surface2);border-radius:var(--radius-sm)"><div style="font-weight:600;font-size:12px">'+escHtml(s.name)+' <span style="font-size:9px;color:'+(s.running?'var(--accent)':'var(--muted)')+'">● '+(s.running?'活跃':'离线')+'</span></div><div style="font-size:10px;color:var(--muted)">'+escHtml(s.command||'')+(s.args||[]).join(' ')+'</div></div>'}).join(''):'暂无 MCP 服务器';
     domEl.innerHTML=html;if(sel)sel.innerHTML=html;
-  }).catch(function(){var domEl=$('hmcp-list');if(domEl)domEl.innerHTML='加载失败'});
+  }).catch(function(){var domEl=$('hmcp-list');if(domEl)domEl.innerHTML='无法加载 MCP 状态。服务可能未启动，请刷新页面重试'});
+}
+function loadPermissionAudit(){
+  fetch('/api/permissions/audit?limit=50').then(function(r){return r.json()}).then(function(d){
+    var domEl=document.getElementById('perm-audit-list');if(!domEl)return;
+    var logs=d.logs||[],stats=d.stats||{};
+    if(logs.length){domEl.innerHTML='<div style="margin-bottom:4px;font-size:10px;color:var(--text2)">总计 '+(stats.total||logs.length)+' · 允许 '+(stats.allowed||0)+' · 拒绝 '+(stats.denied||0)+'</div>'+logs.slice(0,20).map(function(l){var color=l.decision==='allow'?'var(--accent)':'var(--danger)';return'<div style="padding:2px 6px;margin:1px 0;font-size:10px;border-left:2px solid '+color+'"><span style="color:'+color+'">'+(l.decision==='allow'?'✓':'✗')+'</span> '+escHtml(l.tool_name||'?')+' <span style="color:var(--muted)">'+escHtml(l.time||'')+'</span></div>'}).join('')}else{domEl.innerHTML='暂无审计记录'}
+  }).catch(function(){var domEl=document.getElementById('perm-audit-list');if(domEl)domEl.innerHTML='无法加载审计日志'});
+}
+function loadEnvStatus(){
+  fetch("/api/harness/status").then(function(r){return r.json()}).then(function(d){
+    var domEl=document.getElementById("henv-status");if(!domEl)return;
+    var html="";
+    var apiOk=d.api_key_valid!==undefined?d.api_key_valid:false;
+    var apiProvider=d.api_provider||"未知";
+    html+='<div style="padding:8px 10px;margin:4px 0;background:var(--surface2);border-radius:var(--radius-sm)">';
+    html+='<div style="font-weight:600;font-size:12px;margin-bottom:4px">API Key</div>';
+    html+='<div style="font-size:11px"><span style="color:'+(apiOk?"var(--accent)":"var(--danger)")+'">'+(apiOk?"✅ 有效":"❌ 无效")+'</span>';
+    html+=' · 提供商: <span style="color:var(--text2)">'+escHtml(apiProvider)+'</span></div>';
+    html+='</div>';
+    var mcpServers=d.mcp_servers||{};
+    html+='<div style="padding:8px 10px;margin:4px 0;background:var(--surface2);border-radius:var(--radius-sm)">';
+    html+='<div style="font-weight:600;font-size:12px;margin-bottom:6px">MCP 服务</div>';
+    var mcpNames=Object.keys(mcpServers);
+    if(mcpNames.length){
+      mcpNames.forEach(function(name){
+        var ok=mcpServers[name];
+        html+='<div style="display:flex;align-items:center;gap:6px;padding:2px 0;font-size:11px">';
+        html+='<span style="width:8px;height:8px;border-radius:50%;display:inline-block;background:'+(ok?"var(--accent)":"var(--danger)")+'"></span>';
+        html+='<span>'+escHtml(name)+'</span>';
+        html+='<span style="color:'+(ok?"var(--accent)":"var(--danger)")+';font-size:10px">'+(ok?"可用":"不可用")+'</span>';
+        html+='</div>';
+      });
+    }else{html+='<span style="color:var(--muted);font-size:10px">无 MCP 服务配置</span>'}
+    html+='</div>';
+    html+='<div style="padding:8px 10px;margin:4px 0;background:var(--surface2);border-radius:var(--radius-sm)">';
+    html+='<div style="font-weight:600;font-size:12px;margin-bottom:2px">项目目录</div>';
+    html+='<div style="font-size:10px;color:var(--muted);word-break:break-all">'+escHtml(d.project_dir||"—")+'</div>';
+    html+='</div>';
+    html+='<div style="padding:8px 10px;margin:4px 0;background:var(--surface2);border-radius:var(--radius-sm)">';
+    html+='<div style="font-weight:600;font-size:12px;margin-bottom:2px">最后检查</div>';
+    html+='<div style="font-size:10px;color:var(--muted)">'+escHtml(d.checked_at||"未检查")+'</div>';
+    html+='</div>';
+    var hooksReg=d.hooks_registered||[];
+    html+='<div style="padding:8px 10px;margin:4px 0;background:var(--surface2);border-radius:var(--radius-sm)">';
+    html+='<div style="font-weight:600;font-size:12px;margin-bottom:6px">Hook 注册</div>';
+    if(hooksReg.length){
+      hooksReg.forEach(function(h){
+        html+='<div style="display:flex;align-items:center;gap:6px;padding:1px 0;font-size:11px">';
+        html+='<span style="color:var(--accent)">●</span>';
+        html+='<span>'+escHtml(h.event)+'</span>';
+        html+='<span style="color:var(--muted);font-size:10px">'+h.scripts+' 个脚本</span>';
+        html+='</div>';
+      });
+    }else{html+='<span style="color:var(--muted);font-size:10px">未注册 Hook</span>'}
+    html+='</div>';
+    if(d.error)html+='<div style="padding:6px 10px;margin:4px 0;background:rgba(248,113,113,.1);border-left:2px solid var(--danger);border-radius:3px;font-size:10px;color:var(--danger)">'+escHtml(d.error)+'</div>';
+    domEl.innerHTML=html;
+  }).catch(function(){var domEl=document.getElementById("henv-status");if(domEl)domEl.innerHTML="无法加载环境状态。服务可能未启动，请刷新页面重试"});
+}
+
+/* ── 测试运行器 ── */
+var _testPollTimer=null,_testRunId=null;
+function runTest(){
+  var url=($('test-url')||{}).value;if(!url){showToast('请输入测试 URL',false,'warn');return}
+  var btn=$('test-run-btn');if(btn){btn.disabled=true;btn.textContent='⏳ 测试中…'}
+  var statusEl=$('test-status');if(statusEl)statusEl.textContent='启动中…';
+  _testRunId=null;
+  var body={url:url};
+  var od=localStorage.getItem('agency_output_dir');if(od)body.output_dir=od;
+  apiFetch('/api/test/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){return r.json()}).then(function(d){
+    if(d.error){showToast(d.error,true);if(btn){btn.disabled=false;btn.textContent='▶ 开始测试'};return}
+    _testRunId=d.run_id;if(statusEl)statusEl.textContent='运行中: '+_testRunId;
+    pollTestStatus();
+  }).catch(function(e){showToast('启动测试失败: '+e.message,true);if(btn){btn.disabled=false;btn.textContent='▶ 开始测试'}});
+}
+function pollTestStatus(){
+  if(!_testRunId)return;
+  if(_testPollTimer)clearTimeout(_testPollTimer);
+  apiFetch('/api/test/status/'+_testRunId).then(function(r){return r.json()}).then(function(d){
+    var results=$('test-results'),screenshot=$('test-screenshot'),statusEl=$('test-status'),btn=$('test-run-btn');
+    if(d.error){showToast(d.error,true);if(btn){btn.disabled=false;btn.textContent='▶ 开始测试'};return}
+    if(d.status==='running'){
+      if(statusEl)statusEl.textContent='运行中…';
+      _testPollTimer=setTimeout(pollTestStatus,2000);
+      return;
+    }
+    if(statusEl)statusEl.textContent=d.status==='completed'?'✅ 完成':'❌ '+(d.status||'失败');
+    if(btn){btn.disabled=false;btn.textContent='▶ 重新测试'}
+    var tests=d.tests||[];
+    var passed=tests.filter(function(t){return t.passed}).length;
+    var total=tests.length||1;
+    var html='<div style="display:flex;gap:12px;margin-bottom:8px">';
+    html+='<div class="cost-kpi"><span class="kpi-val" style="color:'+(passed===total?'var(--accent)':'var(--warn)')+'">'+passed+'/'+total+'</span><span class="kpi-label">通过</span></div>';
+    html+='<div class="cost-kpi"><span class="kpi-val" style="color:'+(passed<total?'var(--danger)':'var(--muted)')+'">'+(total-passed)+'</span><span class="kpi-label">失败</span></div>';
+    html+='</div>';
+    if(tests.length){
+      html+='<div style="font-size:10px;max-height:150px;overflow-y:auto">';
+      tests.forEach(function(t){
+        html+='<div style="padding:3px 6px;margin:2px 0;border-radius:3px;background:'+(t.passed?'rgba(34,211,160,.1)':'rgba(248,113,113,.1)')+'">';
+        html+='<span style="color:'+(t.passed?'var(--accent)':'var(--danger)')+'">'+(t.passed?'✅':'❌')+'</span> ';
+        html+=escHtml(t.name||'测试');
+        if(t.duration_ms)html+=' <span style="color:var(--muted);font-size:9px">'+t.duration_ms+'ms</span>';
+        if(t.error)html+='<div style="color:var(--danger);font-size:9px;margin-left:18px">'+escHtml(t.error)+'</div>';
+        html+='</div>';
+      });
+      html+='</div>';
+    }
+    if(d.summary)html+='<div style="font-size:10px;color:var(--text2);margin-top:4px;padding:4px 8px;background:var(--surface2);border-radius:4px">📋 '+escHtml(d.summary)+'</div>';
+    if(results)results.innerHTML=html;
+    if(d.screenshot&&screenshot){
+      screenshot.innerHTML='<div style="margin-top:8px"><span style="font-size:10px;color:var(--muted)">截图预览：</span><br><img src="/api/files?path='+encodeURIComponent(d.screenshot)+'" style="max-width:100%;max-height:220px;border-radius:4px;border:1px solid var(--border);margin-top:4px" onerror="this.style.display=\'none\'"></div>';
+    }
+  }).catch(function(e){var statusEl=$('test-status');if(statusEl)statusEl.textContent='查询失败';var btn=$('test-run-btn');if(btn){btn.disabled=false;btn.textContent='▶ 开始测试'}});
 }

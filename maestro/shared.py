@@ -13,6 +13,24 @@ ISOLATED_CONFIG = str(PROJECT_ROOT / ".claude-isolated")
 _claude_dir = str(PROJECT_ROOT / ".claude")
 _claude_dir_path = Path(_claude_dir)
 
+# ── Profile 系统引入 ──
+try:
+    from maestro.profiles import (
+        load_profile,
+        estimate_complexity,
+        filter_agents_for_profile,
+        filter_skills_for_profile,
+        get_agent_profile_skills,
+        _load_yaml_skills,
+    )
+    _HAS_PROFILES = True
+except ImportError:
+    _HAS_PROFILES = False
+    log.warning("maestro.profiles 未找到，Profile 系统不可用")
+
+# ── Agent-Skill 绑定缓存 ──
+_agent_skills_binding: dict = {}
+
 AGENCY_VERSION = "0.1.0"
 _version_file = PROJECT_ROOT / "VERSION"
 if _version_file.exists():
@@ -31,19 +49,61 @@ if not CLAUDE_BIN:
 from maestro.agent_parser import parse_agent_md
 
 
-def load_agents():
-    """从 agents/ 目录加载 Agent 列表"""
+def load_skill_bindings():
+    """从 agent.yaml 加载 Agent-Skill 绑定，返回 {agent_name: {required, optional, excluded}}"""
+    global _agent_skills_binding
+    if _agent_skills_binding:
+        return _agent_skills_binding
+
+    if _HAS_PROFILES:
+        _agent_skills_binding = _load_yaml_skills()
+    if not _agent_skills_binding:
+        # fallback: 从 agents.json 读取
+        agents_json = PROJECT_ROOT / "maestro" / "agents.json"
+        if agents_json.exists():
+            try:
+                data = json.loads(agents_json.read_text(encoding="utf-8"))
+                for agent_name, agent_def in data.items():
+                    if isinstance(agent_def, dict) and "skills" in agent_def:
+                        _agent_skills_binding[agent_name] = agent_def["skills"]
+            except Exception as exc:
+                log.debug("Failed to load skill bindings from agents.json: %s", exc)
+
+    return _agent_skills_binding
+
+
+def get_agent_skills(agent_name: str) -> dict:
+    """获取指定 Agent 的 Skill 绑定。"""
+    bindings = load_skill_bindings()
+    return bindings.get(agent_name, {"required": [], "optional": [], "excluded": []})
+
+
+def load_agents(profile_complexity: str = None):
+    """从 agents/ 目录加载 Agent 列表，可选按 profile 过滤。
+
+    Args:
+        profile_complexity: "minimal"|"standard"|"full"|None。None 时不按 profile 过滤。
+    """
     agents = []
     agents_dir = PROJECT_ROOT / "agents"
     if agents_dir.exists():
         for f in sorted(agents_dir.glob("*.md")):
             info = parse_agent_md(f)
+            agent_name = info["name"]
+            skill_binding = get_agent_skills(agent_name)
             agents.append({
-                "name": info["name"],
+                "name": agent_name,
                 "description": info["description"],
                 "model": info["model"],
                 "tools": info["tools"],
+                "skills": skill_binding,
             })
+
+    # Profile 过滤
+    if profile_complexity and _HAS_PROFILES:
+        profile = load_profile(profile_complexity)
+        agents = filter_agents_for_profile(agents, profile)
+
     return agents
 
 
@@ -137,17 +197,27 @@ _init_agent_models()
 
 
 def simple_route(task):
-    """简单关键词匹配（加权）"""
-    tl = task.lower()
-    best, best_score = None, 0
-    for name, keywords in ROUTING_KEYWORDS.items():
-        score = sum(weight for kw, weight in keywords if kw.lower() in tl)
-        if score > best_score:
-            best, best_score = name, score
-    if best_score < 4:
-        return None
-    model = _agent_models.get(best, "")
-    return {"agent": best, "model": model}
+    """三级路由：关键词(40%) + 语义(48%) + LLM兜底(12%)
+
+    返回: {"agent": "...", "model": "...", "confidence": 0.85, "keyword_score": 0.9,
+           "semantic_score": 0.72, "source": "keyword|semantic|llm|...", "method": "three_tier"}
+    或 None（完全无匹配）
+    """
+    # 先走三级路由
+    from maestro.main import route_with_fallback
+    result = route_with_fallback(task)
+
+    if result and result.get("agent"):
+        return {
+            "agent": result["agent"],
+            "model": result.get("model", ""),
+            "confidence": result.get("confidence", 0),
+            "keyword_score": result.get("keyword_score", 0),
+            "semantic_score": result.get("semantic_score", 0),
+            "source": result.get("source", "keyword"),
+            "method": result.get("method", "three_tier"),
+        }
+    return None
 
 
 def _extract_plan(text: str):

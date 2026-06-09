@@ -259,6 +259,16 @@ def _dispatch_basic(agent_cfg, agent_name, task_desc, context, model, task):
     work_dir = agent_cfg.get("work_dir", PROJECT_ROOT)
     actual_model = model or agent_cfg.get("model", "sonnet")
 
+    # ── MCP 权限注入 ──
+    try:
+        from maestro.sandbox import _get_mcp_permissions, _get_mcp_tool_descriptions
+        mcp_perms = _get_mcp_permissions(PROJECT_ROOT)
+        if mcp_perms:
+            tools = tools + "," + ",".join(mcp_perms)
+        mcp_tool_desc = _get_mcp_tool_descriptions(PROJECT_ROOT)
+    except ImportError:
+        mcp_tool_desc = ""
+
     full_task = f"你是执行者，直接完成任务，不转派不反问。\\n\\n{task_desc}"
     if context:
         full_task = f"{context}\\n\\n你是执行者，直接完成任务，不转派不反问。\\n\\n任务: {task_desc}"
@@ -270,6 +280,8 @@ def _dispatch_basic(agent_cfg, agent_name, task_desc, context, model, task):
         "然后写 ## 详细结果（包含完整执行过程），" +
         "然后写 ## 用户摘要（面向 boss 的精简结果，无内部过程）"
     )
+    if mcp_tool_desc:
+        result_instruction += f"\\n\\n{mcp_tool_desc}"
 
     claude_cmd = (
         f'claude -p "{full_task}"'

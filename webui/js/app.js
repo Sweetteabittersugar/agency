@@ -9,6 +9,13 @@ try{apiKey=localStorage.getItem('agency_api_key')||''}catch(_){}
 try{apiProvider=localStorage.getItem('agency_api_provider')||'deepseek'}catch(_){}
 try{authToken=localStorage.getItem('agency_auth_token')||''}catch(_){}
 var _saveTimer=null;
+
+// ── Profile 级别 ──
+var agencyProfile='standard';  // minimal | standard | full
+try{agencyProfile=localStorage.getItem('agency_profile')||'standard'}catch(_){}
+var PROFILE_LABELS={minimal:'轻量',standard:'标准',full:'全功能'};
+var PROFILE_ICONS={minimal:'⚡',standard:'⚙',full:'🚀'};
+var PROFILE_COLORS={minimal:'var(--accent)',standard:'#f0a020',full:'var(--danger)'};
 var grid=$('grid'),pageBar=$('pageBar'),agentList=$('agent-list'),historyList=$('history-list');
 
 // ── 窗口拖拽 ──
@@ -23,6 +30,11 @@ function offDrag(){dragTarget=null;document.removeEventListener('mousemove',onDr
 
 // ── API Key 状态显示 ──
 if(apiKey){var ak=$('api-key');if(ak)ak.value=apiKey;var ap=$('api-provider');if(ap)ap.value=apiProvider;$('api-status').textContent='已配置'}
+// ── 输出目录 ──
+var outputDir='';try{outputDir=localStorage.getItem('agency_output_dir')||''}catch(_){}
+var odInput=$('output-dir');if(odInput)odInput.value=outputDir;
+function saveOutputDir(){var v=($('output-dir')||{}).value||'';localStorage.setItem('agency_output_dir',v);outputDir=v;showToast('输出目录已保存: '+(v||'默认'))}
+
 
 // ── 项目目录绑定 ──
 var pInput=$('proj-dir');if(pInput)pInput.value=projDir;
@@ -36,10 +48,54 @@ document.querySelectorAll('.sidebar-tab').forEach(function(tab){tab.addEventList
 document.querySelector('.sidebar-tab[data-tab="skills"]')&&document.querySelector('.sidebar-tab[data-tab="skills"]').addEventListener('click',function(){loadSidebarSkills()});
 document.querySelector('.sidebar-tab[data-tab="project"]')&&document.querySelector('.sidebar-tab[data-tab="project"]').addEventListener('click',function(){loadFileTree(projDir)});
 
+// ── Profile 快捷切换 ──
+function cycleProfile(){
+  var levels=['minimal','standard','full'];
+  var idx=levels.indexOf(agencyProfile);
+  var next=levels[(idx+1)%levels.length];
+  setProfile(next);
+}
+function setProfile(level){
+  if(!PROFILE_LABELS[level]) return;
+  agencyProfile = level;
+  localStorage.setItem('agency_profile', level);
+  updateProfileUI();
+  // 同步到后端
+  fetch('/api/profile', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({level: level})
+  }).catch(function(){});
+  showToast('Profile: ' + PROFILE_LABELS[level]);
+}
+function updateProfileUI(){
+  var sel = document.getElementById('profile-select');
+  if(sel) sel.value = agencyProfile;
+  var label = document.getElementById('profile-label');
+  if(label && PROFILE_LABELS[agencyProfile]){
+    label.textContent = PROFILE_ICONS[agencyProfile] + ' ' + PROFILE_LABELS[agencyProfile];
+    label.style.color = PROFILE_COLORS[agencyProfile];
+  }
+  // 更新 header 快捷按钮
+  var btn = document.getElementById('profileQuickBtn');
+  if(btn){
+    btn.textContent = PROFILE_ICONS[agencyProfile];
+    btn.title = 'Profile: ' + PROFILE_LABELS[agencyProfile] + ' (点击切换)';
+    btn.style.color = PROFILE_COLORS[agencyProfile];
+  }
+  // 更新 settings 面板按钮
+  var btns = document.querySelectorAll('.profile-quick-btn');
+  btns.forEach(function(b){
+    var lv = b.getAttribute('data-profile');
+    b.classList.toggle('active', lv === agencyProfile);
+  });
+}
+
 // ── 初始加载 ──
 loadAgents();
 renderHistory();
 addPanel();
+updateProfileUI();
 
 /* ── 帮助覆盖层 ── */
 function toggleHelpOverlay(){
@@ -113,7 +169,7 @@ function loadFileTree(path){
     var h='';
     d.entries.forEach(function(e){h+='<div style="padding:3px 6px;cursor:pointer;display:flex;gap:6px;align-items:center" onclick="'+ (e.is_dir?'loadFileTree('+JSON.stringify((d.path+'/'+e.name).replace(/\\/g,'/'))+')':'openFilePanel('+JSON.stringify((d.path+'/'+e.name).replace(/\\/g,'/'))+')') +'">'+'<span>'+(e.is_dir?'📁':'📄')+'</span>'+'<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+e.name+'</span>'+'<span style="font-size:9px;color:var(--muted)">'+(e.is_dir?'':e.size>1024?(e.size/1024).toFixed(1)+'KB':e.size+'B')+'</span>'+'</div>'});
     $('file-tree').innerHTML=h||'空目录';
-  }).catch(function(){$('file-tree').innerHTML='加载失败'});
+  }).catch(function(){$('file-tree').innerHTML='无法加载文件目录。服务可能未启动，请刷新页面重试'});
 }
 function openFilePanel(fpath){var p=getFocusedPanel();if(p){p.dom.input.value='@explorer 分析这个文件: '+fpath}loadFileTree(projDir)}
 function clearProjDir(){projDir='';$('proj-dir').value='';localStorage.removeItem('agency_proj_dir');$('file-tree').innerHTML='';$('file-breadcrumb').textContent='/'}

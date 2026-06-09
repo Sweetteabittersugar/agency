@@ -20,7 +20,7 @@ def handle_list(handler, parsed):
             try:
                 p.relative_to(PROJECT_ROOT.resolve())
             except ValueError:
-                handler.send_json({"error": "forbidden"}, 403)
+                handler.send_json({"error": "无权访问该目录。只能浏览项目目录及其子目录"}, 403)
                 return True
         entries = []
         for child in sorted(p.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower())):

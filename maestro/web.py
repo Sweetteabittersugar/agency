@@ -70,6 +70,27 @@ def get_permission_stats():
         blocked = sum(1 for e in _permission_log if e["decision"] == "block")
     return {"total": total, "allowed": allowed, "denied": denied, "blocked": blocked}
 
+# ── 权限引擎初始化 ──
+_permission_engine = None
+
+def _get_permission_engine():
+    global _permission_engine
+    if _permission_engine is None:
+        from maestro.permission_engine import init_engine
+        _permission_engine = init_engine(PROJECT_ROOT)
+    return _permission_engine
+
+def check_tool_permission(tool_name, args=None, trust_mode=""):
+    """检查工具权限，返回 (decision, risk, reason)"""
+    engine = _get_permission_engine()
+    decision, risk, reason = engine.check_and_log(
+        tool_name=tool_name,
+        args=args,
+        trust_mode=trust_mode,
+    )
+    record_permission(tool_name, decision, risk, reason)
+    return decision, risk, reason
+
 # ── 子进程清理 ──
 from maestro.proc_manager import cleanup_all_procs, start_watchdog
 start_watchdog()
@@ -119,7 +140,7 @@ class Handler(BaseHTTPRequestHandler):
                 handler_func(self, parsed)
                 return
 
-        self.send_json({"error": "not found"}, 404)
+        self.send_json({"error": "接口不存在。请检查请求的方法和路径是否正确"}, 404)
 
     def do_POST(self):
         path = urlparse(self.path).path
@@ -131,7 +152,7 @@ class Handler(BaseHTTPRequestHandler):
         if length > 0:
             ct = self.headers.get("Content-Type", "")
             if not ct.startswith("application/json"):
-                self.send_json({"error": "需要 JSON 格式"}, 400)
+                self.send_json({"error": "请求体必须是 JSON 格式。请在请求头中设置 Content-Type: application/json"}, 400)
                 return
             raw = self.rfile.read(length)
             # 尝试 UTF-8 → GBK → latin-1 三种编码
@@ -142,7 +163,7 @@ class Handler(BaseHTTPRequestHandler):
                 except (UnicodeDecodeError, json.JSONDecodeError):
                     continue
             else:
-                self.send_json({"error": "invalid JSON body"}, 400)
+                self.send_json({"error": "JSON 请求体格式无效。请检查 JSON 语法是否正确（引号、逗号、括号）"}, 400)
                 return
         from maestro.safety import check_input, check_rate_limit
         if not check_rate_limit(self.client_address[0]):
@@ -154,6 +175,31 @@ class Handler(BaseHTTPRequestHandler):
             if not is_safe:
                 self.send_json({"error": f"不安全: {reason}"}, 400)
                 return
+
+        # ── 三级权限审批 ──
+        tool_name = body.get("tool_name", body.get("tool", ""))
+        if tool_name:
+            trust_mode = body.get("trust_mode", self.headers.get("X-Agency-Trust-Mode", ""))
+            from maestro.web import check_tool_permission
+            decision, risk, reason = check_tool_permission(tool_name, body.get("args", body), trust_mode)
+            if decision == "deny":
+                self.send_json({
+                    "error": f"操作被拒绝: {reason}",
+                    "decision": "deny",
+                    "risk": risk,
+                    "tool": tool_name,
+                }, 403)
+                return
+            if decision == "ask":
+                self.send_json({
+                    "error": f"操作需确认: {reason}",
+                    "decision": "ask",
+                    "risk": risk,
+                    "tool": tool_name,
+                    "hint": "请在前端弹窗中确认此操作，确认后携带 user_choice=allow 重试",
+                }, 409)
+                return
+            # decision == "allow": 继续执行
 
         path = urlparse(self.path).path
         skip_csrf = path in ("/api/setup", "/api/setup/status", "/api/route", "/api/remote/status", "/api/health", "/api/version")
@@ -171,7 +217,19 @@ class Handler(BaseHTTPRequestHandler):
                 handler_func(self, body)
                 return
 
-        self.send_json({"error": "not found"}, 404)
+        self.send_json({"error": "接口不存在。请检查请求的方法和路径是否正确"}, 404)
+
+    def do_DELETE(self):
+        path = urlparse(self.path).path
+        log.info(f"AUDIT DELETE {path} from {self.client_address[0]}")
+        if not self._check_auth():
+            return
+        parsed = urlparse(self.path)
+        for prefix, handler_func in self._delete_routes:
+            if path == prefix or (prefix.endswith("/") and len(path) > len(prefix) and path.startswith(prefix)):
+                handler_func(self, parsed)
+                return
+        self.send_json({"error": "接口不存在。请检查请求的方法和路径是否正确"}, 404)
 
     def send_json(self, data, code=200):
         self.send_response(code)
@@ -203,7 +261,8 @@ def _kill_old():
     except Exception:
         log.debug("Failed to kill old process on port 8800", exc_info=True)
 
-if __name__ == "__main__":
+def main():
+    """CLI 入口：agency start 启动 Web 服务。"""
     import webbrowser, socket
     _kill_old()
     httpd = ThreadingHTTPServer((BIND_ADDR, PORT), Handler)
@@ -220,3 +279,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         cleanup_all_procs()
         httpd.shutdown()
+
+
+if __name__ == "__main__":
+    main()

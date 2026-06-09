@@ -120,3 +120,120 @@ def _build_alerts(conn):
     except Exception:
         pass
     return alerts
+
+
+# ── 权限审计表（migration + 查询）──
+
+def ensure_permission_audit_table(project_root):
+    """确保 permission_audit 表存在（migration）"""
+    db = project_root / "maestro" / "cost.db"
+    with _cost_db_lock:
+        conn = sqlite3.connect(str(db))
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=5000")
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS permission_audit (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    time TEXT NOT NULL,
+                    tool TEXT NOT NULL,
+                    args TEXT DEFAULT '',
+                    decision TEXT NOT NULL,
+                    risk TEXT DEFAULT '',
+                    reason TEXT DEFAULT '',
+                    user_choice TEXT DEFAULT ''
+                )
+            """)
+            conn.commit()
+        except Exception as e:
+            log.warning(f"permission_audit 建表失败: {e}")
+        finally:
+            conn.close()
+
+
+def log_permission_audit(project_root, tool, decision, args="", risk="", reason="", user_choice=""):
+    """写入权限审计日志到 cost.db"""
+    db = project_root / "maestro" / "cost.db"
+    with _cost_db_lock:
+        conn = sqlite3.connect(str(db))
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=5000")
+        try:
+            # 确保表存在
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS permission_audit (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    time TEXT NOT NULL,
+                    tool TEXT NOT NULL,
+                    args TEXT DEFAULT '',
+                    decision TEXT NOT NULL,
+                    risk TEXT DEFAULT '',
+                    reason TEXT DEFAULT '',
+                    user_choice TEXT DEFAULT ''
+                )
+            """)
+            conn.execute(
+                "INSERT INTO permission_audit (time, tool, args, decision, risk, reason, user_choice) VALUES (?,?,?,?,?,?,?)",
+                (time.strftime("%Y-%m-%d %H:%M:%S"), tool, args[:500] if args else "",
+                 decision, risk, reason[:200] if reason else "",
+                 user_choice[:100] if user_choice else "")
+            )
+            conn.commit()
+        except Exception as e:
+            log.warning(f"权限审计日志写入失败: {e}")
+        finally:
+            conn.close()
+
+
+def get_permission_audit_log(project_root, limit=100, decision_filter=""):
+    """查询权限审计日志"""
+    db = project_root / "maestro" / "cost.db"
+    if not db.exists():
+        return []
+    conn = sqlite3.connect(str(db))
+    conn.row_factory = sqlite3.Row
+    try:
+        has_table = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='permission_audit'"
+        ).fetchone()
+        if not has_table:
+            return []
+        if decision_filter:
+            rows = conn.execute(
+                "SELECT * FROM permission_audit WHERE decision = ? ORDER BY id DESC LIMIT ?",
+                (decision_filter, limit)
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM permission_audit ORDER BY id DESC LIMIT ?",
+                (limit,)
+            ).fetchall()
+        return [dict(r) for r in rows]
+    except Exception as e:
+        log.warning(f"权限审计日志查询失败: {e}")
+        return []
+    finally:
+        conn.close()
+
+
+def get_permission_stats(project_root):
+    """获取权限统计数据"""
+    db = project_root / "maestro" / "cost.db"
+    if not db.exists():
+        return {"total": 0, "allowed": 0, "denied": 0, "asked": 0}
+    conn = sqlite3.connect(str(db))
+    try:
+        has_table = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='permission_audit'"
+        ).fetchone()
+        if not has_table:
+            return {"total": 0, "allowed": 0, "denied": 0, "asked": 0}
+        total = conn.execute("SELECT COUNT(*) as n FROM permission_audit").fetchone()[0]
+        allowed = conn.execute("SELECT COUNT(*) FROM permission_audit WHERE decision='allow'").fetchone()[0]
+        denied = conn.execute("SELECT COUNT(*) FROM permission_audit WHERE decision='deny'").fetchone()[0]
+        asked = conn.execute("SELECT COUNT(*) FROM permission_audit WHERE decision='ask'").fetchone()[0]
+        return {"total": total, "allowed": allowed, "denied": denied, "asked": asked}
+    except Exception:
+        return {"total": 0, "allowed": 0, "denied": 0, "asked": 0}
+    finally:
+        conn.close()

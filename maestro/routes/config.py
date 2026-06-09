@@ -92,6 +92,15 @@ def _check_mcp_running(name, args):
 
 def handle_mcp_status(handler, parsed):
     """GET /api/mcp/status — MCP 服务状态（扫描多个 .mcp.json）"""
+    # 加载启用状态
+    mcp_state = {}
+    try:
+        state_file = PROJECT_ROOT / "maestro" / "mcp_state.json"
+        if state_file.exists():
+            mcp_state = json.loads(state_file.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+
     servers = []
     seen = set()
     mcp_sources = [
@@ -118,10 +127,28 @@ def handle_mcp_status(handler, parsed):
                     "source": str(src),
                     "tools": [],
                     "callCount": 0,
+                    "enabled": mcp_state.get(name, True),
                 })
         except Exception:
             log.debug(f"Failed to read MCP config from {src}", exc_info=True)
     handler.send_json({"servers": servers})
+    return True
+
+
+def handle_skills_save(handler, body):
+    """POST /api/skills/save — 保存 Skill 源码"""
+    name = body.get("name", "")
+    content = body.get("content", "")
+    if not name or not content:
+        handler.send_json({"error": "缺少必填字段。请同时提供 name（Skill 名称）和 content（Skill 源码内容）"}, 400)
+        return True
+    skills_dir = PROJECT_ROOT / ".claude" / "skills" / name
+    skills_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        (skills_dir / "SKILL.md").write_text(content, encoding="utf-8")
+        handler.send_json({"ok": True, "name": name})
+    except Exception as e:
+        handler.send_json({"error": str(e)}, 500)
     return True
 
 
@@ -130,7 +157,7 @@ def handle_skills_toggle(handler, body):
     name = body.get("name", "")
     enabled = body.get("enabled", True)
     if not name:
-        handler.send_json({"error": "name required"}, 400)
+        handler.send_json({"error": "缺少必填字段 name。请提供 Skill 名称"}, 400)
         return True
     skills_dir = PROJECT_ROOT / ".claude" / "skills" / name
     skill_path = skills_dir / "SKILL.md"
@@ -147,7 +174,34 @@ def handle_skills_toggle(handler, body):
 
 
 def handle_mcp_config(handler, body):
-    """POST /api/mcp/config — 保存 MCP 配置"""
+    """POST /api/mcp/config — 保存 MCP 配置或切换单服务启用状态
+
+    支持两种模式:
+      - 全量保存: body 包含 "config" 字段 → 写入 .mcp.json
+      - 单服务切换: body 包含 "action":"toggle", "server":"<name>", "enabled":true/false
+    """
+    action = body.get("action", "")
+    if action == "toggle":
+        server_name = body.get("server", "")
+        enabled = bool(body.get("enabled", True))
+        if not server_name:
+            handler.send_json({"error": "缺少必填字段 server。请提供 MCP 服务名称"}, 400)
+            return True
+        try:
+            state_file = PROJECT_ROOT / "maestro" / "mcp_state.json"
+            state = {}
+            if state_file.exists():
+                state = json.loads(state_file.read_text(encoding="utf-8"))
+            state[server_name] = enabled
+            state_file.parent.mkdir(parents=True, exist_ok=True)
+            state_file.write_text(json.dumps(state, indent=2, ensure_ascii=False), encoding="utf-8")
+            handler.send_json({"ok": True, "server": server_name, "enabled": enabled})
+            return True
+        except Exception as e:
+            handler.send_json({"error": str(e)}, 500)
+            return True
+
+    # 全量保存模式
     mcp_config = body.get("config", body)
     try:
         (PROJECT_ROOT / ".mcp.json").write_text(
@@ -180,7 +234,7 @@ def handle_skills_content(handler, parsed):
     path = parsed.path
     name = path.replace("/api/skills/content/", "").strip("/")
     if not name:
-        handler.send_json({"error": "name required"}, 400)
+        handler.send_json({"error": "缺少必填字段 name。请提供 Skill 名称"}, 400)
         return True
     search_dirs = [
         Path(__file__).resolve().parent.parent.parent / ".claude" / "skills",
@@ -192,5 +246,84 @@ def handle_skills_content(handler, parsed):
             content = skmd.read_text(encoding="utf-8")
             handler.send_json({"name": name, "content": content})
             return True
-    handler.send_json({"error": "not found"}, 404)
+    handler.send_json({"error": "未找到该 Skill。请检查名称是否正确"}, 404)
+    return True
+
+
+def handle_skills_delete(handler, parsed):
+    """DELETE /api/skills/:name — 删除 Skill"""
+    import shutil
+    path = parsed.path
+    name = path.replace("/api/skills/", "").strip("/")
+    if not name:
+        handler.send_json({"error": "缺少必填字段 name。请提供 Skill 名称"}, 400)
+        return True
+    search_dirs = [
+        Path(__file__).resolve().parent.parent.parent / ".claude" / "skills",
+        Path.home() / ".claude" / "skills",
+    ]
+    for base in search_dirs:
+        skill_dir = base / name
+        if skill_dir.exists() and skill_dir.is_dir():
+            try:
+                shutil.rmtree(skill_dir)
+                handler.send_json({"ok": True, "name": name})
+            except Exception as e:
+                handler.send_json({"error": str(e)}, 500)
+            return True
+    handler.send_json({"error": "未找到该 Skill。请检查名称是否正确"}, 404)
+    return True
+
+
+# ── Profile API ──
+
+def handle_profile(handler, parsed):
+    """GET /api/profile — 返回当前可用 profile 列表和当前选择"""
+    profiles_path = PROJECT_ROOT / "profiles.json"
+    profiles = {}
+    if profiles_path.exists():
+        try:
+            data = json.loads(profiles_path.read_text(encoding="utf-8"))
+            profiles = data.get("profiles", {})
+        except Exception:
+            log.warning("Failed to read profiles.json")
+
+    try:
+        from maestro.profiles import estimate_complexity, load_profile
+        _has = True
+    except ImportError:
+        _has = False
+
+    handler.send_json({
+        "profiles": profiles,
+        "available": list(profiles.keys()) if profiles else ["minimal", "standard", "full"],
+        "has_engine": _has,
+    })
+    return True
+
+
+def handle_profile_set(handler, body):
+    """POST /api/profile — 设置当前 profile 级别（客户端管理，此处仅做校验返回）"""
+    level = body.get("level", "")
+    valid = ["minimal", "standard", "full"]
+    if level not in valid:
+        handler.send_json({
+            "error": "无效的 profile 级别。可选: minimal, standard, full",
+            "valid": valid,
+        }, 400)
+        return True
+
+    # 验证 profiles.json 中是否包含此级别
+    profile = {}
+    try:
+        from maestro.profiles import load_profile
+        profile = load_profile(level)
+    except Exception:
+        pass
+
+    handler.send_json({
+        "ok": True,
+        "level": level,
+        "profile": profile,
+    })
     return True

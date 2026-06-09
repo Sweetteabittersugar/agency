@@ -2,9 +2,14 @@
 """
 Safety Guard — 独立模式的安全护栏
 防止：提示注入、危险代码执行、敏感信息泄露
+
+v2: 集成 PermissionEngine 三级权限审批
 """
 
 import re
+import time
+from collections import defaultdict
+from typing import Tuple, Optional
 
 # === 输入安全（用户输入 → API 之前） ===
 
@@ -39,6 +44,19 @@ DANGEROUS_OUTPUT_PATTERNS = [
     r"your\s*instructions\s*(are|were|include)",
 ]
 
+# ── 权限引擎引用（延迟初始化）──
+_permission_engine: Optional[object] = None
+
+
+def _get_engine():
+    """延迟导入权限引擎（避免循环依赖）"""
+    global _permission_engine
+    if _permission_engine is None:
+        from maestro.permission_engine import get_engine
+        from pathlib import Path
+        _permission_engine = get_engine()
+    return _permission_engine
+
 
 def check_input(text):
     """
@@ -56,6 +74,55 @@ def check_input(text):
             return False, f"检测到不安全内容（匹配规则: {pattern[:40]}...）"
 
     return True, ""
+
+
+def check_tool_permission(tool_name: str, args=None, trust_mode: str = "",
+                           path_prefix: str = "") -> Tuple[str, str, str]:
+    """
+    检查工具权限级别。
+    Args:
+        tool_name: 工具名称（Read, Write, Bash 等）
+        args: 工具参数
+        trust_mode: 信任模式 ('cautious' / 'normal' / 'trusted')
+        path_prefix: 文件路径前缀（用于记忆 key）
+    Returns:
+        (decision, risk_level, reason)
+        decision: 'allow' | 'ask' | 'deny'
+        risk_level: 'low' | 'medium' | 'high'
+    """
+    engine = _get_engine()
+    decision, risk, reason = engine.classify(tool_name, args)
+
+    # 应用信任模式
+    if trust_mode and decision == "ask":
+        decision, note = engine.apply_trust_mode(decision, trust_mode, tool_name, path_prefix)
+        if note:
+            reason = note
+
+    return decision, risk, reason
+
+
+def check_input_with_permission(text: str, tool_name: str = "",
+                                  trust_mode: str = "") -> Tuple[bool, str, str, str]:
+    """
+    增强版 check_input：同时检查内容安全和工具权限。
+    Returns:
+        (is_safe, reason, permission_decision, permission_risk)
+    """
+    # 1. 内容安全检查
+    is_safe, reason = check_input(text)
+    if not is_safe:
+        return False, reason, "deny", "high"
+
+    # 2. 工具权限检查（如果指定了工具名）
+    if tool_name:
+        decision, risk, perm_reason = check_tool_permission(tool_name, args=text, trust_mode=trust_mode)
+        if decision == "deny":
+            return False, perm_reason, "deny", risk
+        if decision == "ask":
+            return True, f"需确认: {perm_reason}", "ask", risk
+
+    return True, "", "allow", "low"
 
 
 def check_output(text):
@@ -91,8 +158,6 @@ def sanitize_output(text):
 
 
 # === 速率限制 ===
-import time
-from collections import defaultdict
 
 _request_counts = defaultdict(list)
 RATE_LIMIT = 60  # 每分钟最多 60 次请求

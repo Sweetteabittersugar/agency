@@ -20,7 +20,7 @@ def handle_generate(handler, body):
     api_provider = body.get("api_provider", "")
 
     if not requirement:
-        handler.send_json({"error": "requirement required"}, 400)
+        handler.send_json({"error": "请描述你想创建的 Agent 功能需求。例如：\"一个擅长写 Python 测试的 Agent\""}, 400)
         return True
     if not CLAUDE_BIN:
         handler.send_json({"error": "Claude CLI not found"}, 500)
@@ -92,7 +92,7 @@ def handle_create(handler, body):
     content = body.get("content", "").strip()
 
     if not name or not content:
-        handler.send_json({"error": "name and content required"}, 400)
+        handler.send_json({"error": "缺少必填字段。请同时提供 name（Agent 名称）和 content（Agent 内容）"}, 400)
         return True
     if not re.match(r'^[a-z0-9]([a-z0-9-]*[a-z0-9])?$', name):
         handler.send_json({"error": "invalid name: use lowercase letters, digits, hyphens"}, 400)

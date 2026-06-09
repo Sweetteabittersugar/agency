@@ -54,14 +54,14 @@ def get_memory_file(project_root, rel):
         except ValueError:
             continue
     if not in_allowed:
-        return {"error": "forbidden"}, 403
+        return {"error": "无权访问该文件。只能操作项目目录和 .claude 目录下的文件"}, 403
     if fpath.exists() and fpath.is_file():
         try:
             content = fpath.read_text(encoding="utf-8")
             return {"path": str(fpath), "name": fpath.name, "content": content, "size": len(content)}, 200
         except Exception as e:
             return {"error": str(e)}, 500
-    return {"error": "file not found"}, 404
+    return {"error": "未找到该记忆文件。请检查文件名是否正确"}, 404
 
 
 def save_memory_file(project_root, rel, content):
@@ -77,11 +77,11 @@ def save_memory_file(project_root, rel, content):
         except ValueError:
             continue
     if not in_allowed:
-        return {"error": "forbidden"}, 403
+        return {"error": "无权访问该文件。只能操作项目目录和 .claude 目录下的文件"}, 403
     if not fpath.exists():
-        return {"error": "file not found"}, 404
+        return {"error": "未找到该记忆文件。请检查文件名是否正确"}, 404
     if not content:
-        return {"error": "content required"}, 400
+        return {"error": "缺少必填字段 content。请提供要保存的文件内容"}, 400
     try:
         fpath.write_text(content, encoding="utf-8")
         return {"ok": True, "path": str(fpath), "size": len(content)}, 200

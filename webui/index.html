@@ -36,6 +36,7 @@
 <button class="btn" onclick="toggleHelpOverlay()">❓</button>
 <button class="btn" id="dashboardBtn" onclick="toggleDashboard()">📊</button>
 <button class="btn" id="devBtn" onclick="toggleDevOverlay()">🔧</button>
+<button class="btn" id="profileQuickBtn" onclick="cycleProfile()" title="切换 Profile 级别" style="font-size:10px;font-weight:600">⚙</button>
 <button class="btn" id="orchBtn" onclick="toggleOrchMode()">🧠</button>
 <button class="btn" id="gridBtn" onclick="cycleGrid()">⊞</button>
 <button class="btn" onclick="addPanel()">＋</button>
@@ -54,6 +55,8 @@
 <div class="harness-overlay-tab" data-htab="subagents">SubAgent</div>
 <div class="harness-overlay-tab" data-htab="hooks">Hooks</div>
 <div class="harness-overlay-tab" data-htab="mcp">MCP</div>
+<div class="harness-overlay-tab" data-htab="env">环境</div>
+<div class="harness-overlay-tab" data-htab="test">测试</div>
 <button class="btn" style="align-self:center" onclick="toggleDashboard()">✕</button>
 </div>
 <div class="harness-overlay-content" id="harnessContent"></div>
@@ -67,7 +70,7 @@
 <div class="harness-overlay-content">
 <div class="settings-section">
 <h3 style="font-size:12px;color:var(--text);margin-bottom:8px">🔑 API Key</h3>
-<p style="font-size:10px;color:var(--muted);margin-bottom:6px">支持 DeepSeek / Anthropic / OpenAI 兼容</p>
+<p style="font-size:10px;color:var(--muted);margin-bottom:6px">支持 DeepSeek / Anthropic / OpenAI 兼容 · 🔒 Key 仅存本地，永不上传</p>
 <input class="proj-input" id="api-key" type="password" placeholder="sk-…" autocomplete="off" style="width:100%">
 <select class="proj-input" id="api-provider" style="width:100%;margin:4px 0">
 <option value="deepseek">DeepSeek</option>
@@ -84,6 +87,35 @@
 </select>
 <button class="new-chat-btn" style="margin-bottom:4px;font-size:11px;padding:6px" onclick="saveApiKey()">💾 保存</button>
 <span id="api-status" style="font-size:10px;color:var(--accent)"></span>
+</div>
+<div class="settings-section" style="margin-top:16px">
+<h3 style="font-size:12px;color:var(--text);margin-bottom:8px">🛡️ 信任模式</h3>
+<p style="font-size:10px;color:var(--muted);margin-bottom:8px">控制 AI 工具调用的确认级别</p>
+<div style="display:flex;gap:4px;margin-bottom:4px">
+<button class="btn trust-mode-btn" data-mode="cautious" onclick="setTrustMode('cautious')" style="flex:1;font-size:10px;padding:6px 4px">🛡️ 谨慎</button>
+<button class="btn trust-mode-btn" data-mode="normal" onclick="setTrustMode('normal')" style="flex:1;font-size:10px;padding:6px 4px">⚖️ 正常</button>
+<button class="btn trust-mode-btn" data-mode="trusted" onclick="setTrustMode('trusted')" style="flex:1;font-size:10px;padding:6px 4px">🚀 信任</button>
+</div>
+<p id="trust-mode-desc" style="font-size:10px;color:var(--text2);margin-top:4px"></p>
+</div>
+<div class="settings-section" style="margin-top:16px">
+<h3 style="font-size:12px;color:var(--text);margin-bottom:8px">📊 Profile 级别</h3>
+<p style="font-size:10px;color:var(--muted);margin-bottom:8px">控制 Agent 处理能力、Token 预算和可用功能</p>
+<div style="display:flex;gap:4px;margin-bottom:4px">
+<button class="btn profile-quick-btn" data-profile="minimal" onclick="setProfile('minimal')" style="flex:1;font-size:10px;padding:6px 4px">⚡ 轻量</button>
+<button class="btn profile-quick-btn" data-profile="standard" onclick="setProfile('standard')" style="flex:1;font-size:10px;padding:6px 4px">⚙ 标准</button>
+<button class="btn profile-quick-btn" data-profile="full" onclick="setProfile('full')" style="flex:1;font-size:10px;padding:6px 4px">🚀 全功能</button>
+</div>
+<div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+<span style="font-size:10px;color:var(--muted)">当前: </span>
+<span id="profile-label" style="font-size:10px;font-weight:600">⚙ 标准</span>
+</div>
+<p style="font-size:9px;color:var(--muted);margin-top:4px">轻量: 3K token · 标准: 8K · 全功能: 20K</p>
+</div>
+<div class="settings-section" style="margin-top:16px">
+<h3 style="font-size:12px;color:var(--text);margin-bottom:8px">🔌 MCP 服务</h3>
+<p style="font-size:10px;color:var(--muted);margin-bottom:8px">Agent 可用的外部工具</p>
+<div id="mcp-config-list">加载中…</div>
 </div>
 <div class="settings-section" style="margin-top:16px">
 <h3 style="font-size:12px;color:var(--text);margin-bottom:8px">🤖 Agent 工厂</h3>
@@ -108,6 +140,12 @@
 <div id="mem-list" style="font-size:11px;color:var(--muted)">加载中…</div>
 <div id="mem-editor" style="margin-top:8px"></div>
 </div>
+<div class="settings-section" style="margin-top:16px">
+<h3 style="font-size:12px;color:var(--text);margin-bottom:8px">📂 输出目录</h3>
+<p style="font-size:10px;color:var(--muted);margin-bottom:6px">Agent 生成文件的默认保存路径</p>
+<input class="proj-input" id="output-dir" type="text" placeholder="D:/output" autocomplete="off" style="width:100%">
+<button class="new-chat-btn" style="margin-top:4px;font-size:11px;padding:6px" onclick="saveOutputDir()">💾 保存</button>
+</div>
 <div class="resize-handle"></div>
 </div>
 </div>
@@ -115,8 +153,8 @@
 <div class="agent-prompt-overlay" id="agentPromptOverlay">
 <div class="agent-prompt-modal">
 <div class="apm-header"><span id="apm-title">Agent 提示词</span><button class="btn" onclick="closeAgentPrompt()">✕</button></div>
-<div class="apm-body"><textarea id="apm-textarea"></textarea></div>
-<div class="apm-footer"><button class="new-chat-btn" onclick="saveAgentPrompt()" style="font-size:11px;padding:5px 14px;width:auto">💾 保存</button><button class="btn" onclick="closeAgentPrompt()">取消</button></div>
+<div class="apm-body" id="apm-body"><textarea id="apm-textarea"></textarea></div>
+<div class="apm-footer" id="apm-footer"><button class="new-chat-btn" onclick="saveAgentPrompt()" style="font-size:11px;padding:5px 14px;width:auto">💾 保存</button><button class="btn" onclick="closeAgentPrompt()">取消</button></div>
 </div>
 </div>
 <!-- 首次配置向导 -->

@@ -9,12 +9,20 @@ agents:
     model: sonnet
     tools: [Read, Grep, Glob, Bash, Write, Edit, NotebookEdit]
     routing: ["写", "改", "重构", "代码", "实现", "开发", "死代码", "清理代码", "简化代码"]
+    skills:
+      required: [self-healing]
+      optional: [pre-commit-guard, context-budget, changelog-guard]
+      excluded: []
 
   code-reviewer:
     file: agents/code-reviewer.md
     model: sonnet
     tools: [Read, Grep, Glob, Bash]
     routing: ["审查", "review", "检查"]
+    skills:
+      required: [multi-perspective-review]
+      optional: [pre-commit-guard, dependency-audit]
+      excluded: [self-healing]
 
   explorer:
     file: agents/explorer.md
@@ -27,6 +35,10 @@ agents:
     model: haiku
     tools: [Read, Bash, Grep, Glob]
     routing: ["测试", "验证", "跑", "确认", "test", "测试策略", "边界用例", "回归测试"]
+    skills:
+      required: []
+      optional: [self-healing, context-budget]
+      excluded: [changelog-guard, dependency-audit]
 
   general-worker:
     file: agents/general-worker.md
@@ -51,6 +63,10 @@ agents:
     model: sonnet
     tools: [Read, Grep, Glob, Bash]
     routing: ["安全", "审计", "漏洞"]
+    skills:
+      required: [pre-commit-guard, dependency-audit]
+      optional: [multi-perspective-review]
+      excluded: [changelog-guard]
 
   cost-analyst:
     file: agents/cost-analyst.md
@@ -81,6 +97,10 @@ agents:
     model: sonnet
     tools: [Read, Bash, Grep, Glob, Edit, Write]
     routing: ["构建报错", "编译失败", "依赖冲突", "构建错误"]
+    skills:
+      required: [self-healing]
+      optional: [dependency-audit, context-budget]
+      excluded: []
 
   doc-updater:
     file: agents/doc-updater.md
@@ -117,6 +137,10 @@ agents:
     model: sonnet
     tools: [Read, Write, Bash, Grep, Glob]
     routing: ["拆解", "分配", "协作", "多个任务", "全部", "整套"]
+    skills:
+      required: [pipeline-gate, context-budget]
+      optional: [self-healing, web-fetch]
+      excluded: []
 
   ceo:
     file: agents/ceo.md
@@ -135,6 +159,10 @@ agents:
     model: haiku
     tools: [Read, Write, Edit, Bash, Grep, Glob]
     routing: ["发布", "版本", "CHANGELOG", "tag", "release", "回滚", "semver"]
+    skills:
+      required: [changelog-guard]
+      optional: [pre-commit-guard, dependency-audit]
+      excluded: []
 
   lead:
     file: agents/lead.md

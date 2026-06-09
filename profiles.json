@@ -1,0 +1,42 @@
+{
+  "version": "0.1.0",
+  "description": "Profile 三级制度 — 根据任务复杂度动态分配 Agent、Skill、Token 预算",
+  "profiles": {
+    "minimal": {
+      "max_tokens": 3000,
+      "agents": ["router"],
+      "skills": [],
+      "hooks": ["SessionStart"],
+      "trigger": "单文件读写、grep搜索、状态查询、简单编辑",
+      "conditions": {
+        "max_files": 1,
+        "max_steps": 1,
+        "allow_write": false
+      }
+    },
+    "standard": {
+      "max_tokens": 8000,
+      "agents": ["领域全组"],
+      "skills": ["按需匹配"],
+      "hooks": ["SessionStart", "SubagentStop"],
+      "trigger": "多文件修改、代码生成、测试编写",
+      "conditions": {
+        "max_files": 5,
+        "max_steps": 5,
+        "allow_write": true
+      }
+    },
+    "full": {
+      "max_tokens": 20000,
+      "agents": ["协调层 + 领域全组"],
+      "skills": ["全部匹配"],
+      "hooks": ["全部"],
+      "trigger": "架构重构、DAG协调、多Agent协作",
+      "conditions": {
+        "max_files": 999,
+        "max_steps": 999,
+        "allow_write": true
+      }
+    }
+  }
+}

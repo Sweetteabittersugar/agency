@@ -18,7 +18,7 @@ def handle_webhook(handler, body):
 
     message = body.get("message", body.get("text", body.get("task", "")))
     if not message:
-        handler.send_json({"error": "message required"}, 400)
+        handler.send_json({"error": "缺少必填字段 message。请在请求体中提供要发送的消息内容"}, 400)
         return True
 
     from maestro.shared import CLAUDE_BIN, ISOLATED_CONFIG, build_isolated_env

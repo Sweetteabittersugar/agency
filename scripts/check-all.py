@@ -26,71 +26,80 @@ def check(title, fn):
 
 # ── 1. JS 语法 ──
 def check_js_syntax():
-    r = subprocess.run(["node", "--check", "webui/app.js"], capture_output=True, text=True)
-    return r.returncode == 0, r.stderr.strip()
+    js_dir = ROOT / "webui" / "js"
+    failures = []
+    for js_file in sorted(js_dir.glob("*.js")):
+        r = subprocess.run(["node", "--check", str(js_file)], capture_output=True, text=True)
+        if r.returncode != 0:
+            failures.append(f"{js_file.name}: {r.stderr.strip()}")
+    if failures:
+        return False, "\n".join(failures)
+    return True, ""
 
 
 # ── 2. JS 括号/引号平衡 ──
 def check_js_brackets():
-    try:
-        content = (ROOT / "webui" / "app.js").read_text(encoding="utf-8")
-    except Exception as e:
-        return False, str(e)
+    js_dir = ROOT / "webui" / "js"
+    all_errors = []
+    for js_file in sorted(js_dir.glob("*.js")):
+        try:
+            content = js_file.read_text(encoding="utf-8")
+        except Exception as e:
+            all_errors.append(f"{js_file.name}: {e}")
+            continue
 
-    pairs = {"(": ")", "{": "}", "[": "]"}
-    closing = set(pairs.values())
-    stack = []
-    # 状态: None=代码, "'"=单引号, '"'=双引号, '`'=模板, '/'=正则
-    mode = None
-    i = 0
-    while i < len(content):
-        ch = content[i]
-        if mode == "'" or mode == '"' or mode == "`":
-            if ch == "\\":
-                i += 2
-                continue
-            if ch == mode:
-                mode = None
-            i += 1
-            continue
-        if mode == "/":  # 正则字面量内
-            if ch == "\\":
-                i += 2
-                continue
-            if ch == "/":
-                mode = None
-            i += 1
-            continue
-        if ch in "'\"`":
-            mode = ch
-            i += 1
-            continue
-        # 检测正则字面量开头 (跟在 = ( , ; : 后面的 /)
-        if ch == "/" and i > 0 and content[i - 1] in "=(,:;!&|?~":
-            # 排除注释 //
-            if i + 1 < len(content) and content[i + 1] != "/" and content[i + 1] != "*":
-                mode = "/"
+        pairs = {"(": ")", "{": "}", "[": "]"}
+        closing = set(pairs.values())
+        stack = []
+        mode = None
+        i = 0
+        while i < len(content):
+            ch = content[i]
+            if mode == "'" or mode == '"' or mode == "`":
+                if ch == "\\":
+                    i += 2
+                    continue
+                if ch == mode:
+                    mode = None
                 i += 1
                 continue
-        if ch in pairs:
-            stack.append((ch, i))
-        elif ch in closing:
-            if not stack:
-                line = content[:i].count("\n") + 1
-                return False, f"多余的 {ch} 在行 {line}"
-            opened, pos = stack.pop()
-            if pairs[opened] != ch:
-                line_open = content[:pos].count("\n") + 1
-                line_close = content[:i].count("\n") + 1
-                return False, f"{opened}(行{line_open}) 被 {ch}(行{line_close}) 错误关闭"
-        i += 1
-
-    if stack:
-        msgs = []
-        for ch, pos in stack[-5:]:
-            line = content[:pos].count("\n") + 1
-            msgs.append(f"  {ch} 行{line}")
-        return False, f"{len(stack)} 个未闭合:\n" + "\n".join(msgs)
+            if mode == "/":
+                if ch == "\\":
+                    i += 2
+                    continue
+                if ch == "/":
+                    mode = None
+                i += 1
+                continue
+            if ch in "'\"`":
+                mode = ch
+                i += 1
+                continue
+            if ch == "/" and i > 0 and content[i - 1] in "=(,:;!&|?~":
+                if i + 1 < len(content) and content[i + 1] != "/" and content[i + 1] != "*":
+                    mode = "/"
+                    i += 1
+                    continue
+            if ch in pairs:
+                stack.append((ch, i))
+            elif ch in closing:
+                if not stack:
+                    line = content[:i].count("\n") + 1
+                    all_errors.append(f"{js_file.name}: 多余的 {ch} 在行 {line}")
+                    i += 1
+                    continue
+                opened, pos = stack.pop()
+                if pairs[opened] != ch:
+                    line_open = content[:pos].count("\n") + 1
+                    line_close = content[:i].count("\n") + 1
+                    all_errors.append(f"{js_file.name}: {opened}(行{line_open}) 被 {ch}(行{line_close}) 错误关闭")
+            i += 1
+        if stack:
+            for ch, pos in stack[-3:]:
+                line = content[:pos].count("\n") + 1
+                all_errors.append(f"{js_file.name}: {ch} 行{line} 未闭合")
+    if all_errors:
+        return False, "\n".join(all_errors[:10])
     return True, ""
 
 
@@ -145,18 +154,22 @@ def check_python_syntax():
 
 # ── 5. 重复函数检测 ──
 def check_duplicate_functions():
-    try:
-        content = (ROOT / "webui" / "app.js").read_text(encoding="utf-8")
-    except Exception as e:
-        return False, str(e)
-    # 检查函数名重复（嵌套闭包如 read/finish 是正常的，不报）
-    funcs = re.findall(r"\bfunction (\w+)\([^)]*\)\s*\{", content)
-    # 过滤已知的正常嵌套函数名
-    nested_ok = {"read", "finish", "runNext", "runNextPhase", "renderNode"}
-    funcs = [f for f in funcs if f not in nested_ok]
-    dupes = {k: v for k, v in Counter(funcs).items() if v > 1}
-    if dupes:
-        return False, "重复的函数声明: " + ", ".join(f"{k}x{v}" for k, v in dupes.items())
+    js_dir = ROOT / "webui" / "js"
+    all_dupes = []
+    nested_ok = {"read", "finish", "runNext", "runNextPhase", "renderNode", "finish_", "read_", "run_next"}
+    for js_file in sorted(js_dir.glob("*.js")):
+        try:
+            content = js_file.read_text(encoding="utf-8")
+        except Exception as e:
+            all_dupes.append(f"{js_file.name}: {e}")
+            continue
+        funcs = re.findall(r"\bfunction (\w+)\([^)]*\)\s*\{", content)
+        funcs = [f for f in funcs if f not in nested_ok]
+        dupes = {k: v for k, v in Counter(funcs).items() if v > 1}
+        if dupes:
+            all_dupes.append(f"{js_file.name}: " + ", ".join(f"{k}x{v}" for k, v in dupes.items()))
+    if all_dupes:
+        return False, "\n".join(all_dupes)
     return True, ""
 
 

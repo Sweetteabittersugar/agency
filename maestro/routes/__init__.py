@@ -17,9 +17,11 @@ def register_all(Handler):
         ("/api/permissions/allowlist", harness.handle_permissions_allowlist),
         ("/api/permissions/history", harness.handle_permissions_history),
         ("/api/permissions/stats", harness.handle_permissions_stats),
+        ("/api/permissions/audit", harness.handle_permission_audit),
         ("/api/harness/context", harness.handle_context),
         ("/api/harness/subagents", harness.handle_subagents),
         ("/api/harness/events", harness.handle_events),
+        ("/api/harness/status", harness.handle_harness_status),
         ("/api/hooks/config", harness.handle_hooks_config),
         ("/api/skills", config.handle_skills),
         ("/api/memory", memory.handle_list),
@@ -31,6 +33,7 @@ def register_all(Handler):
         ("/api/health", health.handle_health),
         ("/api/test/status/", test_api.handle_test_status),
         ("/api/skills/content/", config.handle_skills_content),
+        ("/api/profile", config.handle_profile),
     ]
     # POST 路由分发
     Handler._post_routes = [
@@ -40,8 +43,11 @@ def register_all(Handler):
         ("/api/hooks/", harness.handle_hooks_callback),
         ("/api/permissions/allowlist", harness.handle_permissions_allowlist_post),
         ("/api/permissions/decision", harness.handle_permissions_decision),
+        ("/api/permissions/confirm", harness.handle_permission_confirm),
+        ("/api/permissions/memory/clear", harness.handle_permission_memory_clear),
         ("/api/memory/", memory.handle_save),
         ("/api/skills/toggle", config.handle_skills_toggle),
+        ("/api/skills/save", config.handle_skills_save),
         ("/api/mcp/config", config.handle_mcp_config),
         ("/api/agent-update", agents.handle_update),
         ("/api/agent-generate", agent_factory.handle_generate),
@@ -54,4 +60,9 @@ def register_all(Handler):
         ("/api/webhook/", webhook.handle_webhook),
         ("/api/test/run", test_api.handle_test_run),
         ("/api/session/delete", harness.handle_session_delete),
+        ("/api/profile", config.handle_profile_set),
+    ]
+    # DELETE 路由分发
+    Handler._delete_routes = [
+        ("/api/skills/", config.handle_skills_delete),
     ]

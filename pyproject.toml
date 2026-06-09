@@ -1,9 +1,14 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "agency-kit"
 version = "0.1.0"
-description = "Chinese-native Claude Code configuration platform"
+description = "Claude Code 的 Web 操作面板 — 多 Agent 协作、实时监控、手机远程操控"
 requires-python = ">=3.10"
 license = {text = "MIT"}
+readme = "README.md"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
@@ -30,6 +35,12 @@ dev = [
     "pytest-cov>=5.0",
     "ruff>=0.8.0",
 ]
+
+[project.scripts]
+agency = "maestro.web:main"
+
+[tool.setuptools.packages.find]
+include = ["maestro*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

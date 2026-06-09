@@ -9,5 +9,62 @@
   "attribution": {
     "commit": "Co-authored-by: Claude Code <noreply@anthropic.com>"
   },
-  "includeCoAuthoredBy": false
+  "includeCoAuthoredBy": false,
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python D:\\agency\\.claude\\hooks\\SessionStart.py"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python D:\\agency\\.claude\\hooks\\SubagentStop.py"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python D:\\agency\\.claude\\hooks\\PreCompact.py"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python D:\\agency\\.claude\\hooks\\Stop.py"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python D:\\agency\\.claude\\hooks\\Notification.py"
+          }
+        ]
+      }
+    ]
+  }
 }
