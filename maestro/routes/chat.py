@@ -78,24 +78,14 @@ def handle_chat(handler, body):
         handler.wfile.write(f"event: meta\ndata: {meta}\n\n".encode())
         handler.wfile.flush()
 
-        safe_task = actual_task.replace('\n', ' ').replace('\r', ' ')
-        safe_task = re.sub(r'[\$\`\(\)\{\}\;\&\|\<\>\%\^\!]', '', safe_task)
-        safe_task = safe_task.replace('"', '\\"')
-        flags = "--bare --permission-mode auto"
+        cmd = [CLAUDE_BIN, "-p", actual_task, "--bare", "--permission-mode", "auto"]
         if session_id:
-            if is_new:
-                flags += f' --session-id "{session_id}"'
-            else:
-                flags += f' --resume "{session_id}"'
-        if agent_name:
-            flags += f' --agent "{agent_name}"'
-        if model:
-            flags += f' --model "{model}"'
-        if agent_tools_override:
-            flags += f' --tools "{",".join(agent_tools_override)}"'
-        if proj_dir and os.path.isdir(proj_dir):
-            flags += f' --add-dir "{proj_dir}"'
-        cmd_str = f'"{CLAUDE_BIN}" -p "{safe_task}" {flags}'
+            if is_new: cmd += ["--session-id", session_id]
+            else: cmd += ["--resume", session_id]
+        if agent_name: cmd += ["--agent", agent_name]
+        if model: cmd += ["--model", model]
+        if agent_tools_override: cmd += ["--tools", ",".join(agent_tools_override)]
+        if proj_dir and os.path.isdir(proj_dir): cmd += ["--add-dir", proj_dir]
 
         log.info(f'CHAT start agent={agent_name or "auto"} task="{actual_task[:40]}…"')
         start_time = time.time()
@@ -106,9 +96,9 @@ def handle_chat(handler, body):
             if api_key:
                 log.info(f'CHAT using user API key provider={api_provider}')
             t0 = time.time()
-            proc = subprocess.Popen(cmd_str, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                     encoding='utf-8', errors='replace', bufsize=1,
-                                    cwd=str(PROJECT_ROOT), shell=True, env=iso_env)
+                                    cwd=str(PROJECT_ROOT), env=iso_env)
             log.info(f'CHAT proc spawn {(time.time()-t0)*1000:.0f}ms PID={proc.pid}')
             track_proc(proc)
             first_line = True

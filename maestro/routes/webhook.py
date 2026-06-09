@@ -1,7 +1,6 @@
 """通用 Webhook — 外部服务调用 Agent"""
 import json
 import os
-import re
 import time
 import subprocess
 import logging
@@ -39,13 +38,9 @@ def handle_webhook(handler, body):
     proc = None
     full_output = ""
     try:
-        safe = message.replace('\n', ' ').replace('\r', ' ')
-        safe = re.sub(r'[\$\`\(\)\{\}\;\&\|\<\>\%\^\!]', '', safe)
-        safe = safe.replace('"', '\\"')
-        flags = "--bare --permission-mode auto"
+        cmd = [CLAUDE_BIN, "-p", message, "--bare", "--permission-mode", "auto"]
         if session_id:
-            flags += f' --resume "{session_id}"'
-        cmd = f'"{CLAUDE_BIN}" -p "{safe}" {flags}'
+            cmd += ["--resume", session_id]
 
         handler.wfile.write(f"event: meta\ndata: {json.dumps({'channel': channel, 'session': session_id[:8] if session_id else 'new'})}\n\n".encode())
         handler.wfile.flush()
@@ -53,7 +48,7 @@ def handle_webhook(handler, body):
         iso_env = build_isolated_env(api_key, api_provider)
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                 encoding='utf-8', errors='replace', bufsize=1,
-                                cwd=str(PROJECT_ROOT), shell=True, env=iso_env)
+                                cwd=str(PROJECT_ROOT), env=iso_env)
         from maestro.proc_manager import track_proc
         track_proc(proc)
 

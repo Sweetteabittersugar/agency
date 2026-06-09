@@ -99,6 +99,10 @@ def find_task_processes(task_id: str) -> list[int]:
     1. 查找 powershell.exe 命令行中含 _launch_{task_id} 的进程
     2. 查找 claude.exe 命令行中含 {task_id} 的进程
     """
+    import re
+    if not re.match(r'^[a-zA-Z0-9_-]{1,64}$', task_id):
+        return []
+
     pids: list[int] = []
 
     # 方法1：查找 powershell 启动脚本

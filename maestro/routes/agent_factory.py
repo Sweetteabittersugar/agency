@@ -48,15 +48,12 @@ tools: <逗号分隔的工具列表，如 Read,Write,Edit,Bash,Grep,Glob>
     proc = None
     full_output = ""
     try:
-        safe_task = prompt.replace('\n', ' ').replace('\r', ' ')
-        safe_task = re.sub(r'[\$\`\(\)\{\}\;\&\|\<\>\%\^\!]', '', safe_task)
-        safe_task = safe_task.replace('"', '\\"')
-        cmd_str = f'"{CLAUDE_BIN}" -p "{safe_task}" --bare --permission-mode auto'
+        cmd = [CLAUDE_BIN, "-p", prompt, "--bare", "--permission-mode", "auto"]
 
         iso_env = build_isolated_env(api_key, api_provider)
-        proc = subprocess.Popen(cmd_str, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                 encoding='utf-8', errors='replace', bufsize=1,
-                                cwd=str(PROJECT_ROOT), shell=True, env=iso_env)
+                                cwd=str(PROJECT_ROOT), env=iso_env)
         from maestro.proc_manager import track_proc
         track_proc(proc)
         for line in iter(proc.stdout.readline, ''):

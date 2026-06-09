@@ -141,7 +141,27 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 self.send_json({"error": "invalid JSON body"}, 400)
                 return
+        from maestro.safety import check_input, check_rate_limit
+        if not check_rate_limit(self.client_address[0]):
+            self.send_json({"error": "请求过于频繁"}, 429)
+            return
+        user_text = body.get("task", body.get("message", body.get("text", "")))
+        if user_text:
+            is_safe, reason = check_input(user_text)
+            if not is_safe:
+                self.send_json({"error": f"不安全: {reason}"}, 400)
+                return
+
         path = urlparse(self.path).path
+        skip_csrf = path in ("/api/setup", "/api/setup/status", "/api/route", "/api/remote/status", "/api/health", "/api/version")
+        if not skip_csrf:
+            origin = self.headers.get("Origin", "")
+            if origin:
+                from urllib.parse import urlparse as up
+                oh = up(origin).hostname or ""
+                if oh and oh not in ("127.0.0.1", "localhost", "::1"):
+                    self.send_json({"error": "CSRF: invalid origin"}, 403)
+                    return
 
         for prefix, handler_func in self._post_routes:
             if path == prefix or (prefix.endswith("/") and len(path) > len(prefix) and path.startswith(prefix)):
