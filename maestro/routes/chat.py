@@ -89,7 +89,7 @@ def handle_chat(handler, body):
     api_provider = body.get("api_provider", "")
 
     if not task:
-        handler.send_json({"error": "请求为空。请在消息框中输入任务描述后发送"})
+        handler.send_json({"error": "请求为空。请在消息框中输入任务描述后发送"}, 400)
         return True
 
     # 确定 Agent

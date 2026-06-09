@@ -44,8 +44,8 @@ class PipelineStateMachine:
 
     def __init__(self, task: dict, active_stages: list | None = None):
         self.task = task
-        self.active_stages = active_stages or list(STAGE_ORDER)
-        self.current_stage = self.active_stages[0] if self.active_stages else "research"
+        self.active_stages = active_stages if active_stages is not None else list(STAGE_ORDER)
+        self.current_stage = self.active_stages[0] if self.active_stages else "done"
         self.stage_history: list[dict] = []
         self.stage_outputs: dict[str, str] = {}
 

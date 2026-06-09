@@ -203,32 +203,45 @@ def classify_task_complexity(task: str) -> str:
     """
     task_lower = task.lower()
 
-    # 估算涉及文件数
+    # 估算涉及文件数（显式数字 + 文件名模式匹配）
     file_patterns = re.findall(r'(\d+)\s*(?:个|处|份)?\s*(?:文件|file)', task)
     file_count = sum(int(n) for n in file_patterns)
+    named_files = len(re.findall(r'\b[\w/-]+\.(?:py|js|ts|jsx|tsx|css|html|md|yaml|json|toml)\b', task))
+    total_files = max(file_count, named_files)
 
-    trivial_kw = ["查找", "搜索", "grep", "查看", "读取", "检查", "查询",
-                  "列出", "显示", "显示所有", "list", "find", "search",
-                  "cat ", "ls ", "dir "]
+    # 只读关键词 → 优先 trivial
+    readonly_kw = ["查找", "搜索", "grep", "查看", "读取", "检查", "查询",
+                   "列出", "显示", "list", "find", "search", "cat ", "ls ", "dir ",
+                   "帮我看", "看看", "怎么", "什么是", "在哪", "是什么"]
+    # 架构/重量级关键词 → complex
     complex_kw = ["重构", "架构", "系统设计", "多模块", "数据库迁移",
                   "安全审计", "性能优化", "全量", "整体", "refactor",
-                  "architecture", "migration"]
-    simple_kw = ["修复", "修改一行", "小改", "调整", "加个", "删掉",
-                 "改个", "fix", "tweak"]
+                  "architecture", "migration", "完整的", "重新设计", "重写整个"]
+    # 写入关键词 → 至少 simple 起步
+    write_kw = ["修改", "修复", "fix", "调整", "加个", "删掉", "改个", "tweak",
+                "写一个", "添加", "增加", "新建", "创建", "实现", "开发",
+                "add ", "create", "build", "implement"]
 
     task_len = len(task)
 
-    # Trivial: 纯查询/搜索，无写入意图
-    if (task_len < 80 and file_count <= 0 and
-            any(kw in task_lower for kw in trivial_kw)):
-        return "trivial"
-
-    # Complex: 5+ 文件、架构级关键词、或超长描述
-    if file_count >= 5 or any(kw in task_lower for kw in complex_kw) or task_len > 400:
+    # ── complex: 5+文件 / 架构词 / 超长 ──
+    if total_files >= 5 or any(kw in task_lower for kw in complex_kw) or task_len > 400:
         return "complex"
 
-    # Simple: 2-3 文件修改、简单重构
-    if file_count <= 3 and (task_len < 150 or any(kw in task_lower for kw in simple_kw)):
+    # ── trivial: 只读 + 0-1文件 + 不太长 ──
+    is_readonly = any(kw in task_lower for kw in readonly_kw)
+    is_write = any(kw in task_lower for kw in write_kw)
+    if is_readonly and not is_write and total_files <= 1 and task_len < 200:
+        return "trivial"
+    # 单文件小修 → 也归 trivial
+    if total_files == 1 and task_len < 40 and not any(kw in task_lower for kw in complex_kw):
+        return "trivial"
+
+    # ── simple: 1-3文件 + 有写入意图 ──
+    if 1 <= total_files <= 3 and is_write:
+        return "simple"
+    # 短写入任务无明确文件 → simple
+    if is_write and task_len < 120 and total_files == 0:
         return "simple"
 
     return "normal"

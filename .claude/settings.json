@@ -66,5 +66,11 @@
         ]
       }
     ]
-  }
+  },
+  "permissions": {
+    "allow": [
+      "test"
+    ]
+  },
+  "test": "value"
 }

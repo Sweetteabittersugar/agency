@@ -167,3 +167,10 @@ class ContextLayer:
             "long_term_keys": list(self._long_cache.keys()),
             "episodic_path": str(self._ep_path),
         }
+
+    def restore_snapshot(self, snap: dict) -> None:
+        """从 snapshot() 输出恢复短期记忆和版本号（用于回滚）"""
+        if not snap:
+            return
+        self._short_term = dict(snap.get("short_term", {}))
+        self._versions = dict(snap.get("versions", {}))

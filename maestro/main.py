@@ -719,11 +719,6 @@ def main():
     if model == DEFAULT_MODEL:
         model = agent_model
 
-    # 加载 Agent
-    system_prompt, agent_model = load_agent(agent_name)
-    if model == DEFAULT_MODEL:
-        model = agent_model
-
     # 执行
     chat(system_prompt, task, model)
 
