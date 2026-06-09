@@ -19,7 +19,7 @@ def handle_route(handler, body):
     if route_info:
         handler.send_json({"agent": route_info["agent"], "model": route_info["model"], "method": "keyword", "category": category})
     else:
-        handler.send_json({"agent": "coder", "model": "", "method": "keyword", "category": category})
+        handler.send_json({"agent": "orchestrator", "model": "", "method": "keyword", "category": category})
     return True
 
 
