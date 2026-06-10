@@ -3,15 +3,14 @@
 > Claude Code 的 Web 操作面板 — 多 Agent 协作 · 实时监控 · 手机远程操控
 
 <p align="center">
-  <img src="docs/screenshot.png" alt="Agency 界面截图" width="800"><br>
-  <em>▲ 输入任务 → 自动匹配 Agent → 流式返回。多面板分屏、实时费用追踪。</em>
+  <em>输入任务 → 自动匹配 Agent → 流式返回。多面板分屏、实时费用追踪。</em>
 </p>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-0.1.0-green)](VERSION)
 [![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://python.org)
 [![Agents](https://img.shields.io/badge/Agents-33-purple)]()
-[![Skills](https://img.shields.io/badge/Skills-40+-orange)]()
+[![Skills](https://img.shields.io/badge/Skills-34-orange)]()
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 ## 快速开始
