@@ -44,6 +44,7 @@ credentials.*
 .env.*.local
 
 # Maestro runtime
+maestro/worktrees/
 maestro/results/
 maestro/tasks/
 maestro/logs/

@@ -6,6 +6,7 @@ import time
 import subprocess
 import logging
 from pathlib import Path
+from maestro.session_store import append_event as save_event
 
 log = logging.getLogger(__name__)
 
@@ -113,6 +114,12 @@ def handle_chat(handler, body):
         ctx_summary = chat_ctx.get_context_for_agent(agent_name or "chat")
         if ctx_summary:
             actual_task = f"[上文摘要]\n{ctx_summary}\n\n[当前问题]\n{actual_task}"
+
+    # ── 会话持久化：记录用户消息和路由决策 ──
+    if session_id:
+        save_event(session_id, "user_message", {"task": actual_task[:1000], "agent": agent_name or "auto"})
+        route_source = "force" if force_agent else (route_info.get("source", "auto") if route_info else "auto")
+        save_event(session_id, "route_decision", {"agent": agent_name or "auto", "source": route_source})
 
     # ── Agent 注入：显式读取 agent .md，注入 model / tools ──
     agent_model_override = ""
@@ -308,6 +315,10 @@ def handle_chat(handler, body):
             record_cost(PROJECT_ROOT, time.strftime("%Y-%m-%d %H:%M:%S"), detected_model, in_tokens, out_tokens, cost, elapsed, agent_name, proj_dir or "",
                         cache_read, cache_write, cache_saved, is_estimated, session_id or "")
             log.info(f'CHAT done elapsed={elapsed:.1f}s cost=${cost:.4f} model={detected_model} estimated={is_estimated} via={"pool" if used_pool else "subprocess"}')
+
+            # ── 会话持久化：记录 Agent 回复 ──
+            if session_id and chat_output_text:
+                save_event(session_id, "agent_response", {"agent": agent_name or "auto", "response": chat_output_text[:2000]})
 
             # ── 保存会话上下文 ──
             if chat_ctx and chat_output_text:

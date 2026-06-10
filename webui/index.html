@@ -50,10 +50,12 @@
 <div class="mobile-tab" data-mtab="settings" onclick="switchMobileTab('settings')">⚙️ 设置</div>
 <div class="mobile-tab" data-mtab="agents" onclick="switchMobileTab('agents')">👤 Agent</div>
 </div>
-<div class="page-bar" id="pageBar" style="display:none">
-<button id="pgPrev" onclick="prevPage()">◀</button>
-<span style="min-width:60px;text-align:center" id="pgNum"></span>
-<button id="pgNext" onclick="nextPage()">▶</button>
+<div class="page-bar layout-toolbar" id="pageBar">
+<button class="layout-btn active" data-layout="1" onclick="setLayout(1)" title="单面板">⬜</button>
+<button class="layout-btn" data-layout="2" onclick="setLayout(2)" title="双分屏">⬜⬜</button>
+<button class="layout-btn" data-layout="4" onclick="setLayout(4)" title="田字格">🪟</button>
+<span style="flex:1"></span>
+<span style="font-size:9px;color:var(--muted)">拖拽分割条调整大小</span>
 </div>
 <div class="grid g1" id="grid"></div>
 <div class="harness-overlay" id="harnessOverlay">
@@ -66,6 +68,7 @@
 <div class="harness-overlay-tab" data-htab="mcp">MCP</div>
 <div class="harness-overlay-tab" data-htab="env">环境</div>
 <div class="harness-overlay-tab" data-htab="test">测试</div>
+<div class="harness-overlay-tab" data-htab="worktree">🌳 Worktree</div>
 <button class="btn" style="align-self:center" onclick="toggleDashboard()">✕</button>
 </div>
 <div class="harness-overlay-content" id="harnessContent"></div>
@@ -251,6 +254,7 @@ t<select id="profile-select" style="display:none" aria-hidden="true"><option val
 <script src="js/dashboard.js"></script>
 <script src="js/sidebar.js"></script>
 <script src="js/chat.js"></script>
+<script src="js/split-layout.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

@@ -46,6 +46,7 @@ function renderHarnessTab(tab){
   else if(tab==='mcp'){domEl.innerHTML='<h3 style="margin-bottom:8px">MCP 集成</h3><div id="hmcp-list" style="font-size:11px;color:var(--muted)">加载中…</div>';loadMCPDetail()}
   else if(tab==='env'){domEl.innerHTML='<h3 style="margin-bottom:8px">环境状态</h3><div id="henv-status" style="font-size:11px;color:var(--muted)">加载中…</div>';loadEnvStatus()}
   else if(tab==='test'){domEl.innerHTML='<h3 style="margin-bottom:8px">🧪 测试运行器</h3><div style="margin-bottom:8px"><input class="proj-input" id="test-url" type="text" placeholder="输入测试 URL，如 https://example.com" style="width:100%;margin-bottom:4px"><button class="new-chat-btn" onclick="runTest()" style="font-size:11px;padding:6px 16px;width:auto" id="test-run-btn">▶ 开始测试</button><span id="test-status" style="font-size:11px;color:var(--muted);margin-left:8px"></span></div><div id="test-results" style="font-size:11px;color:var(--muted);margin-top:8px"></div><div id="test-screenshot" style="margin-top:8px"></div>';_testPollTimer=null}
+  else if(tab==='worktree'){renderWorktreeTab(domEl)}
 }
 function loadCostOverview(){
   fetch('/api/cost?days=30').then(function(r){return r.json()}).then(function(d){
@@ -522,4 +523,71 @@ function renderDailyTable(container, data){
   });
   html+='</tbody></table>';
   container.innerHTML=html;
+}
+
+/* ── Worktree 管理 ── */
+function renderWorktreeTab(container) {
+  container.innerHTML = '<div id="wt-panel"><div class="kpi-row"><div class="kpi-card"><div class="kpi-value" id="wt-count">-</div><div class="kpi-label">活跃 Worktree</div></div></div><div id="wt-list">加载中...</div><div style="margin-top:16px;"><h4>创建新 Worktree</h4><input id="wt-new-name" placeholder="worktree名称 (如 agent-coder)" style="padding:8px;width:200px;margin-right:8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;"><button onclick="createWorktree()" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;">创建</button></div></div>';
+  loadWorktrees();
+}
+
+function loadWorktrees() {
+  fetch('/api/worktrees')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      document.getElementById('wt-count').textContent = data.count || 0;
+      var list = document.getElementById('wt-list');
+      var agents = data.agents || [];
+      if (agents.length === 0) {
+        list.innerHTML = '<p style="color:var(--muted)">暂无活跃 Worktree</p>';
+        return;
+      }
+      var html = '<div style="display:flex;flex-direction:column;gap:8px;">';
+      agents.forEach(function(wt) {
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;">';
+        html += '<div><strong>' + escHtml(wt.name) + '</strong><br><span style="font-size:12px;color:var(--muted);">' + escHtml(wt.branch || '') + ' · ' + (wt.size_mb || 0) + ' MB</span></div>';
+        html += '<button onclick="removeWorktree(\'' + escAttr(wt.name) + '\')" style="padding:4px 12px;background:#e74c3c;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">删除</button>';
+        html += '</div>';
+      });
+      html += '</div>';
+      list.innerHTML = html;
+    })
+    .catch(function() {
+      document.getElementById('wt-list').innerHTML = '<p style="color:var(--muted);">加载失败</p>';
+    });
+}
+
+function createWorktree() {
+  var name = document.getElementById('wt-new-name').value.trim();
+  if (!name) return;
+  fetch('/api/worktrees/create', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name: name})
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.ok) {
+        document.getElementById('wt-new-name').value = '';
+        loadWorktrees();
+      } else {
+        alert('创建失败: ' + (data.error || '未知错误'));
+      }
+    })
+    .catch(function() { alert('网络错误'); });
+}
+
+function removeWorktree(name) {
+  if (!confirm('确认删除 Worktree: ' + name + '?')) return;
+  fetch('/api/worktrees/remove', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name: name, force: true})
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.ok) loadWorktrees();
+      else alert('删除失败: ' + (data.error || '未知错误'));
+    })
+    .catch(function() { alert('网络错误'); });
 }

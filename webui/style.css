@@ -72,6 +72,20 @@ body{font:14px/1.55 "DM Sans","Segoe UI",system-ui,sans-serif;background:var(--b
 .page-bar button:hover{border-color:var(--accent);color:var(--text)}
 .page-bar button:disabled{opacity:.3}
 
+/* ── 布局工具栏 ── */
+.layout-toolbar{justify-content:flex-start;padding:2px 8px;gap:4px}
+.layout-toolbar .layout-btn{padding:4px 10px;font-size:14px;line-height:1;background:transparent;border:1px solid var(--border2);color:var(--text2);border-radius:var(--radius-sm);cursor:pointer;transition:all .15s}
+.layout-toolbar .layout-btn:hover{border-color:var(--accent);color:var(--text)}
+.layout-toolbar .layout-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* ── 分割条 ── */
+.split-gutter{width:4px;background:var(--border);cursor:col-resize;flex-shrink:0;display:none;transition:background .15s;z-index:10}
+.split-gutter:hover,.split-gutter.dragging{background:var(--accent)}
+
+/* ── Agent 选择器 ── */
+.panel-agent-select{padding:1px 6px;font-size:10px;background:var(--bg);color:var(--text);border:1px solid var(--border2);border-radius:3px;outline:none;cursor:pointer;max-width:130px;font-family:inherit;flex-shrink:0}
+.panel-agent-select:focus{border-color:var(--accent)}
+
 /* ── 面板 Grid ── */
 .grid{flex:1;display:grid;gap:0;overflow:hidden;min-height:0}
 .grid.g1{grid-template-columns:1fr}
