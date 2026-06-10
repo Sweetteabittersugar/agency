@@ -5,6 +5,8 @@ var panels=[],pidSeq=0,perPage=1,curPage=0,focusedPid=null,orchMode=!1,devMode=!
 var conversations=[],agents=[];try{conversations=JSON.parse(localStorage.getItem('agency_convos')||'[]')}catch(_){}
 var projDir='',apiKey='',apiProvider='deepseek',authToken='';
 try{projDir=localStorage.getItem('agency_proj_dir')||''}catch(_){}
+// 注意：API Key 明文存 localStorage 有 XSS 泄漏风险
+// 生产环境建议用 session token 替代，或后端代理持有 Key
 try{apiKey=localStorage.getItem('agency_api_key')||''}catch(_){}
 try{apiProvider=localStorage.getItem('agency_api_provider')||'deepseek'}catch(_){}
 try{authToken=localStorage.getItem('agency_auth_token')||''}catch(_){}

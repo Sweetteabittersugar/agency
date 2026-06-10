@@ -8,7 +8,7 @@ from pathlib import Path
 log = logging.getLogger(__name__)
 
 PORT = int(os.environ.get("AGENCY_PORT", "8800"))
-BIND_ADDR = "0.0.0.0"  # 始终监听所有网卡，安全靠 token 控制
+BIND_ADDR = os.environ.get("AGENCY_HOST", "127.0.0.1")  # 默认仅本机，远端需设 AGENCY_HOST=0.0.0.0 + AGENCY_TOKEN
 
 # 内存中的 token（None=未初始化，\"\"=已显式关闭，其他=密码）
 _token = None
@@ -34,9 +34,13 @@ def _load_env_token():
     # 环境变量覆盖
     if _token is None:
         _token = os.environ.get("AGENCY_TOKEN", "")
-    # 首次启动自动生成 token
+    # 首次启动自动生成 token（远端访问强制要求）
     if not _token and _token is not None:
-        pass  # 已显式关闭，不自动生成
+        # 显式设为空 — 但如果远端访问，强制生成
+        if BIND_ADDR not in ("127.0.0.1", "::1", "localhost"):
+            _token = generate_token()
+            _save_env_token(_token)
+            log.warning(f"远端访问模式 (AGENCY_HOST={BIND_ADDR})，已强制生成认证令牌")
     elif not _token:
         _token = generate_token()
         _save_env_token(_token)
@@ -100,7 +104,9 @@ def check_auth(headers):
     """验证请求。返回 (ok, error_msg)"""
     token = get_token()
     if not token:
-        return True, ""  # 未配置认证，允许所有
+        if BIND_ADDR in ("127.0.0.1", "::1", "localhost"):
+            return True, ""
+        return False, "远端访问需要配置 AGENCY_TOKEN，请在 .env 中设置或通过 Web 设置页生成令牌"
 
     auth = headers.get("Authorization", "")
     if not auth:

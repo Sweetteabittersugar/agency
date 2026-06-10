@@ -77,8 +77,8 @@ def identify_main(processes: list[dict]) -> dict | None:
 def kill_process(pid: int) -> bool:
     """强制终止进程"""
     result = subprocess.run(
-        f"taskkill /PID {pid} /F",
-        capture_output=True, text=True, timeout=10, shell=True
+        ["taskkill", "/PID", str(pid), "/F"],
+        capture_output=True, text=True, timeout=10, shell=False
     )
     return result.returncode == 0
 
@@ -86,8 +86,8 @@ def kill_process(pid: int) -> bool:
 def kill_process_tree(pid: int) -> bool:
     """强制终止进程及其所有子进程"""
     result = subprocess.run(
-        f"taskkill /PID {pid} /F /T",
-        capture_output=True, text=True, timeout=10, shell=True
+        ["taskkill", "/PID", str(pid), "/F", "/T"],
+        capture_output=True, text=True, timeout=10, shell=False
     )
     return result.returncode == 0
 

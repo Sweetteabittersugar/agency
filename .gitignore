@@ -62,3 +62,8 @@ server.log
 .claude/project.md
 memory/
 **/MEMORY.md
+
+# Backup files
+*.bak
+*.old
+*.orig

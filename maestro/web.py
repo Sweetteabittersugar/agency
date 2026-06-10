@@ -234,6 +234,9 @@ class Handler(BaseHTTPRequestHandler):
     def send_json(self, data, code=200):
         self.send_response(code)
         self.send_header("Content-Type", "application/json")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' ws: wss:")
         self.end_headers()
         self.wfile.write(json.dumps(data, ensure_ascii=False).encode("utf-8"))
 
@@ -251,12 +254,14 @@ register_all(Handler)
 # ═══════════════════════════════════════
 def _kill_old():
     try:
+        ps_cmd = (
+            f"$pids = (Get-NetTCPConnection -LocalPort {PORT} -ErrorAction SilentlyContinue |"
+            f" Select-Object -ExpandProperty OwningProcess | Sort-Object -Unique);"
+            f" foreach ($p in $pids) {{ if ($p -ne $pid) {{ Stop-Process -Id $p -Force }} }}"
+        )
         subprocess.run(
-            f'powershell -Command "'
-            f'$pids = (Get-NetTCPConnection -LocalPort {PORT} -ErrorAction SilentlyContinue |'
-            f' Select-Object -ExpandProperty OwningProcess | Sort-Object -Unique);'
-            f' foreach ($p in $pids) {{ if ($p -ne $pid) {{ Stop-Process -Id $p -Force }} }}"',
-            shell=True, capture_output=True, timeout=10
+            ["powershell", "-Command", ps_cmd],
+            capture_output=True, timeout=10
         )
     except Exception:
         log.debug("Failed to kill old process on port 8800", exc_info=True)

@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python D:\\agency\\.claude\\hooks\\SessionStart.py"
+            "command": "python .claude/hooks/SessionStart.py"
           }
         ]
       }
@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python D:\\agency\\.claude\\hooks\\SubagentStop.py"
+            "command": "python .claude/hooks/SubagentStop.py"
           }
         ]
       }
@@ -39,7 +39,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python D:\\agency\\.claude\\hooks\\PreCompact.py"
+            "command": "python .claude/hooks/PreCompact.py"
           }
         ]
       }
@@ -50,7 +50,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python D:\\agency\\.claude\\hooks\\Stop.py"
+            "command": "python .claude/hooks/Stop.py"
           }
         ]
       }
@@ -61,7 +61,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python D:\\agency\\.claude\\hooks\\Notification.py"
+            "command": "python .claude/hooks/Notification.py"
           }
         ]
       }
@@ -71,6 +71,5 @@
     "allow": [
       "test"
     ]
-  },
-  "test": "value"
+  }
 }
