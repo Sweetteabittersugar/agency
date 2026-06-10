@@ -27,6 +27,11 @@ class TestAPIEndpoints(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """启动服务器"""
+        import urllib.request
+        # 绕过系统代理（SOCKS4 不被 urllib 原生支持）
+        proxy_handler = urllib.request.ProxyHandler({})
+        opener = urllib.request.build_opener(proxy_handler)
+        urllib.request.install_opener(opener)
         cls.server = HTTPServer(("127.0.0.1", PORT), Handler)
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
         cls.thread.start()

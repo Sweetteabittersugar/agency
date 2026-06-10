@@ -44,6 +44,9 @@ from maestro.shared import (
 # 修正 PROJECT_ROOT（shared.py 在其自己的目录上下文计算）
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
+# ── HTML模板（供测试等模块引用）──
+HTML = (PROJECT_ROOT / "webui" / "index.html").read_text(encoding="utf-8")
+
 # ── 费用估算 ──
 from maestro.models import estimate_cost
 

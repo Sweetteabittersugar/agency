@@ -23,9 +23,10 @@ sys.path.insert(0, str(PROJECT_ROOT / "maestro"))
 from web import Handler, HTML, AGENCY_VERSION
 from main import (
     route_task, route_with_fallback, route_with_cache,
-    load_agent, estimate_cost, get_agent_stats, record_agent_result,
-    ROUTING, get_provider_config, get_actual_model, semantic_match,
+    load_agent, get_agent_stats, record_agent_result,
+    ROUTING, semantic_match,
 )
+from models import estimate_cost, get_provider_config, get_actual_model
 
 PORT = 18803
 
@@ -35,6 +36,11 @@ class TestServerErrorHandling(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        import urllib.request
+        # 绕过系统代理（SOCKS4 不被 urllib 原生支持）
+        proxy_handler = urllib.request.ProxyHandler({})
+        opener = urllib.request.build_opener(proxy_handler)
+        urllib.request.install_opener(opener)
         cls.server = HTTPServer(("127.0.0.1", PORT), Handler)
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
         cls.thread.start()
