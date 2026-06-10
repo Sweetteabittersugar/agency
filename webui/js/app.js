@@ -378,3 +378,6 @@ function switchMobileTab(tab){
   });
   observer.observe(document.body, {childList: true, subtree: true});
 })();
+
+// 同步全局变量到 Store（供后续渐进迁移）
+if (window.Store) setTimeout(function() { Store.syncFromGlobals(); }, 1000);
