@@ -728,3 +728,145 @@ function resetShortcuts(){
     if(typeof loadAllSettingsPanels === 'function') loadAllSettingsPanels();
   });
 }
+
+/* ── 恢复默认 ── */
+function renderResetSection(container) {
+  fetch('/api/reset/status')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var html = '<div style="padding:8px 0;">';
+
+      html += '<h4 style="margin:0 0 8px;font-size:13px;">用户自定义</h4>';
+      html += '<p style="color:var(--muted);font-size:11px;margin:0 0 10px;">删除 user/ 目录下的自定义内容。系统文件不受影响。</p>';
+
+      var customs = data.user_customizations || {};
+      var agents = customs.agents || [];
+      var skills = customs.skills || [];
+
+      if (agents.length + skills.length === 0) {
+        html += '<p style="color:var(--muted);font-size:11px;padding:8px;background:var(--bg);border-radius:4px;">暂无用户自定义内容</p>';
+      } else {
+        if (agents.length > 0) {
+          html += '<div style="margin-bottom:6px;font-size:12px;font-weight:600;">自定义 Agent (' + agents.length + ')</div>';
+          agents.forEach(function(a) {
+            html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;margin-bottom:3px;background:var(--bg);border-radius:4px;">';
+            html += '<span style="font-size:11px;">' + escHtml(a.name) + ' <span style="color:var(--muted);">(' + a.size_kb + 'KB)</span></span>';
+            html += '<button onclick="window.resetUserFile(\'' + escAttr(a.path) + '\')" style="padding:2px 8px;background:#e74c3c;color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:10px;">删除</button>';
+            html += '</div>';
+          });
+        }
+
+        if (skills.length > 0) {
+          html += '<div style="margin:10px 0 6px;font-size:12px;font-weight:600;">自定义 Skill (' + skills.length + ')</div>';
+          skills.forEach(function(s) {
+            html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;margin-bottom:3px;background:var(--bg);border-radius:4px;">';
+            html += '<span style="font-size:11px;">' + escHtml(s.name) + ' <span style="color:var(--muted);">(' + s.size_kb + 'KB)</span></span>';
+            html += '<button onclick="window.resetUserFile(\'' + escAttr(s.path) + '\')" style="padding:2px 8px;background:#e74c3c;color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:10px;">删除</button>';
+            html += '</div>';
+          });
+        }
+
+        html += '<button onclick="window.resetUserAll()" style="margin-top:10px;padding:7px 18px;background:#e74c3c;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">🗑 清空所有自定义</button>';
+      }
+
+      html += '<hr style="margin:16px 0;border-color:var(--border);">';
+      html += '<h4 style="margin:0 0 8px;font-size:13px;">恢复系统默认</h4>';
+      html += '<p style="color:var(--muted);font-size:11px;margin:0 0 10px;">将系统 Agent/Skill 恢复到初始版本（需要 git）。</p>';
+
+      var sysCats = data.system_categories || {};
+      var agentCats = sysCats.agents || [];
+      var skillCats = sysCats.skills || [];
+
+      if (agentCats.length > 0) {
+        html += '<div style="margin-bottom:6px;font-size:12px;font-weight:600;">Agent 分类</div>';
+        html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">';
+        agentCats.forEach(function(cat) {
+          html += '<button onclick="window.resetSystemCategory(\'' + escAttr(cat) + '\',\'agents\')" style="padding:5px 12px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:11px;">' + escHtml(cat) + ' ↩</button>';
+        });
+        html += '</div>';
+      }
+
+      if (skillCats.length > 0) {
+        html += '<div style="margin-bottom:6px;font-size:12px;font-weight:600;">Skill 分类</div>';
+        html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">';
+        skillCats.forEach(function(cat) {
+          html += '<button onclick="window.resetSystemCategory(\'' + escAttr(cat) + '\',\'skills\')" style="padding:5px 12px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:11px;">' + escHtml(cat) + ' ↩</button>';
+        });
+        html += '</div>';
+      }
+
+      html += '<hr style="margin:16px 0;border-color:var(--border);">';
+      html += '<h4 style="margin:0 0 6px;color:#e74c3c;font-size:13px;">⚠️ 全量恢复出厂设置</h4>';
+      html += '<p style="color:var(--muted);font-size:11px;margin:0 0 10px;">清空所有用户自定义 + 恢复所有系统文件到默认。此操作不可撤销。</p>';
+      html += '<button onclick="window.fullReset()" style="padding:9px 22px;background:#e74c3c;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;">⚠️ 恢复出厂设置</button>';
+
+      html += '</div>';
+      container.innerHTML = html;
+    })
+    .catch(function() {
+      container.innerHTML = '<p style="color:var(--muted);padding:8px;">加载失败，请检查服务是否运行</p>';
+    });
+}
+
+window.resetUserFile = function(path) {
+  if (!confirm('确认删除自定义文件？系统默认版本不受影响。')) return;
+  fetch('/api/reset/user-file', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({path: path})
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.ok) {
+        showToast('已删除', false, 'success');
+        var container = document.getElementById('reset-container');
+        if (container) renderResetSection(container);
+      } else {
+        alert('删除失败: ' + (data.error || '未知'));
+      }
+    });
+};
+
+window.resetUserAll = function() {
+  if (!confirm('确认清空所有用户自定义内容？此操作不可撤销。')) return;
+  fetch('/api/reset/user-all', {method: 'POST'})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.ok) {
+        showToast('已清空 ' + data.count + ' 个自定义文件', false, 'success');
+        var container = document.getElementById('reset-container');
+        if (container) renderResetSection(container);
+      }
+    });
+};
+
+window.resetSystemCategory = function(category, type) {
+  if (!confirm('确认恢复 ' + category + ' 到默认版本？任何修改将丢失。')) return;
+  fetch('/api/reset/system-category', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({category: category, type: type})
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.ok) {
+        showToast('已恢复: ' + category, false, 'success');
+      } else {
+        alert('恢复失败: ' + (data.error || '未知'));
+      }
+    });
+};
+
+window.fullReset = function() {
+  if (!confirm('⚠️ 确认恢复出厂设置？\n\n这将：\n1. 清空所有用户自定义 Agent/Skill\n2. 恢复所有系统文件到默认\n\n此操作不可撤销！')) return;
+  fetch('/api/reset/full', {method: 'POST'})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.ok) {
+        alert('已恢复出厂设置。建议重启 Agency。');
+        location.reload();
+      } else {
+        alert('恢复失败: ' + (data.error || '未知'));
+      }
+    });
+};
