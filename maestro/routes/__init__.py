@@ -29,6 +29,8 @@ def register_all(Handler):
         ("/api/skills", config.handle_skills),
         ("/api/memory", memory.handle_list),
         ("/api/memory/", memory.handle_get),
+        ("/api/memory/search", memory.handle_search),
+        ("/api/memory/timeline", memory.handle_timeline),
         ("/api/files", files.handle_list),
         ("/api/mcp/status", config.handle_mcp_status),
         ("/api/remote/status", remote.handle_status),

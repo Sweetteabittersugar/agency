@@ -1,4 +1,5 @@
 """Agency 记忆文件管理"""
+import json
 import logging
 from pathlib import Path
 
@@ -87,3 +88,118 @@ def save_memory_file(project_root, rel, content):
         return {"ok": True, "path": str(fpath), "size": len(content)}, 200
     except Exception as e:
         return {"error": str(e)}, 500
+
+
+def search_memory(project_root, query):
+    """搜索所有记忆文件内容。返回 (data_dict, http_status)"""
+    if not query:
+        return {"ok": False, "error": "缺少搜索词 q"}, 400
+
+    results = []
+    search_dirs = [
+        project_root,
+        project_root / ".claude" / "rules",
+    ]
+    mem_dir = project_root / "memory"
+    if not mem_dir.exists():
+        mem_dir = Path.home() / ".claude" / "projects" / "D--agency" / "memory"
+    if mem_dir.exists():
+        search_dirs.append(mem_dir)
+
+    for search_dir in search_dirs:
+        if not search_dir.exists():
+            continue
+        for f in search_dir.rglob("*.md"):
+            try:
+                content = f.read_text(encoding="utf-8", errors="ignore")
+                lines = content.split("\n")
+                matches = []
+                for i, line in enumerate(lines):
+                    if query.lower() in line.lower():
+                        matches.append({"line": i + 1, "text": line.strip()[:200]})
+                if matches:
+                    results.append({
+                        "name": f.name,
+                        "path": str(f.relative_to(project_root)),
+                        "matches": matches[:10],
+                        "total_matches": len(matches),
+                    })
+            except Exception:
+                pass
+
+    results.sort(key=lambda r: r["total_matches"], reverse=True)
+    return {"ok": True, "query": query, "results": results, "total_files": len(results)}, 200
+
+
+def get_timeline(project_root):
+    """记忆时间线。返回 (data_dict, http_status)"""
+    entries = []
+
+    # 收集 session 事件中的关键记忆
+    sessions_dir = project_root / "maestro" / "sessions"
+    if sessions_dir.exists():
+        for f in sorted(sessions_dir.glob("*.jsonl"), key=lambda x: x.stat().st_mtime, reverse=True):
+            try:
+                lines = []
+                with open(f, "r", encoding="utf-8", errors="ignore") as fp:
+                    all_lines = fp.readlines()
+                    for line in all_lines[-500:]:
+                        if line.strip():
+                            lines.append(line.strip())
+
+                for line in lines:
+                    try:
+                        evt = json.loads(line)
+                        if evt.get("type") in ("user_message", "agent_response", "route_decision", "task_complete", "feedback"):
+                            entries.append({
+                                "ts": evt.get("ts", 0),
+                                "type": evt.get("type"),
+                                "session": f.stem,
+                                "summary": str(evt.get("data", {}))[:300],
+                            })
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+    # 收集 routing feedback
+    feedback_file = project_root / "maestro" / "routing_feedback.jsonl"
+    if feedback_file.exists():
+        try:
+            with open(feedback_file, "r", encoding="utf-8") as fp:
+                for line in fp.readlines()[-100:]:
+                    if line.strip():
+                        evt = json.loads(line)
+                        entries.append({
+                            "ts": evt.get("ts", 0),
+                            "type": "routing_correction",
+                            "session": "",
+                            "summary": f"路由纠正: {evt.get('original_agent')} -> {evt.get('corrected_agent')} | {evt.get('task', '')[:200]}",
+                        })
+        except Exception:
+            pass
+
+    # 收集操作历史
+    ops_file = project_root / "maestro" / "operations.jsonl"
+    if ops_file.exists():
+        try:
+            with open(ops_file, "r", encoding="utf-8") as fp:
+                for line in fp.readlines()[-100:]:
+                    if line.strip():
+                        evt = json.loads(line)
+                        entries.append({
+                            "ts": evt.get("ts", 0),
+                            "type": "operation",
+                            "session": "",
+                            "summary": f"{evt.get('agent','')}: {evt.get('type','')} -> {evt.get('target','')} | {evt.get('detail','')[:200]}",
+                        })
+        except Exception:
+            pass
+
+    entries.sort(key=lambda e: e["ts"], reverse=True)
+
+    return {
+        "ok": True,
+        "entries": entries[:100],
+        "total": len(entries),
+    }, 200
