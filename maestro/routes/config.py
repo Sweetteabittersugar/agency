@@ -346,3 +346,22 @@ def handle_profile_set(handler, body):
         "profile": profile,
     })
     return True
+
+
+def handle_profiles_list(handler, parsed):
+    """GET /api/profiles — 返回 profiles.json 完整内容（复数路由，供外部工具调用）"""
+    profiles_path = PROJECT_ROOT / "profiles.json"
+    if not profiles_path.exists():
+        handler.send_json({
+            "version": "0.2.0",
+            "description": "Profile 分级未配置",
+            "profiles": {},
+            "available": ["minimal", "standard", "full"],
+        })
+        return True
+    try:
+        data = json.loads(profiles_path.read_text(encoding="utf-8"))
+        handler.send_json(data)
+    except Exception as e:
+        handler.send_json({"error": f"读取 profiles.json 失败: {e}"}, 500)
+    return True

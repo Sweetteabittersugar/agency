@@ -13,6 +13,7 @@ def register_all(Handler):
         ("/api/cost", cost.handle_cost),
         ("/api/cost/history", cost.handle_history),
         ("/api/cost/alerts", cost.handle_alerts),
+        ("/api/cost/summary", cost.handle_summary),
         ("/api/harness/stream", harness.handle_stream),
         ("/api/permissions/allowlist", harness.handle_permissions_allowlist),
         ("/api/permissions/history", harness.handle_permissions_history),
@@ -34,6 +35,7 @@ def register_all(Handler):
         ("/api/test/status/", test_api.handle_test_status),
         ("/api/skills/content/", config.handle_skills_content),
         ("/api/profile", config.handle_profile),
+        ("/api/profiles", config.handle_profiles_list),
     ]
     # POST 路由分发
     Handler._post_routes = [

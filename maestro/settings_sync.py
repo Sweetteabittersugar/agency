@@ -26,6 +26,14 @@ def sync_isolated_config(project_root: Path):
                         merged[k] = v
             except Exception:
                 log.warning(f"Failed to merge settings from {src}")
+
+    # 安全：剥离 API key — build_isolated_env() 会在运行时通过环境变量注入
+    _SENSITIVE_ENV_KEYS = {"ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_API_KEY",
+                            "OPENAI_API_KEY", "DEEPSEEK_API_KEY"}
+    if "env" in merged and isinstance(merged["env"], dict):
+        for k in _SENSITIVE_ENV_KEYS:
+            merged["env"].pop(k, None)
+
     (isolated_path / "settings.json").write_text(
         json.dumps(merged, indent=2, ensure_ascii=False), encoding="utf-8"
     )
