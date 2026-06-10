@@ -31,7 +31,7 @@
     "full": {
       "max_tokens": 131072,
       "description": "深度模式 — 复杂重构、架构设计，约支持 160 轮对话",
-      "agents": ["全部 33 个 Agent（12 大类）"],
+      "agents": ["全部 32 个 Agent（12 大类）"],
       "skills": ["全部匹配"],
       "hooks": ["全部"],
       "trigger": "复杂重构、架构设计、多模块联动、管线编排",

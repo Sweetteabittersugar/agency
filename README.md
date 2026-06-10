@@ -9,7 +9,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-0.1.0-green)](VERSION)
 [![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://python.org)
-[![Agents](https://img.shields.io/badge/Agents-33-purple)]()
+[![Agents](https://img.shields.io/badge/Agents-32-purple)]()
 [![Skills](https://img.shields.io/badge/Skills-34-orange)]()
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
@@ -36,7 +36,7 @@ agency start
 | 🧠 | 📊 | 📱 |
 |:---:|:---:|:---:|
 | **多 Agent 协作** | **实时仪表盘** | **手机远程操控** |
-| 33 个专业 Agent 按 12 大类自动匹配任务 | Token · 费用 · 权限全追踪 | 扫码即用，电脑关机也能查 |
+| 32 个专业 Agent 按 12 大类自动匹配任务 | Token · 费用 · 权限全追踪 | 扫码即用，电脑关机也能查 |
 | @agent名 显式指定 | 按日期/模型/Agent 三维分析 | 密码保护，Token 持久化 |
 
 | 🔧 | 🎨 | 🔌 |
@@ -123,7 +123,7 @@ Agency 每次启动会自动检查新版本（每 24 小时检查一次，不会
 agency/
 ├── maestro/        调度引擎（路由/聊天/编排/成本/安全）
 ├── webui/          前端（模块化 JS + CSS 暗色主题 + HTML）
-├── agents/         31 个 Agent 定义（L3/L2/L1/L0 四层）
+├── agents/         32 个 Agent 定义（L3/L2/L1/L0 四层）
 ├── .claude/skills/ 34 个 Skill 工作流
 ├── rules/          工程规范
 ├── hooks/          生命周期自动化
@@ -162,7 +162,7 @@ Web 界面完全本地运行。但 Agent 执行需要调 AI 模型 API（DeepSee
 
 欢迎 PR！详见 [CONTRIBUTING.md](CONTRIBUTING.md)。新功能建议请先开 Issue 讨论。
 
-快速入门：[GETTING-STARTED.md](GETTING-STARTED.md) | 完整教程：[USAGE.md](USAGE.md)
+快速入门：[GETTING-STARTED.md](docs/GETTING-STARTED.md) | 完整教程：[USAGE.md](docs/USAGE.md)
 
 ## 致谢
 

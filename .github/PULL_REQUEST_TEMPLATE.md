@@ -20,7 +20,7 @@
 - [ ] Agent 文件包含 YAML frontmatter（name, description, tools, model）
 - [ ] 已在 AGENTS.md 中更新路由矩阵（如适用）
 - [ ] 已在 agent.yaml 中注册（如适用）
-- [ ] 已在 COMMANDS-QUICK-REF.md 中更新（如适用）
+- [ ] 已在 docs/COMMANDS-QUICK-REF.md 中更新（如适用）
 - [ ] 已测试验证
 
 ## 截图/验证

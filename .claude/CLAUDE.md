@@ -1,6 +1,6 @@
 # Agency Agent 路由
 
-> 本项目有 31 个 Agent，分四层。此文件告诉 Claude Code 如何根据任务自动选择 Agent。
+> 本项目有 32 个 Agent，分四层。此文件告诉 Claude Code 如何根据任务自动选择 Agent。
 
 ## 快速路由
 

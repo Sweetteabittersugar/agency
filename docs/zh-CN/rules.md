@@ -41,7 +41,7 @@ touch rules/python/my-python-rule.md
 
 ### 3. 更新索引
 
-在 `RULES.md` 中添加新规则的条目。
+在 `docs/RULES.md` 中添加新规则的条目。
 
 ## Rule 优先级
 

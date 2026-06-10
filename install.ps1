@@ -87,5 +87,5 @@ Write-Host "  完全没问题。Agent 独立工作，Maestro 是给多 Agent 协
 Write-Host "  大多数用户停在 Agent 层就够了。"
 Write-Host ""
 Write-Host "了解更多:" -ForegroundColor Cyan
-Write-Host "  cat GETTING-STARTED.md    # 5 分钟入门"
-Write-Host "  cat COMMANDS-QUICK-REF.md # 命令速查"
+Write-Host "  cat docs/GETTING-STARTED.md    # 5 分钟入门"
+Write-Host "  cat docs/COMMANDS-QUICK-REF.md # 命令速查"

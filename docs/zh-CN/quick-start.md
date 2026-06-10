@@ -37,7 +37,7 @@ npm install -g agency-kit
 
 ```
 .claude/
-├── agents/       # 31 个 Agent（L3/L2/L1/L0 四层）
+├── agents/       # 32 个 Agent（L3/L2/L1/L0 四层）
 ├── skills/       # 6 个工作流技能
 ├── commands/     # 4 个快捷命令
 ├── hooks/        # 4 个自动化钩子

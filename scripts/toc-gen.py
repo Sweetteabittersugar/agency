@@ -62,7 +62,7 @@ def main() -> None:
     files = scan_md(".")
     toc = gen_toc(files)
 
-    out_path = "TOC.md"
+    out_path = "docs/TOC.md"
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(toc)
 

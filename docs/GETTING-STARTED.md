@@ -28,7 +28,7 @@ python maestro/web.py
 - 只依赖 Python 3.10+ 和 `pip install pyyaml requests`
 - 自动记录成本到 cost.db
 
-可用 Agent：`coder`、`reviewer`、`explorer`、`planner`、`test-runner`、`general-worker` 等 31 个，按 L3/L2/L1/L0 四层组织在 `agents/` 目录下。关键词匹配自动路由，无需手动选择。
+可用 Agent：`coder`、`reviewer`、`explorer`、`planner`、`test-runner`、`general-worker` 等 32 个，按 L3/L2/L1/L0 四层组织在 `agents/` 目录下。关键词匹配自动路由，无需手动选择。
 
 ## 你不需要装全部
 
@@ -47,7 +47,7 @@ cp agents/L1_executor/coder.md ~/.claude/agents/
 - `explorer.md` — 搜索代码库
 - `code-reviewer.md` — 审查代码
 - `tdd-guide.md` — 测试驱动开发
-- 共 19 个，全在 `agents/` 子目录下
+- 共 39 个，全在 `agents/` 子目录下
 
 ### 第 1 层：装上整套 Agent + 路由（2 分钟）
 
@@ -60,7 +60,7 @@ cp agents/L1_executor/coder.md ~/.claude/agents/
 .\install.ps1
 ```
 
-19 个 Agent 全部到位。路由矩阵自动选择：
+39 个 Agent 全部到位。路由矩阵自动选择：
 - "帮我写代码" -- `coder`
 - "审查这段代码" -- `code-reviewer`
 - "找个文件" -- `explorer`
@@ -82,7 +82,7 @@ cp agents/L1_executor/coder.md ~/.claude/agents/
 # 确保 Python 3.10+ 可用
 python --version
 
-# 在 maestro/agents.json 中确认 Agent 配置（已预配 15 个）
+# 在 maestro/agents.json 中确认 Agent 配置（已预配 31 个）
 # 然后运行
 python maestro/dispatch.py --list
 ```
@@ -164,8 +164,8 @@ STATUS: DONE
 ## 下一步
 
 - 读完本文 -- 你已经可以用了
-- 想看所有命令 -- `COMMANDS-QUICK-REF.md`
+- 想看所有命令 -- `docs/COMMANDS-QUICK-REF.md`
 - 想深入 Maestro -- `docs/zh-CN/maestro.md`
-- 想出问题了 -- `TROUBLESHOOTING.md`
+- 想出问题了 -- `docs/TROUBLESHOOTING.md`
 - 想了解架构 -- `docs/zh-CN/ARCHITECTURE.md`
 - 想贡献代码 -- `CONTRIBUTING.md`

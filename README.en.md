@@ -3,14 +3,15 @@
 > Web Dashboard for Claude Code — Multi-Agent · Live Monitor · Remote Control
 
 <p align="center">
-  <img src="docs/screenshot.png" alt="Agency Screenshot" width="800"><br>
+  <!-- TODO: 添加实际截图后取消注释 -->
+<!-- <img src="docs/screenshot.png" alt="Agency Screenshot" width="800"> --><br>
   <em>▲ Type your task → auto-matched Agent → streaming response. Split panels, real-time cost tracking.</em>
 </p>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-0.1.0-green)](VERSION)
 [![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://python.org)
-[![Agents](https://img.shields.io/badge/Agents-31-purple)]()
+[![Agents](https://img.shields.io/badge/Agents-32-purple)]()
 [![Skills](https://img.shields.io/badge/Skills-34-orange)]()
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
@@ -39,7 +40,7 @@ agency start
 | 🧠 | 📊 | 📱 |
 |:---:|:---:|:---:|
 | **Multi-Agent** | **Live Dashboard** | **Remote Control** |
-| 31 specialized agents auto-matched | Token · Cost · Permissions tracking | Access from phone/tablet |
+| 32 specialized agents auto-matched | Token · Cost · Permissions tracking | Access from phone/tablet |
 | Use @agentname to specify | 3D analysis by date/model/agent | Password protected |
 
 | 🔧 | 🎨 | 🔌 |
@@ -148,7 +149,7 @@ The Web UI runs entirely locally. However, Agent execution requires API calls to
 
 PRs welcome! See [CONTRIBUTING.md](CONTRIBUTING.md). Please open an Issue before proposing major changes.
 
-Quick start: [GETTING-STARTED.md](GETTING-STARTED.md) | Full guide: [USAGE.md](USAGE.md)
+Quick start: [GETTING-STARTED.md](docs/GETTING-STARTED.md) | Full guide: [USAGE.md](docs/USAGE.md)
 
 ## Credits
 

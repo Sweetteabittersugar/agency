@@ -4,9 +4,16 @@ __pycache__/
 *.pyo
 .pytest_cache/
 .coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.tox/
 dist/
 build/
 *.egg-info/
+*.egg
+instance/
 
 # Node
 node_modules/
@@ -18,12 +25,18 @@ node_modules/
 .cursor/
 .gemini/
 
+# Vim
+*.swp
+*.swo
+
 # OS
 .DS_Store
 Thumbs.db
 
 # Secret files
 .env
+.env.production
+.env.local
 *.secret
 *.key
 *.pem
@@ -31,7 +44,6 @@ credentials.*
 .env.*.local
 
 # Maestro runtime
-maestro/__pycache__/
 maestro/results/
 maestro/tasks/
 maestro/logs/

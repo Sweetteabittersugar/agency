@@ -6,18 +6,18 @@ Total: **93** documents
 - [Changelog](CHANGELOG.md)  `CHANGELOG.md`
 - [CLAUDE.md](CLAUDE.md)  `CLAUDE.md`
 - [贡献者行为准则](CODE_OF_CONDUCT.md)  `CODE_OF_CONDUCT.md`
-- [命令快速参考](COMMANDS-QUICK-REF.md)  `COMMANDS-QUICK-REF.md`
+- [命令快速参考](docs/COMMANDS-QUICK-REF.md)  `COMMANDS-QUICK-REF.md`
 - [贡献指南](CONTRIBUTING.md)  `CONTRIBUTING.md`
-- [5 分钟入门](GETTING-STARTED.md)  `GETTING-STARTED.md`
+- [5 分钟入门](docs/GETTING-STARTED.md)  `GETTING-STARTED.md`
 - [agency-kit](README.en.md)  `README.en.md`
 - [agency-kit](README.md)  `README.md`
-- [RULES.md — 工程规范总览](RULES.md)  `RULES.md`
+- [RULES.md — 工程规范总览](docs/RULES.md)  `RULES.md`
 - [安全策略](SECURITY.md)  `SECURITY.md`
 - [SOUL.md — 项目灵魂](SOUL.md)  `SOUL.md`
 - [SPONSORING.md — 赞助](SPONSORING.md)  `SPONSORING.md`
 - [赞助者](SPONSORS.md)  `SPONSORS.md`
-- [TROUBLESHOOTING.md — 常见问题](TROUBLESHOOTING.md)  `TROUBLESHOOTING.md`
-- [Agency 使用指南](USAGE.md)  `USAGE.md`
+- [TROUBLESHOOTING.md — 常见问题](docs/TROUBLESHOOTING.md)  `TROUBLESHOOTING.md`
+- [Agency 使用指南](docs/USAGE.md)  `USAGE.md`
 ### 📁 agents/ (L3 → L2 → L1 → L0 四层)
 
 #### L3_decision/
