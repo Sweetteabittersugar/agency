@@ -1,6 +1,6 @@
 ---
 name: e2e-runner
-description: E2E 测试专家。用 Playwright 编写和执行端到端测试，覆盖关键用户流程。
+description: "端到端测试执行者。用于 Playwright 自动化测试、用户流程测试、浏览器兼容性测试。典型输入: \"测试一下登录流程\"、\"用 Playwright 跑一遍核心路径\"。不适合单元测试、后端测试。"
 tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob", "mcp__plugin_playwright_playwright__browser_navigate", "mcp__plugin_playwright_playwright__browser_click", "mcp__plugin_playwright_playwright__browser_snapshot", "mcp__plugin_playwright_playwright__browser_type", "mcp__plugin_playwright_playwright__browser_take_screenshot"]
 model: sonnet
 skills: [e2e-testing, browser-compatibility]

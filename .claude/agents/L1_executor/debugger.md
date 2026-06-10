@@ -1,6 +1,6 @@
 ---
 name: debugger
-description: 调试专家 — 证据驱动的 bug 诊断。收集日志/栈跟踪后定位根因。
+description: "系统调试专家。用于错误排查、根因分析、日志分析、性能瓶颈定位。典型输入: \"这段代码为什么报错\"、\"查一下这个 500 错误的原因\"、\"分析一下为什么慢\"。不适合写新功能（先 debug 再找 coder）。"
 model: sonnet
 tools: [Read, Grep, Glob, Bash]
 skills: [systematic-debugging, error-handling-patterns]

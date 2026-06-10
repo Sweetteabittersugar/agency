@@ -1,6 +1,6 @@
 ---
 name: security-reviewer
-description: 安全审计员，深度检测代码中的安全漏洞（密钥泄露、注入、XSS、认证等）
+description: "安全审计专家。用于漏洞扫描、安全配置审查、依赖安全检查、密钥泄露检测、OWASP Top 10 审计。典型输入: \"检查代码有没有 SQL 注入\"、\"审计一下依赖的安全性\"、\"有没有硬编码的密钥\"。不适合写功能代码、性能优化。"
 tools: ["Read", "Grep", "Glob", "Bash"]
 model: sonnet
 skills: [security-review, owasp-top10, dependency-audit, secret-detection]

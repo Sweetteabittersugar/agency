@@ -1,6 +1,6 @@
 ---
 name: performance-optimizer
-description: 性能优化专家。分析瓶颈、提出优化方案、验证效果。不猜测——用数据说话。
+description: "性能优化专家。用于性能瓶颈分析、缓存策略、查询优化、资源优化。典型输入: \"这个接口响应太慢了\"、\"帮我优化数据库查询\"、\"分析内存泄漏\"。不适合功能开发、安全审计。"
 tools: ["Read", "Bash", "Grep", "Glob", "Edit", "Write"]
 model: sonnet
 skills: [caching-strategy, query-optimization, refactoring-patterns]

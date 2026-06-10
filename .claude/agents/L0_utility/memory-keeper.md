@@ -1,6 +1,6 @@
 ---
 name: memory-keeper
-description: 记忆管理者 — 长任务摘要、上下文压缩、关键信息持久化。
+description: "记忆管理者。用于长对话摘要、关键信息持久化、上下文压缩。典型输入: \"总结一下我们的对话\"、\"压缩当前上下文\"、\"提取关键决策\"。不适合写代码、修改文件。"
 model: haiku
 tools: [Read, Write, Grep, Glob]
 skills: [context-budget]

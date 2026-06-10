@@ -1,11 +1,22 @@
 """费用查询路由"""
 import logging
+import sqlite3
+from datetime import datetime, timedelta
 from urllib.parse import parse_qs
 from pathlib import Path
 
 log = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
+
+def _get_cost_db():
+    db_path = PROJECT_ROOT / "maestro" / "cost.db"
+    conn = sqlite3.connect(str(db_path))
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=5000")
+    return conn
 
 
 def handle_cost(handler, parsed):
@@ -100,4 +111,68 @@ def handle_summary(handler, parsed):
         "model": data.get("model", "N/A"),
         "updated": datetime.datetime.now().isoformat(),
     })
+    return True
+
+
+def handle_dashboard(handler, parsed):
+    """GET /api/cost/dashboard — 费用仪表盘（近30天趋势 + Top Agent + 汇总）"""
+    db_path = PROJECT_ROOT / "maestro" / "cost.db"
+    if not db_path.exists():
+        handler.send_json({
+            "daily": [], "top_agents": [],
+            "totals": {"total_calls": 0, "total_cost": 0, "total_tokens": 0},
+            "period_days": 30
+        })
+        return True
+
+    conn = _get_cost_db()
+    try:
+        thirty_days = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+
+        daily = conn.execute("""
+            SELECT date as day,
+                   COUNT(*) as calls,
+                   ROUND(COALESCE(SUM(cost_usd), 0), 6) as cost,
+                   COALESCE(SUM(in_tokens), 0) + COALESCE(SUM(out_tokens), 0) as tokens
+            FROM costs
+            WHERE date >= ?
+            GROUP BY day
+            ORDER BY day
+        """, (thirty_days,)).fetchall()
+
+        top_agents = conn.execute("""
+            SELECT agent,
+                   COUNT(*) as calls,
+                   ROUND(COALESCE(SUM(cost_usd), 0), 6) as cost,
+                   COALESCE(SUM(in_tokens), 0) + COALESCE(SUM(out_tokens), 0) as tokens
+            FROM costs
+            WHERE date >= ? AND agent != ''
+            GROUP BY agent
+            ORDER BY cost DESC
+            LIMIT 10
+        """, (thirty_days,)).fetchall()
+
+        totals = conn.execute("""
+            SELECT COUNT(*) as total_calls,
+                   ROUND(COALESCE(SUM(cost_usd), 0), 6) as total_cost,
+                   COALESCE(SUM(in_tokens), 0) + COALESCE(SUM(out_tokens), 0) as total_tokens
+            FROM costs
+            WHERE date >= ?
+        """, (thirty_days,)).fetchone()
+
+        handler.send_json({
+            "daily": [dict(d) for d in daily],
+            "top_agents": [dict(a) for a in top_agents],
+            "totals": dict(totals) if totals else {"total_calls": 0, "total_cost": 0, "total_tokens": 0},
+            "period_days": 30
+        })
+    except Exception as e:
+        log.warning(f"handle_dashboard 查询失败: {e}")
+        handler.send_json({
+            "daily": [], "top_agents": [],
+            "totals": {"total_calls": 0, "total_cost": 0, "total_tokens": 0},
+            "period_days": 30
+        })
+    finally:
+        conn.close()
     return True

@@ -1,6 +1,6 @@
 ---
 name: release-manager
-description: 发布经理 — 版本管理、CHANGELOG、发布检查清单、回滚方案
+description: "发布管理者。用于版本发布、changelog 生成、发布检查清单、回滚方案制定。典型输入: \"准备发版 v0.2.0\"、\"生成发布说明\"、\"如果有问题怎么回滚\"。不适合写代码、做开发工作。"
 tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob"]
 model: haiku
 skills: [changelog-guard, ci-cd-pipeline, rollback-strategy]

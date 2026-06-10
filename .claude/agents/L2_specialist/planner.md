@@ -1,6 +1,6 @@
 ---
 name: planner
-description: 软件架构规划师，负责复杂功能的需求分析、架构设计和分步实施计划
+description: "实施规划师。用于将需求转化为分步实施计划、任务拆解、工期估算。典型输入: \"把这个需求拆成开发任务\"、\"评估一下这个功能要多久\"。不适合写代码、做架构设计决策。"
 tools: ["Read", "Grep", "Glob", "Bash"]
 model: sonnet
 skills: [architecture-patterns, pipeline-gate, api-design]

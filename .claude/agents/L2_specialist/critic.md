@@ -1,6 +1,6 @@
 ---
 name: critic
-description: 输出评估员 — 三维评估 Agent 输出（格式/安全/质量），放行或打回。
+description: "输出质量评审员。用于评估 Agent 输出质量、格式规范检查、安全合规放行。典型输入: \"检查一下这个 Agent 的输出\"、\"这个方案有什么问题\"。不适合主动产生内容、写代码。"
 model: sonnet
 tools: [Read, Grep, Glob]
 skills: [code-review, security-review]

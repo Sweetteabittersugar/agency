@@ -1,6 +1,6 @@
 ---
 name: lead
-description: 任务领导者 — 接收大任务、拆解、委派给子 Agent、异步追踪、汇总结果
+description: "团队领导 Agent。用于任务委派、进度跟踪、子 Agent 协调。典型输入: \"把这个大任务分给团队做\"、\"查一下各 Agent 的进度\"。不适合直接写代码、做具体技术实现。"
 tools: ["Read", "Write", "Bash", "Grep", "Glob"]
 model: sonnet
 skills: [parallel-execution, pipeline-gate]

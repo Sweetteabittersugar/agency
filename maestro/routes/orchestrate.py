@@ -51,7 +51,7 @@ def _policy_gate(stage: str, output: str, task_text: str,
 
 
 def handle_route(handler, body):
-    """POST /api/route — 三级路由建议（关键词+语义+LLM兜底）"""
+    """POST /api/route — 三级路由建议（关键词+语义+LLM兜底）+ 置信度门控"""
     task = body.get("task", "")
     force_agent = body.get("force_agent", "")
 
@@ -69,6 +69,10 @@ def handle_route(handler, body):
             "source": "force",
             "method": "force",
             "category": category,
+            "matched_keywords": 0,
+            "candidates": [],
+            "low_confidence": False,
+            "fallback_chain": [],
         })
         return True
 
@@ -85,6 +89,10 @@ def handle_route(handler, body):
             "source": route_info.get("source", "keyword"),
             "method": route_info.get("method", "three_tier"),
             "category": category,
+            "matched_keywords": route_info.get("matched_keywords", 0),
+            "candidates": route_info.get("candidates", []),
+            "low_confidence": route_info.get("low_confidence", False),
+            "fallback_chain": route_info.get("fallback_chain", []),
         })
     else:
         handler.send_json({
@@ -96,6 +104,10 @@ def handle_route(handler, body):
             "source": "fallback",
             "method": "fallback",
             "category": category,
+            "matched_keywords": 0,
+            "candidates": [],
+            "low_confidence": True,
+            "fallback_chain": [],
         })
     return True
 

@@ -1,6 +1,6 @@
 ---
 name: go-reviewer
-description: Go 代码审查专家。审查错误处理、并发安全、接口设计、性能优化。
+description: "Go 代码审查专家。用于 Go 并发安全审查、错误处理检查、接口设计评审。典型输入: \"这个 goroutine 有没有泄漏风险\"、\"检查 Go 错误处理是否规范\"。不适合审查 Python/JS 代码。"
 tools: ["Read", "Grep", "Glob", "Bash"]
 model: sonnet
 skills: [code-review]

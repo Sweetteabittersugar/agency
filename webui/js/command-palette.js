@@ -97,6 +97,14 @@ var commandPalette = {
       {name:'主题切换', description:'切换亮色/暗色/高对比度主题', category:'外观', action:function() { self._toggleTheme(); }},
       {name:'导出配置', description:'导出当前配置到 JSON 文件', category:'工具', action:function() { self._exportConfig(); }},
       {name:'快捷键帮助', description:'列出所有键盘快捷键', category:'帮助', action:function() { self._showShortcutsHelp(); }, shortcut:'Ctrl+/'},
+      {name:'智能调度', description:'分析任务并路由到最优 Agent', category:'导航', action:function() { self.close(); toggleOrchMode(); }},
+      {name:'Agent 工厂', description:'打开 Agent 工厂，创建自定义 Agent', category:'工具', action:function() { self.close(); if (!devMode) toggleDevOverlay(); setTimeout(function() { var el = document.getElementById('agent-factory-input'); if (el) { el.scrollIntoView({behavior:'smooth',block:'center'}); el.focus(); } }, 300); }},
+      {name:'MCP 管理', description:'管理 MCP 服务器配置', category:'工具', action:function() { self.close(); if (!harnessActive) toggleDashboard(); setTimeout(function() { var tab = document.querySelector('.harness-overlay-tab[data-htab="mcp"]'); if (tab) tab.click(); }, 200); }},
+      {name:'帮助文档', description:'查看功能帮助与快捷键', category:'帮助', action:function() { self.close(); toggleHelpOverlay(); }},
+      {name:'检查更新', description:'检查 Agency 新版本', category:'工具', action:function() { self.close(); checkUpdate(); }},
+      {name:'测试面板', description:'打开 Agent 测试面板', category:'工具', action:function() { self.close(); if (!harnessActive) toggleDashboard(); setTimeout(function() { var tab = document.querySelector('.harness-overlay-tab[data-htab="test"]'); if (tab) tab.click(); }, 200); }},
+      {name:'切换标签', description:'在仪表盘标签页间切换', category:'导航', action:function() { self.close(); if (!harnessActive) { toggleDashboard(); } else { var tabs = document.querySelectorAll('.harness-overlay-tab'); var activeIdx = -1; for (var i = 0; i < tabs.length; i++) { if (tabs[i].classList.contains('active')) { activeIdx = i; break; } } var nextIdx = (activeIdx + 1) % tabs.length; if (tabs[nextIdx]) tabs[nextIdx].click(); } }},
+      {name:'费用追踪', description:'查看 API 使用费用', category:'工具', action:function() { self.close(); showToast('费用追踪请前往终端执行: python maestro/cost-tracker.py'); }},
     ];
     for (var i = 0; i < cmds.length; i++) {
       registerCommand(cmds[i].name, cmds[i].description, cmds[i].category, cmds[i].action, cmds[i].shortcut);

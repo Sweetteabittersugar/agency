@@ -404,6 +404,8 @@ button:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px soli
 .palette-shortcut{font-size:10px;color:var(--muted);background:var(--surface2);padding:1px 6px;border-radius:3px;white-space:nowrap;margin-left:auto;flex-shrink:0;font-family:"JetBrains Mono",monospace}
 .palette-empty{padding:24px 16px;text-align:center;font-size:12px;color:var(--muted)}
 .palette-footer{padding:6px 16px;font-size:9px;color:var(--muted);border-top:1px solid var(--border);text-align:right}
+.palette-results::-webkit-scrollbar{width:4px}
+.palette-results::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 
 /* ══════════════════════════════════════════
    主题系统 (data-theme)

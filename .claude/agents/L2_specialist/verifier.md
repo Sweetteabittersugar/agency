@@ -1,6 +1,6 @@
 ---
 name: verifier
-description: 实施验证员 — 检查代码改动是否真的解决问题，有无引入新问题。
+description: "变更验证员。用于独立验证代码改动、回归检测、功能验收。典型输入: \"验证一下这个 PR 的改动是否正确\"、\"检查这次修改有没有引入回归\"。不适合写代码、做架构设计。"
 model: sonnet
 tools: [Read, Grep, Glob, Bash]
 skills: [code-review, unit-test-patterns]

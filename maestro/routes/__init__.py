@@ -1,5 +1,5 @@
 """路由注册中心 — 将所有路由绑定到 Handler 类"""
-from maestro.routes import agents, chat, cost, config, harness, memory, files, orchestrate, static, agent_factory, remote, setup, restart, webhook, health, test_api
+from maestro.routes import agents, chat, cost, config, harness, memory, files, orchestrate, static, agent_factory, remote, setup, restart, webhook, health, test_api, routing_feedback
 
 
 def register_all(Handler):
@@ -14,6 +14,7 @@ def register_all(Handler):
         ("/api/cost/history", cost.handle_history),
         ("/api/cost/alerts", cost.handle_alerts),
         ("/api/cost/summary", cost.handle_summary),
+        ("/api/cost/dashboard", cost.handle_dashboard),
         ("/api/harness/stream", harness.handle_stream),
         ("/api/permissions/allowlist", harness.handle_permissions_allowlist),
         ("/api/permissions/history", harness.handle_permissions_history),
@@ -37,6 +38,7 @@ def register_all(Handler):
         ("/api/profile", config.handle_profile),
         ("/api/profiles", config.handle_profiles_list),
         ("/api/check-update", config.handle_check_update),
+        ("/api/routing/feedback/stats", routing_feedback.handle_stats),
     ]
     # POST 路由分发
     Handler._post_routes = [
@@ -64,6 +66,7 @@ def register_all(Handler):
         ("/api/test/run", test_api.handle_test_run),
         ("/api/session/delete", harness.handle_session_delete),
         ("/api/profile", config.handle_profile_set),
+        ("/api/routing/feedback", routing_feedback.handle_feedback),
     ]
     # DELETE 路由分发
     Handler._delete_routes = [

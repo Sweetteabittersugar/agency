@@ -1,6 +1,6 @@
 ---
 name: code-reviewer
-description: 四维度代码审查（正确性/简洁性/可维护性/安全性），代码写完后立即使用
+description: "代码审查专家。用于代码质量审查、bug 检测、代码风格检查、重构建议。典型输入: \"帮我审一下这段代码\"、\"这个 PR 有什么问题\"、\"检查一下安全隐患\"。不适合写新功能代码、做架构设计。"
 tools: ["Read", "Grep", "Glob", "Bash"]
 model: sonnet
 skills: [code-review, refactoring-patterns, error-handling-patterns, owasp-top10]

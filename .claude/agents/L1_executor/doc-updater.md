@@ -1,6 +1,6 @@
 ---
 name: doc-updater
-description: 文档更新专家。根据代码变更自动更新 README、CHANGELOG、API 文档、注释。
+description: "文档维护者。用于根据代码变更更新文档、生成 API 文档、写 README。典型输入: \"这个新功能需要更新文档\"、\"生成 API 接口文档\"。不适合写代码、架构设计。"
 tools: ["Read", "Write", "Edit", "Grep", "Glob", "Bash"]
 model: haiku
 skills: [changelog-guard]

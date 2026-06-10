@@ -1,6 +1,6 @@
 ---
 name: build-error-resolver
-description: 构建错误修复专家。分析编译错误、依赖冲突、类型错误，增量修复并验证。
+description: "构建错误修复专家。用于编译错误、依赖冲突、构建失败排查。典型输入: \"构建报错了帮我看看\"、\"npm install 失败了\"、\"解决这个依赖冲突\"。不适合写新功能、逻辑错误排查。"
 tools: ["Read", "Bash", "Grep", "Glob", "Edit", "Write"]
 model: sonnet
 skills: [error-handling-patterns]

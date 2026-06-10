@@ -1,6 +1,6 @@
 ---
 name: ceo
-description: 产品决策者 — 功能范围、验收标准、优先级排序。不做技术决策。
+description: "产品决策 Agent。用于需求分析、功能优先级排序、验收标准定义。典型输入: \"这个功能该不该做\"、\"帮我排一下这三个需求的优先级\"。不适合写代码、做技术架构设计。"
 tools: ["Read", "Grep", "Glob"]
 model: sonnet
 skills: []

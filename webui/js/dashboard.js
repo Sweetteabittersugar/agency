@@ -36,6 +36,10 @@ function renderHarnessTab(tab){
     domEl.innerHTML='<div class="cost-kpis" style="margin-bottom:10px"><div class="cost-kpi"><span class="kpi-val" id="hov-cost-today">—</span><span class="kpi-label">今日费用</span></div><div class="cost-kpi"><span class="kpi-val" id="hov-cost-30d">—</span><span class="kpi-label">30天</span></div><div class="cost-kpi"><span class="kpi-val" id="hov-calls">—</span><span class="kpi-label">调用</span></div></div><div style="margin-bottom:8px"><span style="font-size:11px;color:var(--muted);font-weight:600">每日费用趋势</span><canvas id="cost-trend-canvas" width="440" height="100" style="width:100%;height:100px;display:block;background:var(--surface2);border-radius:6px;margin-top:4px"></canvas></div><div style="margin-bottom:8px"><span style="font-size:11px;color:var(--muted);font-weight:600">模型费用分布</span><div id="model-bars" style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;color:var(--muted);min-height:60px">—</div></div><div style="margin-bottom:8px;padding:8px 10px;background:var(--surface2);border-radius:6px" id="opus-panel"><span style="font-size:11px;color:var(--muted);font-weight:600">Opus 调用占比 <span data-tooltip="tooltipOpus" style="cursor:help">?</span></span><div id="opus-ratio" style="margin-top:4px;font-size:10px;color:var(--muted)">加载中…</div></div><div style="display:flex;gap:6px;margin-bottom:8px"><div class="cost-kpi" style="flex:1"><span class="kpi-val" id="hov-cache-saved" style="color:var(--warn)">$0</span><span class="kpi-label">缓存节省</span></div><div class="cost-kpi" style="flex:1"><span class="kpi-val" id="hov-cache-tokens" style="font-size:11px">0</span><span class="kpi-label">缓存Token</span></div></div><div id="cost-alerts" style="margin-bottom:6px;font-size:10px"></div><h4 style="font-size:11px;color:var(--muted);margin-bottom:6px">上下文窗口</h4><div class="ctx-gauge" style="height:14px;margin-bottom:4px"><div class="ctx-gauge-fill" id="hctx-fill" style="width:0%"></div></div><div style="font-size:11px;display:flex;justify-content:space-between"><span id="hctx-text">0 / 500K</span><span id="hctx-cache" style="color:var(--muted)">缓存: —</span></div><div id="hctx-detail" style="font-size:10px;color:var(--muted);margin-top:4px"></div>';
     loadContextDetail();loadCostOverview();
   }
+  else if(tab==='cost'){
+    domEl.innerHTML='<div style="padding:4px 0"><div id="cost-dash-totals" class="cost-kpis" style="margin-bottom:10px"><div class="cost-kpi"><span class="kpi-val" id="cdash-total-cost">—</span><span class="kpi-label">30天总费用</span></div><div class="cost-kpi"><span class="kpi-val" id="cdash-total-tokens">—</span><span class="kpi-label">总Token</span></div><div class="cost-kpi"><span class="kpi-val" id="cdash-total-calls">—</span><span class="kpi-label">总调用</span></div></div><div style="margin-bottom:10px"><span style="font-size:11px;color:var(--muted);font-weight:600">📈 每日费用趋势</span><div id="cost-bar-chart" style="background:var(--surface2);border-radius:6px;padding:6px 8px;min-height:80px;margin-top:4px">加载中…</div></div><div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap"><div style="flex:1;min-width:200px"><span style="font-size:11px;color:var(--muted);font-weight:600">🏆 Top Agent 消费</span><div id="cost-agent-bars" style="background:var(--surface2);border-radius:6px;padding:6px 8px;min-height:60px;margin-top:4px">加载中…</div></div><div style="flex:1;min-width:200px"><span style="font-size:11px;color:var(--muted);font-weight:600">📋 近7天明细</span><div id="cost-daily-table" style="background:var(--surface2);border-radius:6px;padding:6px 8px;min-height:60px;margin-top:4px;font-size:10px">加载中…</div></div></div></div>';
+    loadCostDashboard();
+  }
   else if(tab==='permission'){domEl.innerHTML='<h3 style="margin-bottom:8px">权限管线</h3><div id="hperm-log" style="font-size:11px">加载中…</div><h4 style="margin-top:12px;margin-bottom:6px;font-size:11px;color:var(--muted)">审计日志</h4><div id="perm-audit-list" style="font-size:11px">加载中…</div>';loadPermHistory();loadDashboardPermissionAudit()}
   else if(tab==='subagents'){domEl.innerHTML='<h3 style="margin-bottom:8px">SubAgent 任务树</h3><div id="hsub-tree" style="font-size:11px;color:var(--muted)">加载中…</div>';loadSubagents()}
   else if(tab==='hooks'){domEl.innerHTML='<h3 style="margin-bottom:8px">Hooks 生命周期</h3><div id="hhooks-log" style="font-size:11px;color:var(--muted)">从事件日志中加载…</div>';loadHooksLog()}
@@ -402,4 +406,120 @@ function drawDemoCostTrend(){
       ctx.fillText('06-'+(9+i),x-2,H-6);
     }
   });
+}
+
+/* ── 费用仪表盘 Tab ── */
+function loadCostDashboard(){
+  var barEl=$('cost-bar-chart'), agentEl=$('cost-agent-bars'), tableEl=$('cost-daily-table');
+  fetch('/api/cost/dashboard').then(function(r){return r.json()}).then(function(d){
+    if(!d){showEmpty();return}
+    // KPIs
+    var t=d.totals||{};
+    var tcEl=$('cdash-total-cost'), ttEl=$('cdash-total-tokens'), tclEl=$('cdash-total-calls');
+    if(tcEl)tcEl.textContent='$'+(t.total_cost||0).toFixed(4);
+    if(ttEl)ttEl.textContent=((t.total_tokens||0)).toLocaleString();
+    if(tclEl)tclEl.textContent=(t.total_calls||0).toLocaleString();
+
+    // 每日趋势柱状图
+    if(barEl)renderBarChart(barEl, d.daily||[], 'cost', 'day');
+
+    // Top Agent 横向条形图
+    if(agentEl)renderHBarChart(agentEl, (d.top_agents||[]).slice(0,5), 'cost', 'agent');
+
+    // 近7天明细表
+    if(tableEl){
+      var daily=d.daily||[];
+      var recent=daily.slice(-7).reverse();
+      renderDailyTable(tableEl, recent);
+    }
+  }).catch(function(e){
+    console.debug('loadCostDashboard failed', e);
+    showEmpty();
+  });
+
+  function showEmpty(){
+    if(barEl)barEl.innerHTML='<p style="color:var(--muted);padding:12px;text-align:center;font-size:11px">暂无费用数据</p>';
+    if(agentEl)agentEl.innerHTML='<p style="color:var(--muted);padding:12px;text-align:center;font-size:11px">暂无 Agent 数据</p>';
+    if(tableEl)tableEl.innerHTML='<p style="color:var(--muted);padding:12px;text-align:center;font-size:11px">暂无明细数据</p>';
+    var tcEl=$('cdash-total-cost'),ttEl=$('cdash-total-tokens'),tclEl=$('cdash-total-calls');
+    if(tcEl)tcEl.textContent='$0';
+    if(ttEl)ttEl.textContent='0';
+    if(tclEl)tclEl.textContent='0';
+  }
+}
+
+/* 竖向柱状图 — 纯 CSS/div */
+function renderBarChart(container, data, key, labelKey){
+  if(!data||!data.length){
+    container.innerHTML='<p style="color:var(--muted);padding:12px;text-align:center;font-size:11px">暂无数据</p>';
+    return;
+  }
+  var vals=data.map(function(d){return d[key]||0});
+  var max=Math.max.apply(null, vals);
+  if(max===0)max=0.01;
+
+  var colors=['#22d3a0','#60a5fa','#fbbf20','#f87171','#a78bfa','#34d399','#f472b6','#818cf8'];
+  var html='<div style="display:flex;align-items:flex-end;gap:3px;height:110px;padding:4px 2px;">';
+  data.forEach(function(d,i){
+    var h=Math.max(3, (vals[i]/max)*106);
+    var color=h>80?'#f87171':(h>50?'#fbbf20':'#22d3a0');
+    html+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-width:6px" title="'+escHtml(d[labelKey]||'')+': $'+(vals[i]||0).toFixed(4)+'">';
+    html+='<div style="width:100%;max-width:24px;background:'+color+';height:'+h+'px;border-radius:3px 3px 0 0;min-width:4px"></div>';
+    html+='</div>';
+  });
+  html+='</div>';
+  html+='<div style="display:flex;gap:3px;font-size:9px;color:var(--muted);padding:2px 2px 0;">';
+  data.forEach(function(d,i){
+    var lbl=(d[labelKey]||'').slice(5); // 去掉 "YYYY-"
+    html+='<div style="flex:1;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:6px" title="'+escHtml(d[labelKey]||'')+'">'+(i%Math.ceil(data.length/14)===0||data.length<=14?escHtml(lbl):'')+'</div>';
+  });
+  html+='</div>';
+  container.innerHTML=html;
+}
+
+/* 横向条形图 — 纯 CSS/div (Top Agent) */
+function renderHBarChart(container, data, key, labelKey){
+  if(!data||!data.length){
+    container.innerHTML='<p style="color:var(--muted);padding:12px;text-align:center;font-size:11px">暂无数据</p>';
+    return;
+  }
+  var vals=data.map(function(d){return d[key]||0});
+  var max=Math.max.apply(null, vals);
+  if(max===0)max=0.01;
+  var colors=['#22d3a0','#60a5fa','#fbbf20','#f87171','#a78bfa'];
+
+  var html='';
+  data.forEach(function(d,i){
+    var pct=(vals[i]/max*100);
+    var color=colors[i%colors.length];
+    html+='<div style="display:flex;align-items:center;margin:3px 0;gap:8px">'+
+      '<span style="min-width:70px;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right" title="'+escHtml(d[labelKey]||'')+'">'+escHtml(d[labelKey]||d.agent||'—')+'</span>'+
+      '<div style="flex:1;height:14px;background:var(--bg);border-radius:7px;overflow:hidden">'+
+        '<div style="height:100%;width:'+pct+'%;background:'+color+';border-radius:7px;min-width:2px"></div>'+
+      '</div>'+
+      '<span style="font-size:9px;min-width:50px;text-align:right;color:var(--text2)">$'+(vals[i]||0).toFixed(4)+'</span>'+
+    '</div>';
+  });
+  container.innerHTML=html;
+}
+
+/* 近7天明细表 */
+function renderDailyTable(container, data){
+  if(!data||!data.length){
+    container.innerHTML='<p style="color:var(--muted);padding:12px;text-align:center;font-size:11px">暂无数据</p>';
+    return;
+  }
+  var html='<table style="width:100%;border-collapse:collapse;font-size:10px">'+
+    '<thead><tr style="border-bottom:1px solid var(--border);color:var(--muted)"><th style="text-align:left;padding:3px 4px">日期</th><th style="text-align:right;padding:3px 4px">调用</th><th style="text-align:right;padding:3px 4px">费用</th><th style="text-align:right;padding:3px 4px">Token</th></tr></thead><tbody>';
+  data.forEach(function(d){
+    var costClass=(d.cost||0)>5?'color:var(--danger)':(d.cost||0)>1?'color:var(--warn)':'color:var(--text2)';
+    html+='<tr style="border-bottom:1px solid var(--surface2)">'+
+      '<td style="padding:3px 4px">'+escHtml(d.day||d.date||'')+'</td>'+
+      '<td style="text-align:right;padding:3px 4px;color:var(--text2)">'+(d.calls||0)+'</td>'+
+      '<td style="text-align:right;padding:3px 4px;'+costClass+'">$'+(d.cost||0).toFixed(4)+'</td>'+
+      '<td style="text-align:right;padding:3px 4px;color:var(--text2)">'+((d.tokens||0)).toLocaleString()+'</td>'+
+    '</tr>';
+  });
+  html+='</tbody></table>';
+  container.innerHTML=html;
 }

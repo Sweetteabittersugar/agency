@@ -1,6 +1,6 @@
 ---
 name: explorer
-description: 代码库搜索与结构分析，只读不写，快速定位文件和模式
+description: "代码库探索者。用于搜索代码、查找文件、分析项目结构、全局搜索。典型输入: \"搜索所有调用这个函数的地方\"、\"这个项目有哪些模块\"、\"找出所有 API 端点\"。不适合写代码、修改文件。"
 tools: ["Read", "Grep", "Glob", "Bash"]
 model: haiku
 skills: [systematic-debugging]

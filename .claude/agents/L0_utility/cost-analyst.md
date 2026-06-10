@@ -1,6 +1,6 @@
 ---
 name: cost-analyst
-description: LLM API 费用分析师，追踪和优化 API 调用成本，识别成本异常
+description: "LLM 成本分析师。用于 API 调用费用追踪、成本异常检测、预算优化建议。典型输入: \"这个月花了多少 API 费用\"、\"哪里的成本异常了\"、\"帮我分析成本趋势\"。不适合非账单类的任务。"
 tools: ["Read", "Bash", "Grep", "Glob"]
 model: haiku
 skills: [context-budget]

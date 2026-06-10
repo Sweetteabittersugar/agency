@@ -1,6 +1,6 @@
 ---
 name: typescript-reviewer
-description: TypeScript/JavaScript 代码审查专家。审查类型安全、React 最佳实践、Node.js 性能。
+description: "TypeScript/JavaScript 代码审查专家。用于类型安全检查、React 组件审查、前端最佳实践检查、浏览器兼容性审查。典型输入: \"这个 React 组件有什么问题\"、\"检查前端代码的类型安全\"。不适合审查 Python/Go 代码。"
 tools: ["Read", "Grep", "Glob", "Bash"]
 model: sonnet
 skills: [code-review, frontend-engineering, browser-compatibility]

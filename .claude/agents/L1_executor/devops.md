@@ -1,6 +1,6 @@
 ---
 name: devops
-description: DevOps 工程师 — CI/CD、Docker、环境配置、部署检查
+description: "DevOps 工程师。用于 CI/CD 配置、Docker 容器化、部署脚本、环境管理、健康检查配置。典型输入: \"帮我写一个 Dockerfile\"、\"配置 GitHub Actions 部署流程\"、\"添加健康检查端点\"。不适合写业务代码。"
 tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob"]
 model: sonnet
 skills: [docker-patterns, ci-cd-pipeline, health-check-patterns, rollback-strategy]

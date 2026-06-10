@@ -1,6 +1,6 @@
 ---
 name: test-runner
-description: 测试执行与结果分析，验证功能是否按预期工作
+description: "测试执行与分析员。用于运行测试套件、分析失败原因、生成测试报告。典型输入: \"跑一下全部测试\"、\"分析这次测试失败的原因\"、\"生成测试覆盖率报告\"。不适合写新测试用例（找 test-generator）。"
 tools: ["Read", "Bash", "Grep", "Glob"]
 model: haiku
 skills: [test-driven-development, unit-test-patterns, e2e-testing]

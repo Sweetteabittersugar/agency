@@ -1,4 +1,4 @@
-name: Test
+name: Test & Lint
 
 on:
   push:
@@ -8,6 +8,7 @@ on:
 
 jobs:
   test:
+    name: Test
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -16,8 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -30,15 +30,35 @@ jobs:
             ${{ runner.os }}-pip-
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+        run: pip install -e ".[dev]"
 
       - name: Run tests
-        run: |
-          python -m pytest tests/ -v --tb=short
+        run: pytest tests/ -v --tb=short
 
-      - name: Verify install script syntax
+  lint:
+    name: Lint & Security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: ShellCheck
+        uses: ludeeus/action-shellcheck@2.0.0
+      - name: YAML Lint
         run: |
-          bash -n install.sh
-          echo "install.sh syntax OK"
+          pip install yamllint
+          yamllint .github/
+      - name: Bandit Security Scan
+        run: |
+          pip install bandit
+          bandit -r maestro/ -ll
+      - name: Commit message check
+        if: github.event_name == 'pull_request'
+        run: |
+          commits=$(git log --format=%s origin/main..HEAD)
+          echo "$commits" | while read -r msg; do
+            if ! echo "$msg" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?!?: .+'; then
+              echo "❌ Invalid commit: $msg"
+              echo "Must match: type(scope): description"
+              exit 1
+            fi
+          done
+        continue-on-error: true

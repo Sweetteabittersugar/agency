@@ -1,6 +1,6 @@
 ---
 name: router
-description: 智能路由器 — 意图识别、最优 Agent 匹配、成本优化路由。
+description: "意图分类路由器。用于分析用户任务、匹配最优 Agent、路由决策。典型输入: \"这个任务该找哪个 Agent\"、\"分析一下这句话的意图\"。不适合直接执行任务（只做分发）。"
 model: haiku
 tools: [Read, Grep, Glob]
 skills: [context-budget, prompt-engineering]

@@ -1,6 +1,6 @@
 ---
 name: general-worker
-description: 通用执行者，处理文件整理、配置更新、文档转换等杂项任务
+description: "通用任务执行者。用于文件整理、配置更新、文档格式转换等杂项任务。典型输入: \"把配置文件重命名\"、\"把这些 Markdown 转成 PDF\"。不适合需要专业判断的复杂任务。"
 tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob"]
 model: sonnet
 skills: [error-handling-patterns]

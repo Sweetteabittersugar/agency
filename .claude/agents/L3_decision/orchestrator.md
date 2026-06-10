@@ -1,6 +1,6 @@
 ---
 name: orchestrator
-description: 总调度 — 复杂任务拆解、多 Agent 协作、结果汇总。单步任务不拆。
+description: "多 Agent 任务编排器。用于复杂多步任务分解、多 Agent 协同调度、依赖管理。典型输入: \"帮我从零搭建一个用户系统\"、\"这个需求涉及前后端和数据库，帮我安排\"。不适合简单单步任务、纯查询类问题。"
 tools: ["Read", "Write", "Bash", "Grep", "Glob", "TaskCreate", "TaskUpdate", "Agent", "Workflow"]
 model: sonnet
 skills: [parallel-execution, pipeline-gate, context-budget]

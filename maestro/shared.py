@@ -257,10 +257,12 @@ def classify_task_complexity(task: str) -> str:
 
 
 def simple_route(task):
-    """三级路由：关键词(40%) + 语义(48%) + LLM兜底(12%)
+    """三级路由 + 置信度门控：关键词(40%) + 语义(48%) + LLM兜底(12%)
 
     返回: {"agent": "...", "model": "...", "confidence": 0.85, "keyword_score": 0.9,
-           "semantic_score": 0.72, "source": "keyword|semantic|llm|...", "method": "three_tier"}
+           "semantic_score": 0.72, "source": "keyword|semantic|cross_validated|llm|...",
+           "method": "three_tier", "matched_keywords": 3, "candidates": [...],
+           "low_confidence": false, "fallback_chain": [...]}
     或 None（完全无匹配）
     """
     # 先走三级路由
@@ -276,6 +278,10 @@ def simple_route(task):
             "semantic_score": result.get("semantic_score", 0),
             "source": result.get("source", "keyword"),
             "method": result.get("method", "three_tier"),
+            "matched_keywords": result.get("matched_keywords", 0),
+            "candidates": result.get("candidates", []),
+            "low_confidence": result.get("low_confidence", False),
+            "fallback_chain": result.get("fallback_chain", []),
         }
     return None
 

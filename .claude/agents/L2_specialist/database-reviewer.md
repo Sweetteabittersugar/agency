@@ -1,6 +1,6 @@
 ---
 name: database-reviewer
-description: 数据库审查专家。审查 SQL 查询性能、Schema 设计、索引策略、数据安全。
+description: "数据库审查专家。用于 SQL 审查、索引优化建议、Schema 设计检查、查询性能分析、数据建模。典型输入: \"这个 SQL 有没有性能问题\"、\"审查一下表结构设计\"、\"帮我优化慢查询\"。不适合应用层代码审查。"
 tools: ["Read", "Grep", "Glob", "Bash"]
 model: sonnet
 skills: [database-design, query-optimization, data-modeling, caching-strategy]

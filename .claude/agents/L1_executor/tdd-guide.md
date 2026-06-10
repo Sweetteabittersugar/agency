@@ -1,6 +1,6 @@
 ---
 name: tdd-guide
-description: TDD 向导。写测试→看失败→写实现→看通过→重构。新功能和 bug 修复时必须使用。
+description: "测试驱动开发导师。用于 TDD 红-绿-重构循环、先写测试再写实现。典型输入: \"用 TDD 的方式实现这个功能\"、\"先给我写测试用例\"。不适合单纯写代码（会强制先测试）。"
 tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob"]
 model: sonnet
 skills: [test-driven-development, unit-test-patterns, mock-strategy]

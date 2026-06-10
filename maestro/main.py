@@ -167,13 +167,18 @@ ROUTING = {
 }
 
 
-def route_task(task, force_agent=None):
-    """路由 v2 -- 加权关键词匹配 + 置信度"""
-    if force_agent:
-        return force_agent, 99, 0.99
+# ── 置信度门控阈值 ──
+CONFIDENCE_HIGH = 0.7     # 直接信任关键词匹配
+CONFIDENCE_MEDIUM = 0.4   # 需要语义验证
+SEMANTIC_THRESHOLD = 0.6  # 语义相似度足够高（直接返回）
 
+
+def _keyword_match(task):
+    """内部函数：加权关键词匹配，返回完整得分字典。
+    Returns: dict {agent_name: {"score": int, "matched": [str]}} 或空 dict
+    """
     if task is None:
-        return "coder", 0, 0.0
+        return {}
 
     task_lower = task.lower()
     scores = {}
@@ -189,7 +194,7 @@ def route_task(task, force_agent=None):
             scores[agent] = {"score": score, "matched": matched}
 
     if not scores:
-        return "coder", 0, 0.0
+        return {}
 
     # 成功率权重调整（复合学习）
     agent_stats = get_agent_stats()
@@ -199,18 +204,41 @@ def route_task(task, force_agent=None):
             if rate < 0.5 and agent_stats[agent_name]["total"] >= 3:
                 scores[agent_name]["score"] = int(scores[agent_name]["score"] * 0.7)
 
-    # 排序
+    return scores
+
+
+def _rank_keyword_scores(scores: dict):
+    """对关键词得分做排序，返回 (best_agent, raw_score, confidence, matched_count)。"""
+    if not scores:
+        return None
+
     ranked = sorted(scores.items(), key=lambda x: x[1]["score"], reverse=True)
     best = ranked[0]
     second = ranked[1] if len(ranked) > 1 else (None, {"score": 0})
 
-    # 置信度 = (最高分 - 次高分) / 最高分
     if second[1]["score"] > 0:
         confidence = (best[1]["score"] - second[1]["score"]) / best[1]["score"]
     else:
         confidence = 1.0
 
-    return best[0], best[1]["score"], max(0, min(1, confidence))
+    matched_count = len(best[1]["matched"])
+    return best[0], best[1]["score"], max(0, min(1, confidence)), matched_count
+
+
+def route_task(task, force_agent=None):
+    """路由 v2 -- 加权关键词匹配 + 置信度（保持向后兼容）"""
+    if force_agent:
+        return force_agent, 99, 0.99
+
+    if task is None:
+        return "coder", 0, 0.0
+
+    scores = _keyword_match(task)
+    ranked = _rank_keyword_scores(scores)
+    if ranked is None:
+        return "coder", 0, 0.0
+
+    return ranked[0], ranked[1], ranked[2]
 
 
 def semantic_match(task):
@@ -354,7 +382,7 @@ def _clean_fallback_cache():
 
 
 def route_with_fallback(task, force_agent=None):
-    """三级路由融合：加权关键词(40%) + 语义匹配(48%) + LLM兜底(12%)
+    """三级路由 + 置信度门控：关键词 → embedding 语义检索 → LLM 兜底
 
     返回格式: {
         "agent": "...",
@@ -362,61 +390,105 @@ def route_with_fallback(task, force_agent=None):
         "confidence": 0.85,
         "keyword_score": 0.9,
         "semantic_score": 0.72,
-        "source": "keyword" | "semantic" | "llm",
+        "source": "keyword" | "semantic" | "cross_validated" | "llm" | "llm_cached" | "force" | "fallback",
         "method": "three_tier",
+        "matched_keywords": 3,
+        "candidates": [...],
+        "low_confidence": false,
+        "fallback_chain": [...],
     }
+
+    门控层级:
+      1. 关键词置信度 >= 0.7 且命中 >= 2 个关键词 → 直接返回（快速路径）
+      2. 语义相似度 >= 0.6 → 直接返回
+      3. 关键词(0.4~0.7) + 语义交叉验证通过 → "cross_validated"
+      4. 两者都低置信(< 0.4 / < 0.15) → LLM 兜底
+      5. 所有层低置信 → 返回最佳候选 + low_confidence 标记
     """
     # ── 更新统计 ──
     with _fallback_cache_lock:
         _fallback_stats["total_routes"] += 1
 
-    if force_agent:
-        return {
-            "agent": force_agent,
-            "model": "",
-            "confidence": 0.99,
-            "keyword_score": 0.99,
-            "semantic_score": 0.0,
-            "source": "force",
-            "method": "force",
+    from maestro.shared import _agent_models
+
+    def _make_result(agent, confidence, source, **kwargs):
+        """构建统一返回格式"""
+        result = {
+            "agent": agent,
+            "model": _agent_models.get(agent, ""),
+            "confidence": round(confidence, 4),
+            "keyword_score": round(keyword_score, 4),
+            "semantic_score": round(sem_score, 4),
+            "source": source,
+            "method": "three_tier",
+            "matched_keywords": kw_matches,
+            "candidates": [{"agent": a, "score": round(s, 4)} for a, s in emb_results],
+            "low_confidence": kwargs.get("low_confidence", False),
+            "fallback_chain": kwargs.get("fallback_chain", []),
         }
+        if kwargs.get("reason"):
+            result["reason"] = kwargs["reason"]
+        return result
 
-    # ── Layer 1: 加权关键词 ──
-    kw_agent, kw_raw_score, kw_confidence = route_task(task)
+    if force_agent:
+        keyword_score = 0.99
+        sem_score = 0.0
+        kw_matches = 0
+        emb_results = []
+        return _make_result(force_agent, 0.99, "force")
 
-    # ── Layer 2: 语义匹配 ──
-    from maestro.embedding import semantic_match as embedding_match
-    sem_agent, sem_score = embedding_match(task)
+    if not task or not task.strip():
+        keyword_score = 0.0
+        sem_score = 0.0
+        kw_matches = 0
+        emb_results = []
+        return _make_result("general-worker", 0.0, "fallback",
+                          low_confidence=True, reason="empty_task")
 
-    # ── 归一化 + 融合 ──
-    # keyword_score 归一化（raw score 通常在 0~50 范围）
-    keyword_score = min(1.0, kw_raw_score / 30.0)
-    # semantic_score 已经在 0~1 范围
-
-    final_score = keyword_score * 0.4 + sem_score * 0.48
-
-    # 决定来源和最终 agent
-    if keyword_score > sem_score + 0.15:
-        source = "keyword"
-        best_agent = kw_agent
-        final_score = max(final_score, keyword_score * 0.6)
-    elif sem_score > keyword_score + 0.10:
-        source = "semantic"
-        best_agent = sem_agent
-        final_score = max(final_score, sem_score * 0.7)
+    # ── Layer 1: 关键词匹配（带匹配计数）──
+    kw_scores = _keyword_match(task)
+    kw_ranked = _rank_keyword_scores(kw_scores)
+    if kw_ranked:
+        kw_agent, kw_raw_score, kw_confidence, kw_matches = kw_ranked
     else:
-        # 接近时优先关键词的 agent
-        source = "keyword" if keyword_score >= sem_score else "semantic"
-        best_agent = kw_agent if keyword_score >= sem_score else sem_agent
+        kw_agent, kw_raw_score, kw_confidence, kw_matches = "general-worker", 0, 0.0, 0
 
-    # ── Layer 3: LLM 兜底 ──
-    FALLBACK_THRESHOLD = 4  # 等效于原有阈值
+    keyword_score = min(1.0, kw_raw_score / 30.0)
+
+    # ── Layer 2: Embedding 语义检索 ──
+    from maestro.embedding import get_embedding_router
+    router = get_embedding_router()
+    emb_results = router.search(task, top_k=3)
+    if emb_results:
+        sem_agent, sem_score = emb_results[0]
+    else:
+        sem_agent, sem_score = "general-worker", 0.0
+
+    # ── Gate 1: 高置信关键词（得分 >= 0.7 且 2+ 关键词命中）→ 快速路径 ──
+    if keyword_score >= CONFIDENCE_HIGH and kw_matches >= 2:
+        return _make_result(kw_agent, keyword_score, "keyword")
+
+    # ── Gate 2: 高置信语义 → 直接返回 ──
+    if sem_score >= SEMANTIC_THRESHOLD:
+        return _make_result(sem_agent, sem_score, "semantic")
+
+    # ── Gate 3: 关键词 + 语义交叉验证（关键词中等置信时，用语义二次确认）──
+    cv_attempted = False
+    if keyword_score >= CONFIDENCE_MEDIUM:
+        cv_attempted = True
+        for emb_agent, emb_score in emb_results:
+            if emb_agent == kw_agent and emb_score >= 0.5:
+                return _make_result(kw_agent, (keyword_score + emb_score) / 2,
+                                  "cross_validated", fallback_chain=["keyword", "semantic"])
+
+    # ── Gate 4: LLM 兜底（关键词无信号，或关键词有信号但语义交叉验证失败）──
     llm_used = False
+    best_agent = kw_agent
+    source = "keyword"
 
-    if kw_raw_score < FALLBACK_THRESHOLD and sem_score < 0.10:
+    if keyword_score < CONFIDENCE_MEDIUM or cv_attempted:
         task_hash = hashlib.md5(task.encode()).hexdigest()
 
-        # 检查缓存
         with _fallback_cache_lock:
             _clean_fallback_cache()
             if task_hash in _fallback_cache:
@@ -427,13 +499,9 @@ def route_with_fallback(task, force_agent=None):
                     llm_used = True
 
         if not llm_used:
-            # 构建候选列表（取 Top 10 语义候选 + 关键词候选）
             from maestro.shared import load_agents
             all_agents = load_agents()
             candidate_names = {kw_agent, sem_agent}
-            # 加入 top 语义候选
-            from maestro.embedding import get_embedding_router
-            router = get_embedding_router()
             for name, _ in router.search(task, top_k=5):
                 candidate_names.add(name)
             candidates = [{"name": a["name"], "description": a.get("description", "")}
@@ -447,17 +515,12 @@ def route_with_fallback(task, force_agent=None):
                 source = "llm"
                 llm_used = True
 
-                # 缓存结果
                 with _fallback_cache_lock:
                     _fallback_cache[task_hash] = (best_agent, time.time())
-                    # 限制缓存大小
                     if len(_fallback_cache) > 500:
                         keys = sorted(_fallback_cache.keys())
                         for k in keys[:100]:
                             del _fallback_cache[k]
-
-                # 融合 LLM 分数
-                final_score = final_score * 0.88 + 0.12
 
         with _fallback_cache_lock:
             _fallback_stats["fallback_count"] += 1
@@ -471,19 +534,24 @@ def route_with_fallback(task, force_agent=None):
             if rate > 0.05:
                 log.warning(f"LLM 兜底频率偏高: {fb}/{total} = {rate:.1%} (阈值 5%)")
 
-    # ── 构建返回 ──
-    from maestro.shared import _agent_models
-    model = _agent_models.get(best_agent, "")
+    # ── Gate 5: 构建最终返回 ──
+    if llm_used:
+        llm_confidence = 0.6
+        return _make_result(best_agent, llm_confidence, source,
+                          fallback_chain=["keyword", "semantic", "llm"])
 
-    return {
-        "agent": best_agent,
-        "model": model,
-        "confidence": round(final_score, 4),
-        "keyword_score": round(keyword_score, 4),
-        "semantic_score": round(sem_score, 4),
-        "source": source,
-        "method": "three_tier",
-    }
+    # 关键词或语义有部分信号 — 降级返回
+    if keyword_score >= 0.3:
+        return _make_result(kw_agent, keyword_score * 0.7, "keyword_fallback",
+                          low_confidence=True, fallback_chain=["keyword"])
+
+    if sem_score > 0.0:
+        return _make_result(sem_agent, sem_score * 0.7, "semantic_fallback",
+                          low_confidence=True, fallback_chain=["semantic"])
+
+    # 完全无匹配
+    return _make_result("general-worker", 0.0, "fallback",
+                      low_confidence=True, reason="no_match")
 
 
 # 简单 LRU 缓存：最近 100 条路由结果

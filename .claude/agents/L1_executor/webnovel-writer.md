@@ -1,6 +1,6 @@
 ---
 name: webnovel-writer
-description: 专业中文网文作家，负责世界观构建、人物设计、大纲规划和章节写作
+description: "中文网文作家。用于世界观构建、人物设计、大纲规划、章节写作。典型输入: \"帮我设计一个修仙世界观\"、\"写一章主角突破元婴的剧情\"、\"这个角色怎么塑造更好\"。不适合技术开发类任务。"
 tools: ["Read", "Write", "Edit", "Grep", "Glob"]
 model: opus
 skills: []

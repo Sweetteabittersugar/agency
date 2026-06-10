@@ -1,6 +1,6 @@
 ---
 name: python-reviewer
-description: Python 代码审查专家。审查 Django/Flask/FastAPI 代码、PEP 8 规范、类型注解、异常处理、性能优化。
+description: "Python 代码审查专家。用于 PEP 8 规范检查、类型注解审查、Django/Flask/FastAPI 最佳实践检查。典型输入: \"这段 Django 代码有什么问题\"、\"帮我审查 Python 类型注解\"。不适合审查 Go/TS 代码。"
 tools: ["Read", "Grep", "Glob", "Bash"]
 model: sonnet
 skills: [code-review]
