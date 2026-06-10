@@ -41,6 +41,7 @@ Thumbs.db
 *.key
 *.pem
 credentials.*
+credentials/
 .env.*.local
 
 # Maestro runtime
