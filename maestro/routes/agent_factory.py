@@ -99,18 +99,18 @@ def handle_create(handler, body):
         return True
 
     try:
-        # 写 agents/ 目录
-        agent_file = PROJECT_ROOT / "agents" / f"{name}.md"
+        # 写 agents/user/ 目录（用户自定义，不被更新覆盖）
+        agent_file = PROJECT_ROOT / "agents" / "user" / f"{name}.md"
         agent_file.parent.mkdir(parents=True, exist_ok=True)
         agent_file.write_text(content, encoding="utf-8")
 
-        # 同步到 .claude/agents/
-        claude_dir = PROJECT_ROOT / ".claude" / "agents"
+        # 同步到 .claude/agents/user/
+        claude_dir = PROJECT_ROOT / ".claude" / "agents" / "user"
         claude_dir.mkdir(parents=True, exist_ok=True)
         (claude_dir / f"{name}.md").write_text(content, encoding="utf-8")
 
-        # 同步到 .claude-isolated/agents/
-        iso_dir = PROJECT_ROOT / ".claude-isolated" / "agents"
+        # 同步到 .claude-isolated/agents/user/
+        iso_dir = PROJECT_ROOT / ".claude-isolated" / "agents" / "user"
         iso_dir.mkdir(parents=True, exist_ok=True)
         (iso_dir / f"{name}.md").write_text(content, encoding="utf-8")
 

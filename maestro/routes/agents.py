@@ -58,16 +58,16 @@ def handle_update(handler, body):
         handler.send_json({"error": "缺少必填字段。请同时提供 name（Agent 名称）和 content（Agent 内容）"}, 400)
         return True
     try:
-        # 写入 agents/ 目录
-        agent_file = PROJECT_ROOT / "agents" / f"{name}.md"
+        # 写入 agents/user/ 目录（不覆盖系统 Agent）
+        agent_file = PROJECT_ROOT / "agents" / "user" / f"{name}.md"
         agent_file.parent.mkdir(parents=True, exist_ok=True)
         agent_file.write_text(content, encoding="utf-8")
-        # 同步到 .claude/agents/
-        claude_dir = PROJECT_ROOT / ".claude" / "agents"
+        # 同步到 .claude/agents/user/
+        claude_dir = PROJECT_ROOT / ".claude" / "agents" / "user"
         claude_dir.mkdir(parents=True, exist_ok=True)
         (claude_dir / f"{name}.md").write_text(content, encoding="utf-8")
-        # 同步到 .claude-isolated/
-        iso_dir = PROJECT_ROOT / ".claude-isolated" / "agents"
+        # 同步到 .claude-isolated/agents/user/
+        iso_dir = PROJECT_ROOT / ".claude-isolated" / "agents" / "user"
         iso_dir.mkdir(parents=True, exist_ok=True)
         (iso_dir / f"{name}.md").write_text(content, encoding="utf-8")
         handler.send_json({"ok": True, "name": name})
@@ -84,9 +84,15 @@ def handle_delete(handler, body):
         return True
     deleted = 0
     for base in [PROJECT_ROOT / "agents", PROJECT_ROOT / ".claude" / "agents", PROJECT_ROOT / ".claude-isolated" / "agents"]:
+        # 先查 flat 路径
         f = base / f"{name}.md"
         if f.exists():
             f.unlink()
+            deleted += 1
+        # 也查 user/ 子目录
+        uf = base / "user" / f"{name}.md"
+        if uf.exists():
+            uf.unlink()
             deleted += 1
     handler.send_json({"ok": True, "deleted": deleted})
     return True

@@ -77,6 +77,14 @@ server.log
 memory/
 **/MEMORY.md
 
+# 用户自定义 (不被系统更新覆盖)
+.claude/agents/user/*
+.claude/skills/user/*
+!.claude/agents/user/.gitkeep
+!.claude/skills/user/.gitkeep
+agents/user/*
+!agents/user/.gitkeep
+
 # Backup files
 *.bak
 *.old

@@ -99,6 +99,19 @@ To disable: set `AGENCY_NO_UPDATE_CHECK=1`
 
 > Config files (`.env`) are preserved across upgrades.
 
+### Updates won't overwrite your customizations
+
+| Directory | Purpose | On update |
+|-----------|---------|-----------|
+| `.claude/agents/user/` | Your custom Agents | Preserved |
+| `.claude/skills/user/` | Your custom Skills | Preserved |
+| `.env` | API Key config | Preserved |
+| `credentials/` | Login credentials | Preserved |
+| `.claude/agents/L*/` | System Agents | Overwritten |
+| `maestro/` `webui/` | System code | Overwritten |
+
+> Before editing a system Agent, copy it to `user/` directory first.
+
 ## Architecture
 
 ```

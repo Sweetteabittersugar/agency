@@ -97,6 +97,19 @@ Agency 每次启动会自动检查新版本（每 24 小时检查一次，不会
 
 > 配置文件（`.env`）在升级时不会丢失，放心更新。
 
+### 更新不会覆盖你的自定义
+
+| 目录 | 用途 | 更新时 |
+|------|------|--------|
+| `.claude/agents/user/` | 你的自定义 Agent | 保留 |
+| `.claude/skills/user/` | 你的自定义 Skill | 保留 |
+| `.env` | API Key 配置 | 保留 |
+| `credentials/` | 登录凭证 | 保留 |
+| `.claude/agents/L*/` | 系统 Agent | 覆盖 |
+| `maestro/` `webui/` | 系统代码 | 覆盖 |
+
+> 修改系统 Agent 前，复制到 `user/` 目录再改。
+
 ## 架构
 
 ```

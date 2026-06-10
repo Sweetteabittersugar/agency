@@ -34,29 +34,24 @@ def handle_settings(handler, parsed):
 def handle_skills(handler, parsed):
     """GET /api/skills — Skills 列表"""
     skills = []
+    seen = set()
     for skills_dir in [
         PROJECT_ROOT / ".claude" / "skills",
         Path.home() / ".claude" / "skills",
     ]:
         if not skills_dir.exists():
             continue
-        for skill_dir in skills_dir.iterdir():
-            if not skill_dir.is_dir():
+        # 递归扫描（包括 user/ 子目录下的 Skill）
+        for skmd in sorted(skills_dir.rglob("SKILL.md")):
+            skill_name = skmd.parent.name
+            if skill_name == "user":
+                continue  # user/ 自身不是 Skill，跳过
+            if skill_name in seen:
                 continue
-            skmd = skill_dir / "SKILL.md"
-            disabled_skmd = skill_dir / "SKILL.md.disabled"
-            target_file = None
+            seen.add(skill_name)
             enabled = True
-            if skmd.exists():
-                target_file = skmd
-                enabled = True
-            elif disabled_skmd.exists():
-                target_file = disabled_skmd
-                enabled = False
-            else:
-                continue
             try:
-                content = target_file.read_text(encoding="utf-8")
+                content = skmd.read_text(encoding="utf-8")
                 fm = {}
                 if content.startswith("---"):
                     parts = content.split("---", 2)
@@ -64,17 +59,43 @@ def handle_skills(handler, parsed):
                         try:
                             fm = yaml.safe_load(parts[1]) or {}
                         except Exception:
-                            log.debug(f"Failed to parse frontmatter for skill {skill_dir.name}")
+                            log.debug(f"Failed to parse frontmatter for skill {skill_name}")
                 skills.append({
-                    "name": skill_dir.name,
+                    "name": skill_name,
                     "description": fm.get("description", ""),
                     "triggers": fm.get("triggers", fm.get("trigger", [])),
                     "model": fm.get("model", ""),
                     "enabled": enabled,
-                    "path": str(target_file.resolve()),
+                    "path": str(skmd.resolve()),
                 })
             except Exception:
-                log.debug(f"Failed to read skill {skill_dir.name}", exc_info=True)
+                log.debug(f"Failed to read skill {skill_name}", exc_info=True)
+        # 也扫描 disabled 的 Skill
+        for skmd in sorted(skills_dir.rglob("SKILL.md.disabled")):
+            skill_name = skmd.parent.name
+            if skill_name == "user" or skill_name in seen:
+                continue
+            seen.add(skill_name)
+            try:
+                content = skmd.read_text(encoding="utf-8")
+                fm = {}
+                if content.startswith("---"):
+                    parts = content.split("---", 2)
+                    if len(parts) >= 3:
+                        try:
+                            fm = yaml.safe_load(parts[1]) or {}
+                        except Exception:
+                            log.debug(f"Failed to parse frontmatter for skill {skill_name}")
+                skills.append({
+                    "name": skill_name,
+                    "description": fm.get("description", ""),
+                    "triggers": fm.get("triggers", fm.get("trigger", [])),
+                    "model": fm.get("model", ""),
+                    "enabled": False,
+                    "path": str(skmd.resolve()),
+                })
+            except Exception:
+                log.debug(f"Failed to read skill {skill_name}", exc_info=True)
     handler.send_json(skills)
     return True
 
@@ -146,13 +167,13 @@ def handle_mcp_status(handler, parsed):
 
 
 def handle_skills_save(handler, body):
-    """POST /api/skills/save — 保存 Skill 源码"""
+    """POST /api/skills/save — 保存 Skill 源码（默认写入 user/ 子目录）"""
     name = body.get("name", "")
     content = body.get("content", "")
     if not name or not content:
         handler.send_json({"error": "缺少必填字段。请同时提供 name（Skill 名称）和 content（Skill 源码内容）"}, 400)
         return True
-    skills_dir = PROJECT_ROOT / ".claude" / "skills" / name
+    skills_dir = PROJECT_ROOT / ".claude" / "skills" / "user" / name
     skills_dir.mkdir(parents=True, exist_ok=True)
     try:
         # 如果存在 disabled 文件，先删除它，保存即启用
@@ -173,17 +194,39 @@ def handle_skills_toggle(handler, body):
     if not name:
         handler.send_json({"error": "缺少必填字段 name。请提供 Skill 名称"}, 400)
         return True
-    skills_dir = PROJECT_ROOT / ".claude" / "skills" / name
-    skill_path = skills_dir / "SKILL.md"
-    disabled_path = skills_dir / "SKILL.md.disabled"
-    try:
-        if enabled and disabled_path.exists():
-            disabled_path.rename(skill_path)
-        elif not enabled and skill_path.exists():
-            skill_path.rename(disabled_path)
+    # 在 skills/ 和 skills/user/ 中查找
+    found = False
+    for base in [PROJECT_ROOT / ".claude" / "skills", Path.home() / ".claude" / "skills"]:
+        if not base.exists():
+            continue
+        for skmd in base.rglob("SKILL.md"):
+            if skmd.parent.name == name:
+                skill_path = skmd
+                disabled_path = skmd.parent / "SKILL.md.disabled"
+                if enabled and disabled_path.exists():
+                    disabled_path.rename(skill_path)
+                elif not enabled and skill_path.exists():
+                    skill_path.rename(disabled_path)
+                found = True
+                break
+        if found:
+            break
+        for skmd in base.rglob("SKILL.md.disabled"):
+            if skmd.parent.name == name:
+                skill_path = skmd.parent / "SKILL.md"
+                disabled_path = skmd
+                if enabled and disabled_path.exists():
+                    disabled_path.rename(skill_path)
+                elif not enabled and skill_path.exists():
+                    skill_path.rename(disabled_path)
+                found = True
+                break
+        if found:
+            break
+    if not found:
+        handler.send_json({"error": f"未找到 Skill '{name}'。请检查名称是否正确"}, 404)
+    else:
         handler.send_json({"ok": True, "name": name, "enabled": enabled})
-    except Exception as e:
-        handler.send_json({"error": str(e)}, 500)
     return True
 
 
@@ -255,16 +298,17 @@ def handle_skills_content(handler, parsed):
         Path.home() / ".claude" / "skills",
     ]
     for base in search_dirs:
-        skmd = base / name / "SKILL.md"
-        disabled_skmd = base / name / "SKILL.md.disabled"
-        if skmd.exists():
-            content = skmd.read_text(encoding="utf-8")
-            handler.send_json({"name": name, "content": content})
-            return True
-        elif disabled_skmd.exists():
-            content = disabled_skmd.read_text(encoding="utf-8")
-            handler.send_json({"name": name, "content": content})
-            return True
+        if not base.exists():
+            continue
+        # 递归搜索（包括 user/ 子目录）
+        for skmd in base.rglob("SKILL.md"):
+            if skmd.parent.name == name:
+                handler.send_json({"name": name, "content": skmd.read_text(encoding="utf-8")})
+                return True
+        for skmd in base.rglob("SKILL.md.disabled"):
+            if skmd.parent.name == name:
+                handler.send_json({"name": name, "content": skmd.read_text(encoding="utf-8")})
+                return True
     handler.send_json({"error": "未找到该 Skill。请检查名称是否正确"}, 404)
     return True
 
@@ -282,14 +326,25 @@ def handle_skills_delete(handler, parsed):
         Path.home() / ".claude" / "skills",
     ]
     for base in search_dirs:
-        skill_dir = base / name
-        if skill_dir.exists() and skill_dir.is_dir():
-            try:
-                shutil.rmtree(skill_dir)
-                handler.send_json({"ok": True, "name": name})
-            except Exception as e:
-                handler.send_json({"error": str(e)}, 500)
-            return True
+        if not base.exists():
+            continue
+        # 递归搜索（包括 user/ 子目录）
+        for skmd in base.rglob("SKILL.md"):
+            if skmd.parent.name == name:
+                try:
+                    shutil.rmtree(skmd.parent)
+                    handler.send_json({"ok": True, "name": name})
+                except Exception as e:
+                    handler.send_json({"error": str(e)}, 500)
+                return True
+        for skmd in base.rglob("SKILL.md.disabled"):
+            if skmd.parent.name == name:
+                try:
+                    shutil.rmtree(skmd.parent)
+                    handler.send_json({"ok": True, "name": name})
+                except Exception as e:
+                    handler.send_json({"error": str(e)}, 500)
+                return True
     handler.send_json({"error": "未找到该 Skill。请检查名称是否正确"}, 404)
     return True
 
