@@ -36,6 +36,7 @@ def register_all(Handler):
         ("/api/skills/content/", config.handle_skills_content),
         ("/api/profile", config.handle_profile),
         ("/api/profiles", config.handle_profiles_list),
+        ("/api/check-update", config.handle_check_update),
     ]
     # POST 路由分发
     Handler._post_routes = [

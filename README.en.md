@@ -72,12 +72,31 @@ Download → extract → double-click `install.bat` → double-click `start.bat`
 
 Don't need the Web UI? Just install Agent definitions:
 ```bash
-cp agents/coder.md ~/.claude/agents/
+cp agents/L1_executor/coder.md ~/.claude/agents/
 # In Claude Code: @coder write a sorting function
 ```
 </details>
 
 > **Need Claude CLI?** `npm install -g @anthropic-ai/claude-code`. No Claude Key? DeepSeek works great too.
+
+## 🔄 Updating
+
+### pip install
+```bash
+pip install --upgrade agency-kit
+```
+
+### Git clone install
+```bash
+git pull origin main && pip install -e .
+```
+
+### Auto check on startup
+Agency checks for new versions on startup (once every 24 hours, no spam).
+When a new version is available, the upgrade command is shown in the terminal.
+To disable: set `AGENCY_NO_UPDATE_CHECK=1`
+
+> Config files (`.env`) are preserved across upgrades.
 
 ## Architecture
 

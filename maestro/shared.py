@@ -36,6 +36,15 @@ _version_file = PROJECT_ROOT / "VERSION"
 if _version_file.exists():
     AGENCY_VERSION = _version_file.read_text().strip()
 
+
+def check_for_updates() -> str | None:
+    """启动时检查更新（后台静默，缓存 24 小时）。"""
+    try:
+        from maestro.version_check import check_version
+        return check_version()
+    except Exception:
+        return None
+
 # ── 检测 Claude CLI ──
 CLAUDE_BIN = shutil.which("claude")
 if not CLAUDE_BIN:
@@ -87,7 +96,7 @@ def load_agents(profile_complexity: str = None):
     agents = []
     agents_dir = PROJECT_ROOT / "agents"
     if agents_dir.exists():
-        for f in sorted(agents_dir.glob("*.md")):
+        for f in sorted(agents_dir.glob("**/*.md")):
             info = parse_agent_md(f)
             agent_name = info["name"]
             skill_binding = get_agent_skills(agent_name)

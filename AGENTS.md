@@ -103,7 +103,7 @@
 
 ### 通用格式
 
-每个 agent 文件 (`agents/*.md`) 遵循统一结构：
+每个 agent 文件 (`agents/**/*.md`) 遵循统一结构：
 
 ```markdown
 # Agent 名称 — 一句话描述
@@ -121,41 +121,54 @@
 （STATUS + 详细结果 + 用户摘要）
 ```
 
-### 现有 Agent 清单（31 个，13 大类）
+### 现有 Agent 清单（31 个，按层级分组）
 
-| 分类 | Agent 文件 | 说明 | 适合模型 |
-|------|-----------|------|----------|
-| 架构设计 | `architect.md` | 软件架构师，只出方案不写代码 | opus |
-| 编码实现 | `coder.md` | 代码执行者+清理员 | deepseek-v4 / sonnet |
-| 编码实现 | `build-error-resolver.md` | 构建错误修复 | sonnet |
-| 编码实现 | `performance-optimizer.md` | 性能优化师 | sonnet |
-| 审查验证 | `code-reviewer.md` | 代码审查员（通用） | sonnet |
-| 审查验证 | `go-reviewer.md` | Go 代码专项审查 | sonnet |
-| 审查验证 | `python-reviewer.md` | Python 代码专项审查 | sonnet |
-| 审查验证 | `typescript-reviewer.md` | TypeScript 代码专项审查 | sonnet |
-| 审查验证 | `critic.md` | 输出评估员 | sonnet |
-| 测试质量 | `test-runner.md` | 测试执行员+策略 | haiku |
-| 测试质量 | `tdd-guide.md` | TDD 向导（含测试生成） | sonnet |
-| 测试质量 | `e2e-runner.md` | E2E 测试专家 | sonnet |
-| 测试质量 | `verifier.md` | 实施验证员 | sonnet |
-| 测试质量 | `test-generator.md` | 测试生成器 | sonnet |
-| 安全防护 | `security-reviewer.md` | 安全审计员 | sonnet |
-| 运维部署 | `devops.md` | DevOps 工程师 | sonnet |
-| 运维部署 | `release-manager.md` | 发布经理 | haiku |
-| 数据工程 | `database-reviewer.md` | 数据库优化师 | sonnet |
-| 前端交互 | `designer.md` | UI/UX 设计师 | sonnet |
-| 编排调度 | `orchestrator.md` | 总调度 | sonnet |
-| 编排调度 | `router.md` | 智能路由器 | haiku |
-| 编排调度 | `planner.md` | 规划架构师 | sonnet / opus |
-| 编排调度 | `lead.md` | 任务领导者 | sonnet |
-| 编排调度 | `ceo.md` | 产品决策者 | sonnet |
-| 内容创作 | `webnovel-writer.md` | 专业中文网文作家 | opus |
-| 文档知识 | `doc-updater.md` | 文档更新员 | haiku |
-| 文档知识 | `memory-keeper.md` | 记忆管理者 | haiku |
-| 探查搜索 | `explorer.md` | 代码探索员 | haiku |
-| 探查搜索 | `debugger.md` | 调试专家 | sonnet |
-| 通用工具 | `general-worker.md` | 通用执行者 | sonnet |
-| 通用工具 | `cost-analyst.md` | 费用分析师 | haiku |
+#### L3 — 决策层（Opus）
+| Agent 文件 | 说明 | 适合模型 |
+|-----------|------|----------|
+| `L3_decision/orchestrator.md` | 总调度：复杂任务拆解与多Agent协作 | sonnet |
+| `L3_decision/lead.md` | 任务领导者：多 Agent 统筹 | sonnet |
+| `L3_decision/ceo.md` | 产品决策者：功能范围、验收标准、优先级排序 | sonnet |
+
+#### L2 — 专业层（Sonnet）
+| Agent 文件 | 说明 | 适合模型 |
+|-----------|------|----------|
+| `L2_specialist/architect.md` | 软件架构师，只出方案不写代码 | opus |
+| `L2_specialist/planner.md` | 规划架构师 | sonnet / opus |
+| `L2_specialist/critic.md` | 输出评估员 | sonnet |
+| `L2_specialist/designer.md` | UI/UX 设计师 | sonnet |
+| `L2_specialist/code-reviewer.md` | 代码审查员（通用） | sonnet |
+| `L2_specialist/security-reviewer.md` | 安全审计员 | sonnet |
+| `L2_specialist/go-reviewer.md` | Go 代码专项审查 | sonnet |
+| `L2_specialist/python-reviewer.md` | Python 代码专项审查 | sonnet |
+| `L2_specialist/typescript-reviewer.md` | TypeScript 代码专项审查 | sonnet |
+| `L2_specialist/database-reviewer.md` | 数据库优化师 | sonnet |
+| `L2_specialist/test-generator.md` | 测试生成器 | sonnet |
+| `L2_specialist/verifier.md` | 实施验证员 | sonnet |
+
+#### L1 — 执行层（Sonnet/Haiku）
+| Agent 文件 | 说明 | 适合模型 |
+|-----------|------|----------|
+| `L1_executor/coder.md` | 代码执行者+清理员 | deepseek-v4 / sonnet |
+| `L1_executor/debugger.md` | 调试专家：证据驱动诊断 | sonnet |
+| `L1_executor/tdd-guide.md` | TDD 向导（含测试生成） | sonnet |
+| `L1_executor/test-runner.md` | 测试执行员+策略 | haiku |
+| `L1_executor/e2e-runner.md` | E2E 测试专家 | sonnet |
+| `L1_executor/devops.md` | DevOps 工程师 | sonnet |
+| `L1_executor/release-manager.md` | 发布经理 | haiku |
+| `L1_executor/doc-updater.md` | 文档更新员 | haiku |
+| `L1_executor/performance-optimizer.md` | 性能优化师 | sonnet |
+| `L1_executor/build-error-resolver.md` | 构建错误修复 | sonnet |
+| `L1_executor/webnovel-writer.md` | 专业中文网文作家 | opus |
+| `L1_executor/general-worker.md` | 通用执行者 | sonnet |
+
+#### L0 — 工具层（Haiku）
+| Agent 文件 | 说明 | 适合模型 |
+|-----------|------|----------|
+| `L0_utility/router.md` | 智能路由器：意图识别、成本优化 | haiku |
+| `L0_utility/memory-keeper.md` | 记忆管理者：上下文压缩、摘要 | haiku |
+| `L0_utility/explorer.md` | 代码探索员：只读搜索 | haiku |
+| `L0_utility/cost-analyst.md` | 费用分析师 | haiku |
 
 ## 混合派发策略
 

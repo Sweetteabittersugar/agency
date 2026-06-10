@@ -65,11 +65,23 @@ function check(condition, label) {
   }
 }
 
-// 检查 agents/ 目录
+// 检查 agents/ 目录（递归扫描子目录）
 const agentsDir = path.join(PKG_ROOT, 'agents');
-const agentMdFiles = fs.existsSync(agentsDir)
-  ? fs.readdirSync(agentsDir).filter(f => f.endsWith('.md'))
-  : [];
+function countAgentFiles(dir) {
+  if (!fs.existsSync(dir)) return [];
+  let results = [];
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      results = results.concat(countAgentFiles(fullPath));
+    } else if (entry.isFile() && entry.name.endsWith('.md')) {
+      results.push(fullPath);
+    }
+  }
+  return results;
+}
+const agentMdFiles = countAgentFiles(agentsDir);
 check(agentMdFiles.length >= 9, `agents/ 至少 9 个 .md 文件 (实际: ${agentMdFiles.length})`);
 
 // 检查 rules/common/ 子目录

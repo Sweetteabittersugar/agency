@@ -35,11 +35,17 @@ DEFAULT_MODEL = get_default_model()
 from maestro.agent_parser import parse_agent_md
 
 def load_agent(name):
-    """读 agents/{name}.md，返回 (system_prompt, model)"""
+    """读 agents/{name}.md（支持子目录递归查找），返回 (system_prompt, model)"""
     agent_file = PROJECT_ROOT / "agents" / f"{name}.md"
     if not agent_file.exists():
+        # 递归查找子目录
+        for f in (PROJECT_ROOT / "agents").glob("**/*.md"):
+            if f.stem == name:
+                agent_file = f
+                break
+    if not agent_file.exists():
         # 尝试模糊匹配
-        for f in (PROJECT_ROOT / "agents").glob("*.md"):
+        for f in (PROJECT_ROOT / "agents").glob("**/*.md"):
             if name in f.stem:
                 agent_file = f
                 break
@@ -57,7 +63,7 @@ def list_agents():
     """列出所有可用 Agent"""
     agents_dir = PROJECT_ROOT / "agents"
     print("可用 Agent：\n")
-    for f in sorted(agents_dir.glob("*.md")):
+    for f in sorted(agents_dir.glob("**/*.md")):
         content = f.read_text(encoding="utf-8")
         name = f.stem
         desc = ""

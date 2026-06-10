@@ -7,7 +7,7 @@
 
 ## 1. 当前代码基准线
 
-**Agent：** 25 个 .md 文件在 agents/，但 agent.yaml 只注册了 21 个
+**Agent：** 31 个 .md 文件在 agents/ 子目录中，但 agent.yaml 只注册了 21 个
 **路由：** shared.py ROUTING_KEYWORDS 20 个 Agent，简单关键词无权重
 **前端：** 使用 `$()` 别名，引导仅 2 步
 **Provider：** 仅 3 个（deepseek/anthropic/openai）

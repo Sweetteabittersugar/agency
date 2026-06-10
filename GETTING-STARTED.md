@@ -28,7 +28,7 @@ python maestro/web.py
 - 只依赖 Python 3.10+ 和 `pip install pyyaml requests`
 - 自动记录成本到 cost.db
 
-可用 Agent：`coder`、`reviewer`、`explorer`、`planner`、`test-runner`、`general-worker` 等 19 个，全在 `agents/` 目录下。关键词匹配自动路由，无需手动选择。
+可用 Agent：`coder`、`reviewer`、`explorer`、`planner`、`test-runner`、`general-worker` 等 31 个，按 L3/L2/L1/L0 四层组织在 `agents/` 目录下。关键词匹配自动路由，无需手动选择。
 
 ## 你不需要装全部
 
@@ -36,7 +36,7 @@ python maestro/web.py
 
 ```bash
 # 复制你需要的 agent 到 Claude Code 配置目录
-cp agents/coder.md ~/.claude/agents/
+cp agents/L1_executor/coder.md ~/.claude/agents/
 ```
 
 现在在 Claude Code 中说"帮我写一个函数"——coder agent 会自动生效。
@@ -47,7 +47,7 @@ cp agents/coder.md ~/.claude/agents/
 - `explorer.md` — 搜索代码库
 - `code-reviewer.md` — 审查代码
 - `tdd-guide.md` — 测试驱动开发
-- 共 19 个，全在 `agents/` 目录下
+- 共 19 个，全在 `agents/` 子目录下
 
 ### 第 1 层：装上整套 Agent + 路由（2 分钟）
 

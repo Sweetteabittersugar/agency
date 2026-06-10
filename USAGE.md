@@ -13,7 +13,7 @@ python maestro/web.py
 ```
 
 ### 我已经有 Claude Code
-（cp agents/xxx.md ~/.claude/agents/ → 直接用）
+（cp agents/L1_executor/xxx.md ~/.claude/agents/ → 直接用）
 
 ```bash
 git clone https://github.com/Sweetteabittersugar/agency.git

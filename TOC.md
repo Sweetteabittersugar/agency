@@ -18,33 +18,43 @@ Total: **93** documents
 - [赞助者](SPONSORS.md)  `SPONSORS.md`
 - [TROUBLESHOOTING.md — 常见问题](TROUBLESHOOTING.md)  `TROUBLESHOOTING.md`
 - [Agency 使用指南](USAGE.md)  `USAGE.md`
-### 📁 agents/
+### 📁 agents/ (L3 → L2 → L1 → L0 四层)
 
-- [Build Error Resolver — 构建错误修复](agents/build-error-resolver.md)  `build-error-resolver.md`
-- [CEO — 产品决策](agents/ceo.md)  `ceo.md`
-- [Code Reviewer — 代码审查 Agent](agents/code-reviewer.md)  `code-reviewer.md`
-- [Coder Agent](agents/coder.md)  `coder.md`
-- [Cost Analyst — LLM API 费用分析 Agent](agents/cost-analyst.md)  `cost-analyst.md`
-- [Database Reviewer — 数据库审查](agents/database-reviewer.md)  `database-reviewer.md`
-- [DevOps — 基础设施](agents/devops.md)  `devops.md`
-- [Doc Updater — 文档更新](agents/doc-updater.md)  `doc-updater.md`
-- [E2E Runner — 端到端测试](agents/e2e-runner.md)  `e2e-runner.md`
-- [Explorer — 代码探索 Agent](agents/explorer.md)  `explorer.md`
-- [General Worker Agent](agents/general-worker.md)  `general-worker.md`
-- [Go Reviewer — Go 代码审查](agents/go-reviewer.md)  `go-reviewer.md`
-- [Lead — 任务领导者](agents/lead.md)  `lead.md`
-- [Orchestrator — 总调度](agents/orchestrator.md)  `orchestrator.md`
-- [Performance Optimizer — 性能优化](agents/performance-optimizer.md)  `performance-optimizer.md`
-- [Planner — 软件架构规划 Agent](agents/planner.md)  `planner.md`
-- [Python Reviewer — Python 代码审查](agents/python-reviewer.md)  `python-reviewer.md`
-- [QA — 质量保证](agents/qa.md)  `qa.md`
-- [Refactor Cleaner — 代码清理](agents/refactor-cleaner.md)  `refactor-cleaner.md`
-- [Release Manager — 发布管理](agents/release-manager.md)  `release-manager.md`
-- [Security Reviewer — 安全审查 Agent](agents/security-reviewer.md)  `security-reviewer.md`
-- [TDD Guide — 测试驱动开发向导](agents/tdd-guide.md)  `tdd-guide.md`
-- [Test Runner — 测试执行 Agent](agents/test-runner.md)  `test-runner.md`
-- [TypeScript Reviewer — TS/JS 代码审查](agents/typescript-reviewer.md)  `typescript-reviewer.md`
-- [Webnovel Writer Agent](agents/webnovel-writer.md)  `webnovel-writer.md`
+#### L3_decision/
+- [CEO — 产品决策](agents/L3_decision/ceo.md)  `ceo.md`
+- [Lead — 任务领导者](agents/L3_decision/lead.md)  `lead.md`
+- [Orchestrator — 总调度](agents/L3_decision/orchestrator.md)  `orchestrator.md`
+#### L2_specialist/
+- [Architect — 软件架构师](agents/L2_specialist/architect.md)  `architect.md`
+- [Code Reviewer — 代码审查](agents/L2_specialist/code-reviewer.md)  `code-reviewer.md`
+- [Critic — 输出评估](agents/L2_specialist/critic.md)  `critic.md`
+- [Database Reviewer — 数据库审查](agents/L2_specialist/database-reviewer.md)  `database-reviewer.md`
+- [Designer — UI/UX 设计](agents/L2_specialist/designer.md)  `designer.md`
+- [Go Reviewer — Go 代码审查](agents/L2_specialist/go-reviewer.md)  `go-reviewer.md`
+- [Planner — 规划架构师](agents/L2_specialist/planner.md)  `planner.md`
+- [Python Reviewer — Python 审查](agents/L2_specialist/python-reviewer.md)  `python-reviewer.md`
+- [Security Reviewer — 安全审查](agents/L2_specialist/security-reviewer.md)  `security-reviewer.md`
+- [Test Generator — 测试生成](agents/L2_specialist/test-generator.md)  `test-generator.md`
+- [TypeScript Reviewer — TS 审查](agents/L2_specialist/typescript-reviewer.md)  `typescript-reviewer.md`
+- [Verifier — 实施验证](agents/L2_specialist/verifier.md)  `verifier.md`
+#### L1_executor/
+- [Build Error Resolver — 构建修复](agents/L1_executor/build-error-resolver.md)  `build-error-resolver.md`
+- [Coder Agent](agents/L1_executor/coder.md)  `coder.md`
+- [Debugger — 调试专家](agents/L1_executor/debugger.md)  `debugger.md`
+- [DevOps — 基础设施](agents/L1_executor/devops.md)  `devops.md`
+- [Doc Updater — 文档更新](agents/L1_executor/doc-updater.md)  `doc-updater.md`
+- [E2E Runner — 端到端测试](agents/L1_executor/e2e-runner.md)  `e2e-runner.md`
+- [General Worker Agent](agents/L1_executor/general-worker.md)  `general-worker.md`
+- [Performance Optimizer — 性能优化](agents/L1_executor/performance-optimizer.md)  `performance-optimizer.md`
+- [Release Manager — 发布管理](agents/L1_executor/release-manager.md)  `release-manager.md`
+- [TDD Guide — TDD 向导](agents/L1_executor/tdd-guide.md)  `tdd-guide.md`
+- [Test Runner — 测试执行](agents/L1_executor/test-runner.md)  `test-runner.md`
+- [Webnovel Writer Agent](agents/L1_executor/webnovel-writer.md)  `webnovel-writer.md`
+#### L0_utility/
+- [Cost Analyst — 费用分析](agents/L0_utility/cost-analyst.md)  `cost-analyst.md`
+- [Explorer — 代码探索](agents/L0_utility/explorer.md)  `explorer.md`
+- [Memory Keeper — 记忆管理](agents/L0_utility/memory-keeper.md)  `memory-keeper.md`
+- [Router — 智能路由](agents/L0_utility/router.md)  `router.md`
 ### 📁 commands/
 
 - [compress](commands/compress.md)  `compress.md`

@@ -4,7 +4,7 @@
 
 ## 1. 创建 Agent 文件
 
-在 `agents/` 下新建 `my-agent.md`，遵循统一格式：
+在 `agents/` 下（或按层级放入 L1_executor/ 等子目录）新建 `my-agent.md`，遵循统一格式：
 
 ```markdown
 # My Agent — 一句话描述这个 Agent 做什么
@@ -53,7 +53,7 @@ STATUS: [done|failed|need_input]
 ```json
 {
   "my-agent": {
-    "file": "agents/my-agent.md",
+    "file": "agents/L1_executor/my-agent.md",
     "model": "sonnet",
     "timeout": 600,
     "description": "我的自定义 Agent"
@@ -94,7 +94,7 @@ python maestro/dispatch.py --agent my-agent --task "hello"
 
 ## 完整示例：data-migrator Agent
 
-### agents/data-migrator.md
+### agents/L1_executor/data-migrator.md
 ```markdown
 # Data Migrator — 数据库迁移和导入导出
 
@@ -134,7 +134,7 @@ STATUS: [done|failed|need_input]
 ```json
 {
   "data-migrator": {
-    "file": "agents/data-migrator.md",
+    "file": "agents/L1_executor/data-migrator.md",
     "model": "sonnet",
     "timeout": 900,
     "description": "数据库迁移和导入导出"

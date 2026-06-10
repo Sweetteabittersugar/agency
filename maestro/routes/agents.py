@@ -28,9 +28,17 @@ def handle_detail(handler, parsed):
         PROJECT_ROOT / ".claude" / "agents",
         Path.home() / ".claude" / "agents",
     ]:
+        # 先查扁平路径
         candidate = search_dir / f"{name}.md"
         if candidate.exists():
             agent_content = candidate.read_text(encoding="utf-8")
+            break
+        # 再递归查子目录
+        for f in search_dir.glob("**/*.md"):
+            if f.stem == name:
+                agent_content = f.read_text(encoding="utf-8")
+                break
+        if agent_content is not None:
             break
     if agent_content is not None:
         handler.send_json({"name": name, "content": agent_content})

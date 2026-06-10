@@ -365,3 +365,18 @@ def handle_profiles_list(handler, parsed):
     except Exception as e:
         handler.send_json({"error": f"读取 profiles.json 失败: {e}"}, 500)
     return True
+
+
+def handle_check_update(handler, parsed):
+    """GET /api/check-update — 检查 agency-kit 新版本"""
+    from maestro.version_check import _get_installed_version, _get_latest_version
+    current = _get_installed_version()
+    latest = _get_latest_version()
+    has_update = latest is not None and latest != current
+    handler.send_json({
+        "current": current,
+        "latest": latest or current,
+        "has_update": has_update,
+        "upgrade_cmd": "pip install --upgrade agency-kit" if has_update else None,
+    })
+    return True

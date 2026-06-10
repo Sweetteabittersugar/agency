@@ -33,7 +33,7 @@ cp agency/maestro/sandbox.py your-project/maestro/  # 可选：隔离执行
 mkdir -p your-project/agents
 ```
 
-`agents/coder.md`:
+`agents/L1_executor/coder.md`:
 ```markdown
 # Coder — 代码执行者
 
@@ -133,25 +133,25 @@ maestro/
 ```json
 {
   "coder": {
-    "file": "agents/coder.md",
+    "file": "agents/L1_executor/coder.md",
     "model": "deepseek-v4-pro",
     "timeout": 600,
     "description": "代码执行者"
   },
   "explorer": {
-    "file": "agents/explorer.md",
+    "file": "agents/L0_utility/explorer.md",
     "model": "haiku",
     "timeout": 300,
     "description": "代码探索员"
   },
   "reviewer": {
-    "file": "agents/code-reviewer.md",
+    "file": "agents/L2_specialist/code-reviewer.md",
     "model": "sonnet",
     "timeout": 900,
     "description": "代码审查员"
   },
   "my-custom-agent": {
-    "file": "agents/my-agent.md",
+    "file": "agents/L1_executor/my-agent.md",
     "model": "sonnet",
     "timeout": 600,
     "description": "我的自定义 Agent"

@@ -39,7 +39,7 @@ log = logging.getLogger('agency')
 # ── 共享状态（从 shared.py 导入，避免循环依赖）──
 from maestro.shared import (
     PROJECT_ROOT, ISOLATED_CONFIG, _claude_dir, AGENCY_VERSION, CLAUDE_BIN,
-    load_agents, simple_route, _extract_plan, _scan_subagents,
+    load_agents, simple_route, _extract_plan, _scan_subagents, check_for_updates,
 )
 # 修正 PROJECT_ROOT（shared.py 在其自己的目录上下文计算）
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -272,6 +272,12 @@ def _kill_old():
 def main():
     """CLI 入口：agency start 启动 Web 服务。"""
     import webbrowser, socket
+
+    # 启动时版本检查（后台静默，网络错误不阻塞）
+    update_msg = check_for_updates()
+    if update_msg:
+        print(update_msg, file=sys.stderr)
+
     _kill_old()
     httpd = ThreadingHTTPServer((BIND_ADDR, PORT), Handler)
     httpd.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

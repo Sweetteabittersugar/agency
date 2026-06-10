@@ -172,6 +172,9 @@ def route_task(task, force_agent=None):
     if force_agent:
         return force_agent, 99, 0.99
 
+    if task is None:
+        return "coder", 0, 0.0
+
     task_lower = task.lower()
     scores = {}
 
@@ -513,11 +516,17 @@ def route_with_cache(task, force_agent=None):
 from maestro.agent_parser import parse_agent_md
 
 def load_agent(name):
-    """读 agents/{name}.md，返回 system_prompt, model"""
+    """读 agents/{name}.md（支持子目录递归查找），返回 system_prompt, model"""
     agent_file = PROJECT_ROOT / "agents" / f"{name}.md"
     if not agent_file.exists():
+        # 递归查找子目录
+        for f in (PROJECT_ROOT / "agents").glob("**/*.md"):
+            if f.stem == name:
+                agent_file = f
+                break
+    if not agent_file.exists():
         # 模糊匹配
-        for f in (PROJECT_ROOT / "agents").glob("*.md"):
+        for f in (PROJECT_ROOT / "agents").glob("**/*.md"):
             if name in f.stem:
                 agent_file = f
                 break

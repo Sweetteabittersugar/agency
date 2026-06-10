@@ -43,7 +43,7 @@ def sync_isolated_config(project_root: Path):
     dst_agents.mkdir(exist_ok=True)
     for src_dir in [project_root / "agents", claude_dir / "agents"]:
         if src_dir.exists():
-            for f in src_dir.glob("*.md"):
+            for f in src_dir.glob("**/*.md"):
                 shutil.copy2(str(f), str(dst_agents / f.name))
 
     # 同步 skills

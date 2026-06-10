@@ -188,7 +188,7 @@ def get_embedding_router(agents: Optional[list[dict]] = None) -> EmbeddingRouter
         agents_dir = project_root / "agents"
         agents = []
         if agents_dir.exists():
-            for f in sorted(agents_dir.glob("*.md")):
+            for f in sorted(agents_dir.glob("**/*.md")):
                 info = parse_agent_md(f)
                 agents.append({
                     "name": info["name"],

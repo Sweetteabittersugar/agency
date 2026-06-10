@@ -8,7 +8,7 @@
 ### Q: 只想安装部分 Agent？
 手动复制需要的文件：
 ```bash
-cp agents/coder.md agents/code-reviewer.md ~/.claude/agents/
+cp agents/L1_executor/coder.md agents/L2_specialist/code-reviewer.md ~/.claude/agents/
 ```
 
 ### Q: 如何卸载？
@@ -65,7 +65,7 @@ Maestro 脚本用到了 3.10 的 `match` 语法。如果不用 Maestro，Python 
 ## 贡献
 
 ### Q: 如何贡献新 Agent？
-见 `CONTRIBUTING.md`。简单的流程：创建 agents/xxx.md（含 YAML frontmatter）→ 更新 AGENTS.md 路由矩阵 → 更新 agent.yaml → 提 PR。
+见 `CONTRIBUTING.md`。简单的流程：在 agents/ 下（或按层级放入子目录）创建 xxx.md（含 YAML frontmatter）→ 更新 AGENTS.md 路由矩阵 → 更新 agent.yaml → 提 PR。
 
 ### Q: Agent 的 model 字段选什么？
 - `haiku`：简单搜索、费用分析

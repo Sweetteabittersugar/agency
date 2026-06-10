@@ -278,7 +278,7 @@ Layer C: 工具 Skill (never)       → 用户手动调用，不自动加载
 ```yaml
 coder:
   category: implementation
-  file: agents/coder.md
+  file: agents/L1_executor/coder.md
   model: sonnet
   ...
 ```

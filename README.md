@@ -71,12 +71,31 @@ agency start
 
 不需要 Web 界面？只把 Agent 定义装进 Claude Code：
 ```bash
-cp agents/coder.md ~/.claude/agents/
+cp agents/L1_executor/coder.md ~/.claude/agents/
 # Claude Code 里输入 @coder 写个排序函数 就能用
 ```
 </details>
 
 > **需要 Claude CLI？** `npm install -g @anthropic-ai/claude-code`。没有 Claude Key？用 DeepSeek 也一样跑。
+
+## 🔄 更新
+
+### pip 安装
+```bash
+pip install --upgrade agency-kit
+```
+
+### Git 克隆安装
+```bash
+git pull origin main && pip install -e .
+```
+
+### 启动时自动检查
+Agency 每次启动会自动检查新版本（每 24 小时检查一次，不会频繁骚扰）。
+发现新版本时终端会提示升级命令。
+如需关闭：设置环境变量 `AGENCY_NO_UPDATE_CHECK=1`
+
+> 配置文件（`.env`）在升级时不会丢失，放心更新。
 
 ## 架构
 
@@ -104,7 +123,7 @@ cp agents/coder.md ~/.claude/agents/
 agency/
 ├── maestro/        调度引擎（路由/聊天/编排/成本/安全）
 ├── webui/          前端（模块化 JS + CSS 暗色主题 + HTML）
-├── agents/         33 个 Agent 定义（12 大类）
+├── agents/         31 个 Agent 定义（L3/L2/L1/L0 四层）
 ├── .claude/skills/ 34 个 Skill 工作流
 ├── rules/          工程规范
 ├── hooks/          生命周期自动化

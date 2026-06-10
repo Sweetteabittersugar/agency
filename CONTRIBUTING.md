@@ -26,7 +26,7 @@ python -m pytest tests/ -v   # 验证安装
 
 ## Agent 贡献格式
 
-放置在 `agents/` 下，为 Markdown 文件。**必须包含 YAML frontmatter**：
+放置在 `agents/` 下（或按层级放入子目录 L3_decision/L2_specialist/L1_executor/L0_utility），为 Markdown 文件。**必须包含 YAML frontmatter**：
 
 ```markdown
 ---

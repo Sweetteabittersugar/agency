@@ -23,7 +23,7 @@
 
 ## 自定义 Agent
 
-在 `agents/` 下新建 `.md` 文件，格式：
+在 `agents/` 下（或按层级放入 L3_decision/L2_specialist/L1_executor/L0_utility）新建 `.md` 文件，格式：
 
 ```markdown
 # Agent 名称 — 描述
