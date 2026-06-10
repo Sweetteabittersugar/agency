@@ -18,6 +18,11 @@
 <div class="sidebar-tab" data-tab="history">历史</div>
 </div>
 <div class="sidebar-panel active" id="panel-agents">
+	<div id="demo-banner" style="display:none;padding:8px 10px;background:linear-gradient(135deg,#f39c12,#e74c3c);color:#fff;text-align:center;font-size:11px;font-weight:600;border-radius:var(--radius-sm);margin-bottom:8px;flex-shrink:0;">
+	⚡ Demo 模式 — 免 API Key 体验全部功能
+	<button onclick="enterDemoMode()" style="margin-left:6px;padding:2px 10px;background:#fff;color:#e74c3c;border:none;border-radius:4px;cursor:pointer;font-weight:600;font-size:11px;">立即体验</button>
+	<button onclick="dismissDemoBanner()" style="margin-left:4px;padding:2px 6px;background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.5);border-radius:4px;cursor:pointer;font-size:10px;">关闭</button>
+	</div>
 <input class="agent-search" id="agent-search" placeholder="搜索 Agent…" autocomplete="off">
 <div class="agent-list" id="agent-list"></div>
 </div>
@@ -69,6 +74,7 @@
 <div class="harness-overlay-tab" data-htab="env">环境</div>
 <div class="harness-overlay-tab" data-htab="test">测试</div>
 <div class="harness-overlay-tab" data-htab="worktree">🌳 Worktree</div>
+<div class="harness-overlay-tab" data-htab="operations">📋 操作</div>
 <button class="btn" style="align-self:center" onclick="toggleDashboard()">✕</button>
 </div>
 <div class="harness-overlay-content" id="harnessContent"></div>
@@ -256,5 +262,32 @@ t<select id="profile-select" style="display:none" aria-hidden="true"><option val
 <script src="js/chat.js"></script>
 <script src="js/split-layout.js"></script>
 <script src="js/app.js"></script>
+<script src="js/onboarding.js"></script>
+<!-- 首次引导覆盖层 -->
+<div id="onboard-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;justify-content:center;align-items:center;">
+  <div style="background:var(--bg,#1a1a2e);border:1px solid var(--border,#444);border-radius:16px;padding:32px;max-width:500px;width:90%;text-align:center;">
+    <div style="font-size:48px;margin-bottom:16px;">🚀</div>
+    <h2 style="margin:0 0 8px;">欢迎使用 Agency</h2>
+    <p style="color:var(--muted,#888);margin:0 0 24px;">Claude Code 的 Web 面板，32 个 AI Agent 协同工作</p>
+    <div style="text-align:left;margin-bottom:24px;">
+      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;">
+        <span style="font-size:20px;">1️⃣</span>
+        <div><strong>选择 Agent</strong><br><span style="color:var(--muted);font-size:13px;">左侧面板选一个 Agent，或点"智能调度"自动匹配</span></div>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;">
+        <span style="font-size:20px;">2️⃣</span>
+        <div><strong>输入任务</strong><br><span style="color:var(--muted);font-size:13px;">在底部输入框描述你想做什么，Ctrl+Enter 发送</span></div>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:12px;">
+        <span style="font-size:20px;">3️⃣</span>
+        <div><strong>查看结果</strong><br><span style="color:var(--muted);font-size:13px;">Agent 流式返回结果，按 Ctrl+K 打开命令面板</span></div>
+      </div>
+    </div>
+    <button id="onboard-dismiss" style="padding:12px 48px;background:var(--accent,#4a6cf7);color:#fff;border:none;border-radius:8px;font-size:16px;cursor:pointer;">开始使用</button>
+    <div style="margin-top:12px;">
+      <a href="#" onclick="dismissOnboard();startDemo();return false;" style="color:var(--accent,#4a6cf7);font-size:13px;">免 API Key 体验 Demo →</a>
+    </div>
+  </div>
+</div>
 </body>
 </html>

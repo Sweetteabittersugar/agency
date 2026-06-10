@@ -3,6 +3,32 @@ var currentPromptAgent='';
 var allSkills=[];
 var _multiSelectMode = false;
 var _selectedAgents = {};
+var STARTER_AGENTS = ['coder', 'explorer', 'general-worker', 'orchestrator'];
+
+/* ── Demo 模式横幅 ── */
+function checkDemoBanner() {
+  fetch('/api/settings')
+    .then(function(r) { return r.json(); })
+    .then(function(config) {
+      var hasKey = config.has_api_key;
+      var banner = document.getElementById('demo-banner');
+      if (!hasKey && banner) {
+        banner.style.display = 'block';
+      }
+    })
+    .catch(function() {});
+}
+
+window.dismissDemoBanner = function() {
+  var banner = document.getElementById('demo-banner');
+  if (banner) banner.style.display = 'none';
+  try { localStorage.setItem('demo-banner-dismissed', '1'); } catch(e) {}
+};
+
+// 页面加载后检测（延迟等 API 就绪）
+if (!localStorage.getItem('demo-banner-dismissed')) {
+  setTimeout(checkDemoBanner, 1200);
+}
 
 function toggleMultiSelect(){
   _multiSelectMode = !_multiSelectMode;
@@ -112,7 +138,67 @@ async function loadAgents(){
   agentList.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px">加载中…</div>';
   try{agents=await(await fetch('/api/agents')).json();renderAgents(agents)}catch(e){agentList.innerHTML='<div class="empty-state"><div class="es-icon">🔌</div><div class="es-text">'+t('agentsLoadFail')+'</div><div class="es-actions"><button class="btn" onclick="loadAgents()">'+t('retry')+'</button><button class="btn" onclick="checkServiceStatus()">'+t('checkService')+'</button></div></div>'}
 }
-function renderAgents(list){var multiToggleBtn = _multiSelectMode ? '<button class="btn on" onclick="toggleMultiSelect()" style="font-size:10px;padding:3px 8px;margin-bottom:6px;display:block;width:100%">' + t('batchCancel') + '</button>' : '<button class="btn" onclick="toggleMultiSelect()" style="font-size:10px;padding:3px 8px;margin-bottom:6px;display:block;width:100%">☑ ' + t('batchSelect') + '</button>';agentList.innerHTML=multiToggleBtn+list.map(function(a){var ns=a.name.replace(/'/g,"\\'"),nh=escHtml(a.name);var isSelected=_multiSelectMode&&_selectedAgents[a.name];var cardClass='agent-card'+(isSelected?' agent-selected':'');var checkboxCol=_multiSelectMode?'<div style="flex-shrink:0;margin-right:8px;display:flex;align-items:center"><input type="checkbox" style="accent-color:var(--accent);width:16px;height:16px;cursor:pointer"'+(isSelected?' checked':'')+' onclick="toggleAgentSelect(\''+ns+'\',event)"></div>':'';var actionBtns=_multiSelectMode?'':'<div style="display:flex;gap:2px;flex-shrink:0;margin-left:4px"><button class="btn" style="font-size:10px;padding:1px 5px" onclick="event.stopPropagation();viewAgentPrompt(\''+ns+'\')" title="查看/编辑提示词">📝</button><button class="btn" style="font-size:10px;padding:1px 5px;color:var(--danger)" onclick="event.stopPropagation();deleteAgent(\''+ns+'\')" title="删除 Agent">🗑</button></div>';var clickHandler=_multiSelectMode?'onclick="toggleAgentSelect(\''+ns+'\',event)"':'onclick="pickAgent(\''+ns+'\')" oncontextmenu="pickAgentNew(\''+ns+'\',event)"';return'<div class="'+cardClass+'" '+clickHandler+'><div style="display:flex;align-items:center">'+checkboxCol+'<div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;align-items:center"><div class="name">'+nh+'<span class="model">'+(a.model||'auto')+'</span></div>'+actionBtns+'</div><div class="desc">'+escHtml(a.description||'')+'</div>'+(a.keywords&&a.keywords.length?'<div class="kw">'+a.keywords.slice(0,5).join(', ')+'</div>':'')+(a.tools&&a.tools.length?'<div class="kw" style="margin-top:2px">'+a.tools.slice(0,6).map(function(t){return'<span class="tool-tag">'+escHtml(t)+'</span>'}).join('')+'</div>':'')+'</div></div></div>'}).join('')}
+function renderAgents(list){
+  // 多选切换按钮
+  var multiToggleBtn = _multiSelectMode
+    ? '<button class="btn on" onclick="toggleMultiSelect()" style="font-size:10px;padding:3px 8px;margin-bottom:6px;display:block;width:100%">' + t('batchCancel') + '</button>'
+    : '<button class="btn" onclick="toggleMultiSelect()" style="font-size:10px;padding:3px 8px;margin-bottom:6px;display:block;width:100%">☑ ' + t('batchSelect') + '</button>';
+
+  // 单卡片渲染
+  function cardHTML(a) {
+    var ns = a.name.replace(/'/g, "\\'"), nh = escHtml(a.name);
+    var isSelected = _multiSelectMode && _selectedAgents[a.name];
+    var cardClass = 'agent-card' + (isSelected ? ' agent-selected' : '');
+    var checkboxCol = _multiSelectMode
+      ? '<div style="flex-shrink:0;margin-right:8px;display:flex;align-items:center"><input type="checkbox" style="accent-color:var(--accent);width:16px;height:16px;cursor:pointer"' + (isSelected ? ' checked' : '') + ' onclick="toggleAgentSelect(\'' + ns + '\',event)"></div>'
+      : '';
+    var actionBtns = _multiSelectMode
+      ? ''
+      : '<div style="display:flex;gap:2px;flex-shrink:0;margin-left:4px"><button class="btn" style="font-size:10px;padding:1px 5px" onclick="event.stopPropagation();viewAgentPrompt(\'' + ns + '\')" title="查看/编辑提示词">📝</button><button class="btn" style="font-size:10px;padding:1px 5px;color:var(--danger)" onclick="event.stopPropagation();deleteAgent(\'' + ns + '\')" title="删除 Agent">🗑</button></div>';
+    var clickHandler = _multiSelectMode
+      ? 'onclick="toggleAgentSelect(\'' + ns + '\',event)"'
+      : 'onclick="pickAgent(\'' + ns + '\')" oncontextmenu="pickAgentNew(\'' + ns + '\',event)"';
+    return '<div class="' + cardClass + '" ' + clickHandler + '><div style="display:flex;align-items:center">' +
+      checkboxCol +
+      '<div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;align-items:center"><div class="name">' + nh + '<span class="model">' + (a.model || 'auto') + '</span></div>' + actionBtns + '</div>' +
+      '<div class="desc">' + escHtml(a.description || '') + '</div>' +
+      (a.keywords && a.keywords.length ? '<div class="kw">' + a.keywords.slice(0, 5).join(', ') + '</div>' : '') +
+      (a.tools && a.tools.length ? '<div class="kw" style="margin-top:2px">' + a.tools.slice(0, 6).map(function(t) { return '<span class="tool-tag">' + escHtml(t) + '</span>'; }).join('') + '</div>' : '') +
+      '</div></div></div>';
+  }
+
+  // 分组：推荐 vs 全部
+  var starters = list.filter(function(a) { return STARTER_AGENTS.indexOf(a.name) !== -1; });
+  var others = list.filter(function(a) { return STARTER_AGENTS.indexOf(a.name) === -1; });
+  var collapsed = localStorage.getItem('agent-list-collapsed') === '1';
+
+  var html = multiToggleBtn;
+  if (starters.length) {
+    html += '<div style="font-size:11px;color:var(--warn);padding:6px 0 4px;">⭐ 推荐</div>';
+    html += starters.map(cardHTML).join('');
+  }
+  if (others.length) {
+    html += '<div id="agent-toggle-bar" style="display:flex;align-items:center;padding:8px 0;cursor:pointer;font-size:11px;color:var(--muted);border-top:1px solid var(--border);margin-top:4px;" onclick="toggleAgentList()">';
+    html += '<span id="agent-toggle-icon">' + (collapsed ? '▶' : '▼') + '</span> 📂 全部 Agent (' + others.length + ')</div>';
+    html += '<div id="agent-full-list" style="display:' + (collapsed ? 'none' : 'block') + ';">';
+    html += others.map(cardHTML).join('');
+    html += '</div>';
+  } else if (!starters.length) {
+    html += list.map(cardHTML).join('');
+  }
+
+  agentList.innerHTML = html;
+}
+
+window.toggleAgentList = function() {
+  var list = document.getElementById('agent-full-list');
+  var icon = document.getElementById('agent-toggle-icon');
+  if (!list || !icon) return;
+  var isCollapsed = list.style.display === 'none';
+  list.style.display = isCollapsed ? 'block' : 'none';
+  icon.textContent = isCollapsed ? '▼' : '▶';
+  try { localStorage.setItem('agent-list-collapsed', isCollapsed ? '0' : '1'); } catch(e) {}
+};
 function renderDemoAgentsInSidebar(){
   var agents=getDemoAgents();
   var html='<div style="padding:4px 0 6px;font-size:10px;color:var(--warn);text-align:center;border-bottom:1px dashed var(--warn);margin-bottom:6px;opacity:.7">⚠ '+t('demoTooltip')+'</div>';

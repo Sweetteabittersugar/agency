@@ -7,6 +7,7 @@ import subprocess
 import logging
 from pathlib import Path
 from maestro.session_store import append_event as save_event
+from maestro.routes.operations import record_operation
 
 log = logging.getLogger(__name__)
 
@@ -93,6 +94,16 @@ def handle_chat(handler, body):
         handler.send_json({"error": "请求为空。请在消息框中输入任务描述后发送"}, 400)
         return True
 
+    if not api_key:
+        handler.send_json({
+            "ok": False,
+            "error": "未配置 API Key",
+            "friendly_message": "还没有配置 API Key，请在设置中添加",
+            "action": "open_settings",
+            "provider_hint": "支持 DeepSeek / Anthropic / OpenAI"
+        }, 400)
+        return True
+
     # 确定 Agent
     route_info = simple_route(task) if not force_agent else None
     agent_name = force_agent or (route_info["agent"] if route_info else "")
@@ -165,6 +176,11 @@ def handle_chat(handler, body):
         handler.wfile.write(f"event: meta\ndata: {meta}\n\n".encode())
         handler.wfile.flush()
 
+        # ── 进度：路由完成 ──
+        _agent_display = agent_name or "auto"
+        handler.wfile.write(f"data: {json.dumps({'progress': True, 'stage': 'routing', 'message': f'已匹配 Agent: {_agent_display}', 'agent': _agent_display})}\n\n".encode())
+        handler.wfile.flush()
+
         # MCP servers 解析（进程池和 fallback 共用）
         mcp_servers = body.get("mcp_servers", "")
         if isinstance(mcp_servers, str):
@@ -175,6 +191,10 @@ def handle_chat(handler, body):
         iso_env = build_isolated_env(api_key, api_provider)
         if api_key:
             log.info(f'CHAT using user API key provider={api_provider}')
+
+        # ── 进度：正在分配任务 ──
+        handler.wfile.write(f"data: {json.dumps({'progress': True, 'stage': 'dispatching', 'message': '正在分配任务...'})}\n\n".encode())
+        handler.wfile.flush()
 
         # ── 优先尝试进程池（长连接复用）──
         pool_output, _pool_err = _try_pool_execute(
@@ -192,6 +212,10 @@ def handle_chat(handler, body):
                 # ── 进程池路径：直接流式输出预读结果 ──
                 used_pool = True
                 log.info(f'CHAT using pool ({len(pool_output)} lines)')
+                # ── 进度：Agent 开始执行 ──
+                _exec_msg = f'{agent_name or "auto"} 正在执行...'
+                handler.wfile.write(f"data: {json.dumps({'progress': True, 'stage': 'executing', 'message': _exec_msg})}\n\n".encode())
+                handler.wfile.flush()
                 for stripped in pool_output:
                     if not stripped:
                         continue
@@ -239,6 +263,10 @@ def handle_chat(handler, body):
                                         cwd=str(PROJECT_ROOT), env=iso_env)
                 log.info(f'CHAT proc spawn {(time.time()-t0)*1000:.0f}ms PID={proc.pid}')
                 track_proc(proc)
+                # ── 进度：Agent 开始执行 ──
+                _exec_msg = f'{agent_name or "auto"} 正在执行...'
+                handler.wfile.write(f"data: {json.dumps({'progress': True, 'stage': 'executing', 'message': _exec_msg})}\n\n".encode())
+                handler.wfile.flush()
                 first_line = True
                 for line in iter(proc.stdout.readline, ''):
                     if first_line:
@@ -310,11 +338,20 @@ def handle_chat(handler, body):
                     done_payload['via'] = 'pool'
                 handler.wfile.write(f"event: done\ndata: {json.dumps(done_payload)}\n\n".encode())
                 handler.wfile.flush()
+                # ── 进度：执行完成 ──
+                handler.wfile.write(f"data: {json.dumps({'progress': True, 'stage': 'done', 'message': '执行完成'})}\n\n".encode())
+                handler.wfile.flush()
             except Exception:
                 pass
             record_cost(PROJECT_ROOT, time.strftime("%Y-%m-%d %H:%M:%S"), detected_model, in_tokens, out_tokens, cost, elapsed, agent_name, proj_dir or "",
                         cache_read, cache_write, cache_saved, is_estimated, session_id or "")
             log.info(f'CHAT done elapsed={elapsed:.1f}s cost=${cost:.4f} model={detected_model} estimated={is_estimated} via={"pool" if used_pool else "subprocess"}')
+
+            # ── 记录操作历史 ──
+            try:
+                record_operation(agent_name or "auto", "chat_session", actual_task[:200], f"elapsed={elapsed:.1f}s cost=${cost:.4f} tokens={in_tokens}+{out_tokens}")
+            except Exception:
+                pass
 
             # ── 会话持久化：记录 Agent 回复 ──
             if session_id and chat_output_text:

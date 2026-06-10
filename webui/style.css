@@ -606,3 +606,8 @@ button:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px soli
   .sidebar-backdrop{display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,.5);z-index:999}
   .sidebar.open + .sidebar-backdrop{display:block}
 }
+
+/* ══════════════════════════════════════════
+   Agent 进度指示器动画
+   ══════════════════════════════════════════ */
+@keyframes progressPulse{0%,100%{opacity:1}50%{opacity:0.3}}
