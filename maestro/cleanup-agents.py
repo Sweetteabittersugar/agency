@@ -92,80 +92,57 @@ def kill_process_tree(pid: int) -> bool:
     return result.returncode == 0
 
 
+def _search_process(method):
+    """通用进程查找：执行一条 PowerShell 查询，返回找到的 PID 列表。
+
+    method: (进程名, 匹配模式, 匹配类型)
+      - 进程名: "powershell.exe", "claude.exe", "cmd.exe", "node.exe"
+      - 匹配模式: 用于 Where-Object 的 -like 参数
+      - 匹配类型: "launch" 用 _launch_{task_id} 模式, "direct" 用 {task_id} 模式
+    """
+    proc_name, pattern, _match_type = method
+    ps_cmd = (
+        'powershell -NoProfile -ExecutionPolicy Bypass -Command '
+        f'"Get-CimInstance Win32_Process -Filter \\"Name=\'{proc_name}\'\\" | '
+        f'Where-Object {{ $_.CommandLine -like \'*{pattern}*\' }} | '
+        f'Select-Object ProcessId | ConvertTo-Json"'
+    )
+    result = subprocess.run(ps_cmd, capture_output=True, text=True, timeout=15, shell=True)
+    if result.returncode != 0 or not result.stdout.strip():
+        return []
+    try:
+        data = json.loads(result.stdout.strip())
+        if isinstance(data, dict):
+            data = [data]
+        return [p.get("ProcessId") for p in data if p.get("ProcessId")]
+    except json.JSONDecodeError:
+        return []
+
+
 def find_task_processes(task_id: str) -> list[int]:
     """通过扫描进程命令行查找属于指定 task_id 的进程 PID 列表。
 
     策略：
     1. 查找 powershell.exe 命令行中含 _launch_{task_id} 的进程
     2. 查找 claude.exe 命令行中含 {task_id} 的进程
+    3. 查找 cmd.exe / node.exe 命令行中含 {task_id} 的进程（reasonix 等）
     """
     import re
     if not re.match(r'^[a-zA-Z0-9_-]{1,64}$', task_id):
         return []
 
+    methods = [
+        ("powershell.exe", f"_launch_{task_id}", "launch"),
+        ("claude.exe", task_id, "direct"),
+        ("cmd.exe", task_id, "direct"),
+        ("node.exe", task_id, "direct"),
+    ]
+
     pids: list[int] = []
-
-    # 方法1：查找 powershell 启动脚本
-    ps_cmd1 = (
-        'powershell -NoProfile -ExecutionPolicy Bypass -Command '
-        f'"Get-CimInstance Win32_Process -Filter \\"Name=\'powershell.exe\'\\" | '
-        f'Where-Object {{ $_.CommandLine -like \'*_launch_{task_id}*\' }} | '
-        f'Select-Object ProcessId | ConvertTo-Json"'
-    )
-    result1 = subprocess.run(ps_cmd1, capture_output=True, text=True, timeout=15, shell=True)
-    if result1.returncode == 0 and result1.stdout.strip():
-        try:
-            data = json.loads(result1.stdout.strip())
-            if isinstance(data, dict):
-                data = [data]
-            for p in data:
-                pid = p.get("ProcessId")
-                if pid and pid not in pids:
-                    pids.append(pid)
-        except json.JSONDecodeError:
-            pass
-
-    # 方法2：查找 claude.exe 命令行中含 task_id 的进程
-    ps_cmd2 = (
-        'powershell -NoProfile -ExecutionPolicy Bypass -Command '
-        f'"Get-CimInstance Win32_Process -Filter \\"Name=\'claude.exe\'\\" | '
-        f'Where-Object {{ $_.CommandLine -like \'*{task_id}*\' }} | '
-        f'Select-Object ProcessId | ConvertTo-Json"'
-    )
-    result2 = subprocess.run(ps_cmd2, capture_output=True, text=True, timeout=15, shell=True)
-    if result2.returncode == 0 and result2.stdout.strip():
-        try:
-            data = json.loads(result2.stdout.strip())
-            if isinstance(data, dict):
-                data = [data]
-            for p in data:
-                pid = p.get("ProcessId")
-                if pid and pid not in pids:
-                    pids.append(pid)
-        except json.JSONDecodeError:
-            pass
-
-    # 方法3：查找 cmd.exe / node.exe 命令行中含 task_id 的进程（reasonix 等）
-    for proc_name in ("cmd.exe", "node.exe"):
-        ps_cmd3 = (
-            'powershell -NoProfile -ExecutionPolicy Bypass -Command '
-            f'"Get-CimInstance Win32_Process -Filter \\"Name=\'{proc_name}\'\\" | '
-            f'Where-Object {{ $_.CommandLine -like \'*{task_id}*\' }} | '
-            f'Select-Object ProcessId | ConvertTo-Json"'
-        )
-        result3 = subprocess.run(ps_cmd3, capture_output=True, text=True, timeout=15, shell=True)
-        if result3.returncode == 0 and result3.stdout.strip():
-            try:
-                data = json.loads(result3.stdout.strip())
-                if isinstance(data, dict):
-                    data = [data]
-                for p in data:
-                    pid = p.get("ProcessId")
-                    if pid and pid not in pids:
-                        pids.append(pid)
-            except json.JSONDecodeError:
-                pass
-
+    for method in methods:
+        for pid in _search_process(method):
+            if pid not in pids:
+                pids.append(pid)
     return pids
 
 

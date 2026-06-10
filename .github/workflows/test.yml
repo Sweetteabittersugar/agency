@@ -50,6 +50,15 @@ jobs:
         run: |
           pip install bandit
           bandit -r maestro/ -ll
+      - name: Lint (ruff)
+        run: |
+          pip install ruff
+          ruff check maestro/ --select=E,F,W
+      - name: Type check (mypy)
+        run: |
+          pip install mypy
+          mypy maestro/ --ignore-missing-imports --follow-imports=skip || true
+        continue-on-error: true
       - name: Commit message check
         if: github.event_name == 'pull_request'
         run: |

@@ -353,7 +353,7 @@ def handle_profiles_list(handler, parsed):
     profiles_path = PROJECT_ROOT / "profiles.json"
     if not profiles_path.exists():
         handler.send_json({
-            "version": "0.2.0",
+            "version": "0.1.0",
             "description": "Profile 分级未配置",
             "profiles": {},
             "available": ["minimal", "standard", "full"],

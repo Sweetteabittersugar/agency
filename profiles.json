@@ -1,5 +1,5 @@
 {
-  "version": "0.2.0",
+  "version": "0.1.0",
   "description": "Profile 三级制度 — 面向用户体验设计，控制上下文窗口、Token 预算和可用功能",
   "profiles": {
     "minimal": {

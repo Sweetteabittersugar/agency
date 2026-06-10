@@ -74,3 +74,38 @@ python maestro/cost-tracker.py
 
 如果以上没有解决你的问题，请提交 Issue：
 https://github.com/Sweetteabittersugar/agency/issues
+
+## Agent 路由问题
+
+### Agent 总是分错
+1. 使用"不对，换一个"按钮纠正路由
+2. 系统会从纠正中学习，后续命中率会提升
+3. 如果频繁分错，可能是 Agent description 不够清晰
+
+### 路由返回"general-worker"
+1. 系统对任务意图置信度不够高，走了兜底策略
+2. 尝试更具体地描述你的需求
+3. 或手动指定 Agent
+
+## 性能问题
+
+### 页面加载慢
+1. 清除浏览器缓存
+2. 检查 sessions/ 目录大小，删除旧会话
+3. 关闭不用的 Worktree
+
+### Agent 响应慢
+1. 检查 API Provider 状态
+2. 查看仪表盘的费用 Tab 确认是否有异常延迟
+3. 减少同时运行的 Agent 数量（切换为单面板）
+
+## 数据问题
+
+### 刷新后对话丢失
+1. 检查 maestro/sessions/ 目录是否存在
+2. 确认磁盘空间充足
+3. 检查浏览器控制台是否有 localStorage 错误
+
+### 费用数据不更新
+1. 确认 cost.db 文件存在且可写
+2. 检查 maestro/logs/ 目录权限

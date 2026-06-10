@@ -81,6 +81,72 @@ PROVIDER_PRESETS = {
         "light": "abab6.5s-chat",
         "base_url": "https://api.minimax.chat/v1",
     },
+    "siliconflow": {
+        "heavy": "Pro/deepseek-ai/DeepSeek-V3",
+        "standard": "Pro/deepseek-ai/DeepSeek-V3",
+        "light": "Pro/deepseek-ai/DeepSeek-V3",
+        "base_url": "https://api.siliconflow.cn/v1",
+    },
+    "kimi": {
+        "heavy": "moonshot-v1-8k",
+        "standard": "moonshot-v1-8k",
+        "light": "moonshot-v1-8k",
+        "base_url": "https://api.moonshot.cn/v1",
+    },
+    "glm": {
+        "heavy": "glm-4-plus",
+        "standard": "glm-4-plus",
+        "light": "glm-4-flash",
+        "base_url": "https://open.bigmodel.cn/api/paas/v4",
+    },
+}
+
+# === API Provider 映射（chat / orchestrate 共用）===
+
+PROVIDER_MAP = {
+    "deepseek": {
+        "ANTHROPIC_BASE_URL": "https://api.deepseek.com/anthropic",
+        "ANTHROPIC_DEFAULT_SONNET_MODEL": "deepseek-v4-pro",
+        "ANTHROPIC_DEFAULT_HAIKU_MODEL": "deepseek-v4-flash",
+        "ANTHROPIC_MODEL": "deepseek-v4-pro",
+    },
+    "anthropic": {
+        "ANTHROPIC_BASE_URL": "https://api.anthropic.com",
+        "ANTHROPIC_MODEL": "claude-sonnet-4-6",
+    },
+    "openai": {
+        "ANTHROPIC_BASE_URL": "https://api.openai.com/v1",
+        "ANTHROPIC_MODEL": "gpt-4o",
+    },
+    "google": {
+        "ANTHROPIC_BASE_URL": "https://generativelanguage.googleapis.com/v1beta/openai",
+        "ANTHROPIC_MODEL": "gemini-2.5-pro",
+    },
+    "xai": {
+        "ANTHROPIC_BASE_URL": "https://api.x.ai/v1",
+        "ANTHROPIC_MODEL": "grok-3",
+    },
+    "siliconflow": {
+        "ANTHROPIC_BASE_URL": "https://api.siliconflow.cn/v1",
+        "ANTHROPIC_MODEL": "Pro/deepseek-ai/DeepSeek-V3",
+    },
+    "qwen": {
+        "ANTHROPIC_BASE_URL": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        "ANTHROPIC_MODEL": "qwen-plus",
+    },
+    "kimi": {
+        "ANTHROPIC_BASE_URL": "https://api.moonshot.cn/v1",
+        "ANTHROPIC_MODEL": "moonshot-v1-8k",
+    },
+    "glm": {
+        "ANTHROPIC_BASE_URL": "https://open.bigmodel.cn/api/paas/v4",
+        "ANTHROPIC_MODEL": "glm-4-plus",
+    },
+    "minimax": {
+        "ANTHROPIC_BASE_URL": "https://api.minimax.chat/v1",
+        "ANTHROPIC_MODEL": "abab7-chat",
+    },
+    "custom": {},
 }
 
 
@@ -108,6 +174,9 @@ def get_provider_config():
         "google": "GOOGLE_API_KEY",
         "xai": "XAI_API_KEY",
         "minimax": "MINIMAX_API_KEY",
+        "siliconflow": "SILICONFLOW_API_KEY",
+        "kimi": "MOONSHOT_API_KEY",
+        "glm": "ZHIPU_API_KEY",
     }
 
     api_key = ""

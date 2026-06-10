@@ -3,7 +3,7 @@
 Agency — Claude Code Web 前端
   python maestro/web.py   →   http://localhost:8800
 """
-import os, sys, json, time, threading, subprocess, logging, logging.handlers
+import os, sys, json, time, uuid, threading, subprocess, logging, logging.handlers
 from pathlib import Path
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingMixIn
@@ -123,6 +123,8 @@ class Handler(BaseHTTPRequestHandler):
         return ok
 
     def do_GET(self):
+        self._req_id = uuid.uuid4().hex[:8]
+        self._req_start = time.time()
         if not self._check_auth():
             return
         parsed = urlparse(self.path)
@@ -146,6 +148,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json({"error": "接口不存在。请检查请求的方法和路径是否正确"}, 404)
 
     def do_POST(self):
+        self._req_id = uuid.uuid4().hex[:8]
+        self._req_start = time.time()
         path = urlparse(self.path).path
         log.info(f"AUDIT POST {path} from {self.client_address[0]}")
         if not self._check_auth():
@@ -223,6 +227,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json({"error": "接口不存在。请检查请求的方法和路径是否正确"}, 404)
 
     def do_DELETE(self):
+        self._req_id = uuid.uuid4().hex[:8]
+        self._req_start = time.time()
         path = urlparse(self.path).path
         log.info(f"AUDIT DELETE {path} from {self.client_address[0]}")
         if not self._check_auth():
@@ -235,7 +241,18 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json({"error": "接口不存在。请检查请求的方法和路径是否正确"}, 404)
 
     def send_json(self, data, code=200):
+        self._last_status = code
         self.send_response(code)
+        # CORS — 允许同源和本地开发
+        origin = self.headers.get("Origin", "")
+        if origin and (origin.startswith("http://localhost") or origin.startswith("http://127.0.0.1") or origin.startswith("moz-extension://")):
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+            self.send_header("Access-Control-Allow-Credentials", "true")
+        req_id = getattr(self, '_req_id', None)
+        if req_id:
+            self.send_header("X-Request-Id", req_id)
         self.send_header("Content-Type", "application/json")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("X-Frame-Options", "DENY")
@@ -244,7 +261,25 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps(data, ensure_ascii=False).encode("utf-8"))
 
     def log_message(self, format, *args):
-        pass
+        """记录 HTTP 请求摘要"""
+        try:
+            msg = format % args
+            code = getattr(self, '_last_status', 0)
+            if code >= 400 or 'POST' in msg:
+                log.info(f"HTTP {self.client_address[0]} {msg}")
+        except Exception:
+            pass
+
+    def do_OPTIONS(self):
+        """CORS 预检"""
+        self.send_response(204)
+        origin = self.headers.get("Origin", "")
+        if origin and ("localhost" in origin or "127.0.0.1" in origin):
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+            self.send_header("Access-Control-Max-Age", "86400")
+        self.end_headers()
 
 
 # ── 注册路由 ──
