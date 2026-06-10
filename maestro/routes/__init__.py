@@ -1,5 +1,5 @@
 """路由注册中心 — 将所有路由绑定到 Handler 类"""
-from maestro.routes import agents, chat, cost, config, harness, memory, files, orchestrate, static, agent_factory, remote, setup, restart, webhook, health, test_api, routing_feedback, sessions, operations
+from maestro.routes import agents, chat, cost, config, harness, memory, files, orchestrate, static, agent_factory, remote, setup, restart, webhook, health, test_api, routing_feedback, sessions, operations, weixin_api
 from maestro import worktree_manager
 
 
@@ -44,6 +44,7 @@ def register_all(Handler):
         ("/api/sessions", sessions.handle_list),
         ("/api/sessions/", sessions.handle_get),
         ("/api/operations", operations.handle_list),
+        ("/api/weixin/status", weixin_api.handle_status),
     ]
     # POST 路由分发
     Handler._post_routes = [
@@ -76,6 +77,10 @@ def register_all(Handler):
         ("/api/worktrees/remove", worktree_manager.worktree_handle_remove),
         ("/api/worktrees/cleanup", worktree_manager.worktree_handle_cleanup),
         ("/api/sessions/append", sessions.handle_append),
+        ("/api/weixin/login/start", weixin_api.handle_login_start),
+        ("/api/weixin/start", weixin_api.handle_start),
+        ("/api/weixin/stop", weixin_api.handle_stop),
+        ("/api/weixin/logout", weixin_api.handle_logout),
     ]
     # DELETE 路由分发
     Handler._delete_routes = [
