@@ -7,8 +7,7 @@ var STARTER_AGENTS = ['coder', 'explorer', 'general-worker', 'orchestrator'];
 
 /* ── Demo 模式横幅 ── */
 function checkDemoBanner() {
-  fetch('/api/settings')
-    .then(function(r) { return r.json(); })
+  api.get('/api/settings')
     .then(function(config) {
       var hasKey = config.has_api_key;
       var banner = document.getElementById('demo-banner');
@@ -94,11 +93,7 @@ function batchDeleteAgents(){
       renderAgents(agents);
     }, 5000, function(){
       names.forEach(function(n){
-        fetch('/api/agent-delete', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({name: n})
-        }).catch(function(){});
+        api.post('/api/agent-delete', {name: n}).catch(function(){});
       });
     });
   });
@@ -136,7 +131,7 @@ async function loadAgents(){
   }
   if(typeof _demoMode!=='undefined'&&_demoMode){renderDemoAgentsInSidebar();return}
   agentList.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px">加载中…</div>';
-  try{agents=await(await fetch('/api/agents')).json();renderAgents(agents)}catch(e){agentList.innerHTML='<div class="empty-state"><div class="es-icon">🔌</div><div class="es-text">'+t('agentsLoadFail')+'</div><div class="es-actions"><button class="btn" onclick="loadAgents()">'+t('retry')+'</button><button class="btn" onclick="checkServiceStatus()">'+t('checkService')+'</button></div></div>'}
+  try{agents=await api.get('/api/agents');renderAgents(agents)}catch(e){agentList.innerHTML='<div class="empty-state"><div class="es-icon">🔌</div><div class="es-text">'+t('agentsLoadFail')+'</div><div class="es-actions"><button class="btn" onclick="loadAgents()">'+t('retry')+'</button><button class="btn" onclick="checkServiceStatus()">'+t('checkService')+'</button></div></div>'}
 }
 function renderAgents(list){
   // 多选切换按钮
@@ -247,10 +242,10 @@ function showDemoActionPopup(label){
   document.body.appendChild(ov);
   ov.addEventListener('click',function(e){if(e.target===ov)ov.remove()});
 }
-function deleteAgent(name){if(agents.length<=3){showToast(t('minAgents'),false,'warn');return}showDeleteConfirm(t('confirmDelete')+' ('+escHtml(name)+')',function(){var agentData=agents.find(function(a){return a.name===name});if(!agentData)return;var idx=agents.indexOf(agentData);agents.splice(idx,1);renderAgents(agents);showUndoableToast(t('agentDeleted')+' '+name,function(){agents.splice(idx,0,agentData);renderAgents(agents)},5000,function(){fetch('/api/agent-delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name})}).then(function(r){return r.json()}).then(function(d){if(!d.ok){showToast(d.error||t('error'),true);loadAgents()}}).catch(function(e){showToast(t('error')+': '+e.message,true);loadAgents()})})})}
-function viewAgentPrompt(name){currentPromptAgent=name;$('apm-title').textContent='编辑: '+name;$('apm-textarea').value='加载中…';$('apm-footer').innerHTML='<button class="new-chat-btn" onclick="saveAgentPrompt()" style="font-size:11px;padding:5px 14px;width:auto">💾 保存</button><button class="btn" onclick="clearAgentPromptText()" style="font-size:11px;padding:5px 8px">🗑 清空</button><button class="btn" onclick="closeAgentPrompt()">取消</button>';$('agentPromptOverlay').classList.add('on');fetch('/api/agents/'+encodeURIComponent(name)).then(function(r){return r.json()}).then(function(d){if(d.error){showToast(d.error,!0);return}$('apm-textarea').value=d.content;$('apm-textarea')._originalContent=d.content}).catch(function(e){showToast('无法加载 Agent 内容: '+(e.message||'请检查网络连接后刷新重试'),!0)})}
+function deleteAgent(name){if(agents.length<=3){showToast(t('minAgents'),false,'warn');return}showDeleteConfirm(t('confirmDelete')+' ('+escHtml(name)+')',function(){var agentData=agents.find(function(a){return a.name===name});if(!agentData)return;var idx=agents.indexOf(agentData);agents.splice(idx,1);renderAgents(agents);showUndoableToast(t('agentDeleted')+' '+name,function(){agents.splice(idx,0,agentData);renderAgents(agents)},5000,function(){api.post('/api/agent-delete',{name:name}).then(function(d){if(!d.ok){showToast(d.error||t('error'),true);loadAgents()}}).catch(function(e){showToast(t('error')+': '+e.message,true);loadAgents()})})})}
+function viewAgentPrompt(name){currentPromptAgent=name;$('apm-title').textContent='编辑: '+name;$('apm-textarea').value='加载中…';$('apm-footer').innerHTML='<button class="new-chat-btn" onclick="saveAgentPrompt()" style="font-size:11px;padding:5px 14px;width:auto">💾 保存</button><button class="btn" onclick="clearAgentPromptText()" style="font-size:11px;padding:5px 8px">🗑 清空</button><button class="btn" onclick="closeAgentPrompt()">取消</button>';$('agentPromptOverlay').classList.add('on');api.get('/api/agents/'+encodeURIComponent(name)).then(function(d){if(d.error){showToast(d.error,!0);return}$('apm-textarea').value=d.content;$('apm-textarea')._originalContent=d.content}).catch(function(e){showToast('无法加载 Agent 内容: '+(e.message||'请检查网络连接后刷新重试'),!0)})}
 function closeAgentPrompt(){$('agentPromptOverlay').classList.remove('on');currentPromptAgent='';$('apm-footer').innerHTML='<button class="new-chat-btn" onclick="saveAgentPrompt()" style="font-size:11px;padding:5px 14px;width:auto">💾 保存</button><button class="btn" onclick="closeAgentPrompt()">取消</button>'}
-function saveAgentPrompt(){var content=$('apm-textarea').value;var oldContent=$('apm-textarea')._originalContent||'';if(!currentPromptAgent||!content)return;fetch('/api/agent-update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:currentPromptAgent,content:content})}).then(function(r){return r.json()}).then(function(d){if(d.ok){$('apm-textarea')._originalContent=content;closeAgentPrompt();loadAgents();showUndoableToast(t('promptSaved'),function(){fetch('/api/agent-update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:currentPromptAgent,content:oldContent})}).then(function(){loadAgents()}).catch(function(){})},5000)}else{showToast(d.error||t('saveFail'),true)}}).catch(function(e){showToast(t('saveFail')+': '+(e.message||''),true)})}
+function saveAgentPrompt(){var content=$('apm-textarea').value;var oldContent=$('apm-textarea')._originalContent||'';if(!currentPromptAgent||!content)return;api.post('/api/agent-update',{name:currentPromptAgent,content:content}).then(function(d){if(d.ok){$('apm-textarea')._originalContent=content;closeAgentPrompt();loadAgents();showUndoableToast(t('promptSaved'),function(){api.post('/api/agent-update',{name:currentPromptAgent,content:oldContent}).then(function(){loadAgents()}).catch(function(){})},5000)}else{showToast(d.error||t('saveFail'),true)}}).catch(function(e){showToast(t('saveFail')+': '+(e.message||''),true)})}
 function loadSidebarSkills(){
   if(!isFeatureUnlocked('skills')){
     var domEl=$('sidebar-skills-list');if(domEl)domEl.innerHTML='<div style="text-align:center;padding:30px 16px;color:var(--muted)"><div style="font-size:28px;margin-bottom:8px">🔒</div><p style="font-size:12px">'+t('featureLocked').replace('{day}', FEATURE_UNLOCK_DAYS['skills']||7)+'</p></div>';
@@ -259,7 +254,7 @@ function loadSidebarSkills(){
   if(typeof _demoMode!=='undefined'&&_demoMode){renderDemoSkillsInSidebar();return}
   var domEl=$('sidebar-skills-list');if(!domEl)return;
   domEl.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px">加载中…</div>';
-  fetch('/api/skills').then(function(r){return r.json()}).then(function(skills){
+  api.get('/api/skills').then(function(skills){
     allSkills=skills||[];
     renderSidebarSkills(allSkills);
   }).catch(function(){domEl.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px">无法加载 Skills 列表。服务可能未启动，请刷新页面重试</div>'});
@@ -310,7 +305,7 @@ function viewSkillDetail(name){
 
   title.textContent='Skill: '+name;
 
-  fetch('/api/skills/content/'+name).then(function(r){return r.json()}).then(function(d){
+  api.get('/api/skills/content/'+name).then(function(d){
     body.innerHTML=
       '<div style="margin-bottom:12px">'+
       '<p style="font-size:11px"><b>描述：</b>'+escHtml(skill.description||'无')+'</p>'+
@@ -335,8 +330,8 @@ function viewSkillDetail(name){
 }
 function saveSkillSource(name){
   var content=document.getElementById('skill-editor').value;
-  fetch('/api/skills/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,content:content})})
-    .then(function(r){return r.json()}).then(function(d){
+  api.post('/api/skills/save',{name:name,content:content})
+    .then(function(d){
       if(d.ok){showToast('已保存: '+name);closeAgentPrompt()}else showToast(d.error||'保存失败，请检查文件权限或磁盘空间后重试',!0);
     }).catch(function(e){showToast('保存失败: '+(e.message||'请检查网络连接后重试'),!0)});
 }
@@ -349,8 +344,8 @@ function toggleSkill(name,enabled){
     if(skill)skill.enabled=oldEnabled;loadSidebarSkills();
     var ov=$('agentPromptOverlay');if(ov.classList.contains('on'))viewSkillDetail(name);
   },5000,function(){
-    fetch('/api/skills/toggle',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,enabled:enabled})})
-      .then(function(r){return r.json()}).then(function(d){
+    api.post('/api/skills/toggle',{name:name,enabled:enabled})
+      .then(function(d){
         if(!d.ok){showToast(d.error||'Skill 操作失败',true);loadSidebarSkills()}
       }).catch(function(e){showToast('Skill 操作失败',true);loadSidebarSkills()});
   });
@@ -372,8 +367,8 @@ function disableAllSkills(){
 }
 function deleteSkillDetail(name){
   showDeleteConfirm(t('confirmDelete')+' ('+escHtml(name)+')',function(){
-    fetch('/api/skills/'+encodeURIComponent(name),{method:'DELETE'})
-      .then(function(r){return r.json()}).then(function(d){
+    api.del('/api/skills/'+encodeURIComponent(name))
+      .then(function(d){
         if(d.ok){showToast(t('deleteOk')+': '+name);closeAgentPrompt();loadSidebarSkills()}
         else showToast(d.error||t('error'),true);
       }).catch(function(e){showToast(t('error')+': '+e.message,true)});
@@ -384,7 +379,7 @@ function deleteSkillDetail(name){
 function clearAgentPromptText(){var ta=$('apm-textarea');if(!ta||!ta.value.trim())return;var savedText=ta.value;ta.value='';ta.style.height='auto';showUndoableToast(t('promptCleared'),function(){ta.value=savedText;ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight,55*16)+'px'},5000)}
 
 /* ── 服务状态检查 ── */
-function checkServiceStatus(){showToast('正在检查服务状态…',false,'warn',2000);fetch('/api/version').then(function(r){return r.json()}).then(function(d){showToast('服务正常: '+escHtml(d.version||'OK'));loadAgents()}).catch(function(){showToast('服务未响应，请确认 Agency 是否已启动',true)})}
+function checkServiceStatus(){showToast('正在检查服务状态…',false,'warn',2000);api.get('/api/version').then(function(d){showToast('服务正常: '+escHtml(d.version||'OK'));loadAgents()}).catch(function(){showToast('服务未响应，请确认 Agency 是否已启动',true)})}
 
 /* ── 路由选择器：用户手动换 Agent ── */
 function showRoutePicker(pid) {

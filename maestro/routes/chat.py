@@ -16,7 +16,7 @@ _chat_contexts: dict[str, "ContextLayer"] = {}
 
 # ── 进程池执行辅助 ──
 _POOL_FAILURES = 0  # 连续失败计数，超过阈值后降级为直接 subprocess
-_POOL_FAILURE_THRESHOLD = 3
+from maestro.app_config import POOL_FAILURE_THRESHOLD as _POOL_FAILURE_THRESHOLD
 
 
 def _try_pool_execute(actual_task, agent_name, model, session_id, is_new,

@@ -42,8 +42,7 @@ if not _CLAUDE_BIN:
             _CLAUDE_BIN = _p
             break
 
-# 默认最大并发数 = CPU 核数 - 1，至少为 1
-_MAX_WORKERS = max(1, (os.cpu_count() or 2) - 1)
+from maestro.app_config import POOL_MAX_WORKERS as _MAX_WORKERS
 
 
 class WorkerState:

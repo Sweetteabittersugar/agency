@@ -52,7 +52,7 @@ function renderHarnessTab(tab){
   else if(tab==='memory'){renderMemoryTab(domEl)}
 }
 function loadCostOverview(){
-  fetch('/api/cost?days=30').then(function(r){return r.json()}).then(function(d){
+  api.get('/api/cost?days=30').then(function(d){
     if(!d||!d.total)return;
     var t=d.total,td=d.today;
     if($('hov-cost-today'))$('hov-cost-today').textContent='$'+(td.cost||0).toFixed(4);
@@ -153,19 +153,19 @@ function showPermToast(data){
   setTimeout(function(){if(document.body.contains(t)){sendPermDecision(data,'deny');t.remove()}},30000);
 }
 function sendPermDecision(data,decision){
-  fetch('/api/permissions/decision',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tool_name:data.tool_name,decision:decision,risk:data.risk||{},reason:decision})}).catch(function(){});
+  api.post('/api/permissions/decision',{tool_name:data.tool_name,decision:decision,risk:data.risk||{},reason:decision}).catch(function(){});
 }
 function addAllowRule(data){
-  fetch('/api/permissions/allowlist',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rule:data.tool_name})}).then(function(){showToast('已添加规则: '+data.tool_name)}).catch(function(){});
+  api.post('/api/permissions/allowlist',{rule:data.tool_name}).then(function(){showToast('已添加规则: '+data.tool_name)}).catch(function(){});
 }
 function loadPermHistory(){
-  fetch('/api/permissions/history?limit=100').then(function(r){return r.json()}).then(function(d){
+  api.get('/api/permissions/history?limit=100').then(function(d){
     var domEl=$('hperm-log');if(!domEl)return;
     if(d.history&&d.history.length){domEl.innerHTML=d.history.map(function(e){return'<div class="perm-item '+e.decision+'"><span class="pdec">'+(e.decision==='allow'?'✓':e.decision==='deny'?'✗':'⚠')+'</span> '+escHtml(e.tool||'?')+' <span style="color:var(--muted);font-size:9px">'+e.time+(e.reason?' · '+escHtml(e.reason):'')+'</span></div>'}).join('')}else{domEl.innerHTML='暂无权限记录'}
   }).catch(function(){var domEl=$('hperm-log');if(domEl)domEl.innerHTML='无法加载权限记录。服务可能未启动，请刷新页面重试'});
 }
 function loadContextDetail(){
-  fetch('/api/harness/context').then(function(r){return r.json()}).then(function(d){
+  api.get('/api/harness/context').then(function(d){
     var ttl=d.total_tokens||0,pct=ttl>0?Math.min(100,Math.round(ttl/500000*100)):0;
     var fill=$('hctx-fill'),text=$('hctx-text'),cache=$('hctx-cache'),detail=$('hctx-detail');
     if(fill){fill.style.width=pct+'%';fill.className='ctx-gauge-fill'+(pct>85?' danger':pct>60?' warn':'')}
@@ -191,7 +191,7 @@ function loadContextDetail(){
   _ctxTimer=setInterval(function(){if($('harnessOverlay').classList.contains('on'))loadContextDetail()},10000);
 }
 function loadSubagents(){
-  fetch('/api/harness/subagents').then(function(r){return r.json()}).then(function(d){
+  api.get('/api/harness/subagents').then(function(d){
     var domEl=$('hsub-tree');if(!domEl)return;
     if(d.tree&&d.tree.length){var html='<div style="margin-bottom:6px;color:var(--text2);font-size:11px">'+d.stats.total+' 个 · '+d.stats.done+' 完成 '+(d.stats.running||0)+' 运行中 '+(d.stats.failed||0)+' 失败</div>';
     d.tree.forEach(function(a,i){
@@ -206,13 +206,13 @@ function loadSubagents(){
 }
 function loadHooksLog(){
   var hlogs=window._hlogs||[];
-  fetch('/api/harness/events?limit=50').then(function(r){return r.json()}).then(function(d){
+  api.get('/api/harness/events?limit=50').then(function(d){
     var events=d.events||[],domEl=$('hhooks-log');if(!domEl)return;
     if(events.length){domEl.innerHTML=events.map(function(e){return'<div style="padding:3px 6px;margin:1px 0;font-size:10px;border-left:2px solid var(--accent);background:var(--surface2)"><strong>'+escHtml(e.type)+'</strong> <span style="color:var(--muted)">'+new Date(e.ts*1000).toLocaleTimeString()+'</span></div>'}).join('')}else{domEl.innerHTML='暂无 Hook 事件'}
   }).catch(function(){var domEl=$('hhooks-log');if(domEl)domEl.innerHTML='无法加载 Hook 事件。服务可能未启动，请刷新页面重试'});
 }
 function loadMCPDetail(){
-  fetch('/api/mcp/status').then(function(r){return r.json()}).then(function(d){
+  api.get('/api/mcp/status').then(function(d){
     var domEl=$('hmcp-list'),sel=$('mcp-status');if(!domEl)return;
     var servers=d.servers||[];
     var html=servers.length?servers.map(function(s){return'<div style="padding:8px 10px;margin:4px 0;background:var(--surface2);border-radius:var(--radius-sm)"><div style="font-weight:600;font-size:12px">'+escHtml(s.name)+' <span style="font-size:9px;color:'+(s.running?'var(--accent)':'var(--muted)')+'">● '+(s.running?'活跃':'离线')+'</span></div><div style="font-size:10px;color:var(--muted)">'+escHtml(s.command||'')+(s.args||[]).join(' ')+'</div></div>'}).join(''):'暂无 MCP 服务器';
@@ -220,14 +220,14 @@ function loadMCPDetail(){
   }).catch(function(){var domEl=$('hmcp-list');if(domEl)domEl.innerHTML='无法加载 MCP 状态。服务可能未启动，请刷新页面重试'});
 }
 function loadDashboardPermissionAudit(){
-  fetch('/api/permissions/audit?limit=50').then(function(r){return r.json()}).then(function(d){
+  api.get('/api/permissions/audit?limit=50').then(function(d){
     var domEl=document.getElementById('perm-audit-list');if(!domEl)return;
     var logs=d.logs||[],stats=d.stats||{};
     if(logs.length){domEl.innerHTML='<div style="margin-bottom:4px;font-size:10px;color:var(--text2)">总计 '+(stats.total||logs.length)+' · 允许 '+(stats.allowed||0)+' · 拒绝 '+(stats.denied||0)+'</div>'+logs.slice(0,20).map(function(l){var color=l.decision==='allow'?'var(--accent)':'var(--danger)';return'<div style="padding:2px 6px;margin:1px 0;font-size:10px;border-left:2px solid '+color+'"><span style="color:'+color+'">'+(l.decision==='allow'?'✓':'✗')+'</span> '+escHtml(l.tool_name||'?')+' <span style="color:var(--muted)">'+escHtml(l.time||'')+'</span></div>'}).join('')}else{domEl.innerHTML='暂无审计记录'}
   }).catch(function(){var domEl=document.getElementById('perm-audit-list');if(domEl)domEl.innerHTML='无法加载审计日志'});
 }
 function loadEnvStatus(){
-  fetch("/api/harness/status").then(function(r){return r.json()}).then(function(d){
+  api.get("/api/harness/status").then(function(d){
     var domEl=document.getElementById("henv-status");if(!domEl)return;
     var html="";
     var apiOk=d.api_key_valid!==undefined?d.api_key_valid:false;
@@ -415,7 +415,7 @@ function drawDemoCostTrend(){
 /* ── 费用仪表盘 Tab ── */
 function loadCostDashboard(){
   var barEl=$('cost-bar-chart'), agentEl=$('cost-agent-bars'), tableEl=$('cost-daily-table');
-  fetch('/api/cost/dashboard').then(function(r){return r.json()}).then(function(d){
+  api.get('/api/cost/dashboard').then(function(d){
     if(!d){showEmpty();return}
     // KPIs
     var t=d.totals||{};
@@ -535,8 +535,7 @@ function renderWorktreeTab(container) {
 }
 
 function loadWorktrees() {
-  fetch('/api/worktrees')
-    .then(function(r) { return r.json(); })
+  api.get('/api/worktrees')
     .then(function(data) {
       document.getElementById('wt-count').textContent = data.count || 0;
       var list = document.getElementById('wt-list');
@@ -563,12 +562,7 @@ function loadWorktrees() {
 function createWorktree() {
   var name = document.getElementById('wt-new-name').value.trim();
   if (!name) return;
-  fetch('/api/worktrees/create', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({name: name})
-  })
-    .then(function(r) { return r.json(); })
+  api.post('/api/worktrees/create', {name: name})
     .then(function(data) {
       if (data.ok) {
         document.getElementById('wt-new-name').value = '';
@@ -582,12 +576,7 @@ function createWorktree() {
 
 function removeWorktree(name) {
   if (!confirm('确认删除 Worktree: ' + name + '?')) return;
-  fetch('/api/worktrees/remove', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({name: name, force: true})
-  })
-    .then(function(r) { return r.json(); })
+  api.post('/api/worktrees/remove', {name: name, force: true})
     .then(function(data) {
       if (data.ok) loadWorktrees();
       else alert('删除失败: ' + (data.error || '未知错误'));
@@ -601,7 +590,7 @@ function renderOperationsTab(container) {
   loadOperations();
 }
 function loadOperations() {
-  fetch('/api/operations').then(function(r) { return r.json(); }).then(function(d) {
+  api.get('/api/operations').then(function(d) {
     var list = document.getElementById('ops-list');
     if (!list) return;
     var ops = d.operations || [];
@@ -637,8 +626,7 @@ function renderWeixinTab(container) {
 }
 
 function loadWeixinStatus() {
-  fetch('/api/weixin/status')
-    .then(function(r) { return r.json(); })
+  api.get('/api/weixin/status')
     .then(function(data) {
       var panel = document.getElementById('wx-panel');
       if (!panel) return;
@@ -690,8 +678,7 @@ function loadWeixinStatus() {
 window.wxStartLogin = function() {
   var btn = document.getElementById('wx-login-btn');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ 获取中...'; }
-  fetch('/api/weixin/login/start', { method: 'POST' })
-    .then(function(r) { return r.json(); })
+  api.post('/api/weixin/login/start')
     .then(function(data) {
       if (data.ok || data.qrcode_img_content) {
         loadWeixinStatus();
@@ -703,21 +690,18 @@ window.wxStartLogin = function() {
 };
 
 window.wxStartBot = function() {
-  fetch('/api/weixin/start', { method: 'POST' })
-    .then(function(r) { return r.json(); })
+  api.post('/api/weixin/start')
     .then(function() { loadWeixinStatus(); });
 };
 
 window.wxStopBot = function() {
-  fetch('/api/weixin/stop', { method: 'POST' })
-    .then(function(r) { return r.json(); })
+  api.post('/api/weixin/stop')
     .then(function() { loadWeixinStatus(); });
 };
 
 window.wxLogout = function() {
   if (!confirm('确认退出微信登录？退出后需要重新扫码。')) return;
-  fetch('/api/weixin/logout', { method: 'POST' })
-    .then(function(r) { return r.json(); })
+  api.post('/api/weixin/logout')
     .then(function() { loadWeixinStatus(); });
 };
 
@@ -742,8 +726,7 @@ function searchMemory() {
   var content = document.getElementById('mem-content');
   content.innerHTML = '<p style="color:var(--muted);">搜索中...</p>';
 
-  fetch('/api/memory/search?q=' + encodeURIComponent(q))
-    .then(function(r) { return r.json(); })
+  api.get('/api/memory/search?q=' + encodeURIComponent(q))
     .then(function(data) {
       if (!data.ok) { content.innerHTML = '<p style="color:#e74c3c;">搜索失败</p>'; return; }
       var results = data.results || [];
@@ -773,8 +756,7 @@ function loadMemoryTimeline() {
   var content = document.getElementById('mem-content');
   content.innerHTML = '<p style="color:var(--muted);">加载时间线...</p>';
 
-  fetch('/api/memory/timeline')
-    .then(function(r) { return r.json(); })
+  api.get('/api/memory/timeline')
     .then(function(data) {
       var entries = data.entries || [];
       if (entries.length === 0) {
@@ -804,8 +786,7 @@ function loadMemoryFiles() {
   var content = document.getElementById('mem-content');
   content.innerHTML = '<p style="color:var(--muted);">加载中...</p>';
 
-  fetch('/api/memory')
-    .then(function(r) { return r.json(); })
+  api.get('/api/memory')
     .then(function(data) {
       var files = data.files || [];
       if (files.length === 0) {
@@ -830,8 +811,7 @@ function loadMemoryFiles() {
 }
 
 window.openMemoryFile = function(path, name) {
-  fetch('/api/memory/' + encodeURIComponent(path))
-    .then(function(r) { return r.json(); })
+  api.get('/api/memory/' + encodeURIComponent(path))
     .then(function(data) {
       var content = document.getElementById('mem-content');
       content.innerHTML =

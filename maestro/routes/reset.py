@@ -62,22 +62,18 @@ def handle_reset_status(handler, parsed):
 
 def handle_reset_user_file(handler, parsed):
     """POST /api/reset/user-file"""
-    try:
-        body = _json.loads(handler.body)
-    except _json.JSONDecodeError:
-        handler.send_json({"ok": False, "error": "无效的JSON"}, 400)
-        return True
-
-    file_path = body.get("path", "").strip()
+    file_path = parsed.get("path", "").strip()
     if not file_path:
         handler.send_json({"ok": False, "error": "缺少 path"}, 400)
         return True
 
-    full_path = PROJECT_ROOT / file_path
+    full_path = (PROJECT_ROOT / file_path).resolve()
 
     # 安全检查：只允许在 user/ 目录下
-    rel_parts = str(full_path.relative_to(PROJECT_ROOT)).replace("\\", "/").split("/")
-    if "user" not in rel_parts[1:3]:
+    user_agents_resolved = USER_AGENTS_DIR.resolve()
+    user_skills_resolved = USER_SKILLS_DIR.resolve()
+    if not (str(full_path).startswith(str(user_agents_resolved)) or
+            str(full_path).startswith(str(user_skills_resolved))):
         handler.send_json({"ok": False, "error": "只能删除 user/ 目录下的文件"}, 403)
         return True
 
@@ -113,14 +109,8 @@ def handle_reset_user_all(handler, parsed):
 
 def handle_reset_system_category(handler, parsed):
     """POST /api/reset/system-category"""
-    try:
-        body = _json.loads(handler.body)
-    except _json.JSONDecodeError:
-        handler.send_json({"ok": False, "error": "无效的JSON"}, 400)
-        return True
-
-    category = body.get("category", "").strip()
-    cat_type = body.get("type", "agents").strip()
+    category = parsed.get("category", "").strip()
+    cat_type = parsed.get("type", "agents").strip()
 
     if not category:
         handler.send_json({"ok": False, "error": "缺少 category"}, 400)

@@ -168,8 +168,12 @@ def handle_mcp_status(handler, parsed):
 
 def handle_skills_save(handler, body):
     """POST /api/skills/save — 保存 Skill 源码（默认写入 user/ 子目录）"""
-    name = body.get("name", "")
+    import re
+    name = body.get("name", "").strip()
     content = body.get("content", "")
+    if not re.match(r'^[a-zA-Z0-9_-]+$', name):
+        handler.send_json({"ok": False, "error": "名称只能包含字母、数字、连字符、下划线"}, 400)
+        return True
     if not name or not content:
         handler.send_json({"error": "缺少必填字段。请同时提供 name（Skill 名称）和 content（Skill 源码内容）"}, 400)
         return True

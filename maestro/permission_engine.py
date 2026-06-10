@@ -86,7 +86,8 @@ TRUST_MODE_NORMAL = "normal"        # 同类操作只问一次
 TRUST_MODE_TRUSTED = "trusted"      # 仅拦截高危操作
 
 # ── 策略门常量 ──
-DEFAULT_TOKEN_LIMIT = 100_000; DEFAULT_DAILY_BUDGET = 5.0; BATCH_DELETE_THRESHOLD = 5
+from maestro.app_config import DEFAULT_TOKEN_LIMIT, DEFAULT_DAILY_BUDGET
+BATCH_DELETE_THRESHOLD = 5
 SENSITIVE_FILES = [".env", ".env.local", ".gitignore", "settings.json",
     "*.key", "*.pem", "*.p12", "credentials*", "secret*"]
 SECRET_PATTERNS = [

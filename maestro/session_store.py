@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 STORE_DIR = Path(__file__).resolve().parent / "sessions"
-SNAPSHOT_THRESHOLD = 2 * 1024 * 1024  # JSONL 超过 2MB 时压缩快照
+from maestro.app_config import SESSION_SNAPSHOT_THRESHOLD as SNAPSHOT_THRESHOLD  # JSONL 超过 2MB 时压缩快照
 
 
 def _ensure_dir():

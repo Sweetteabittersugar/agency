@@ -32,7 +32,7 @@ FORBIDDEN_PATTERNS = [
     r"(hack|steal|exploit|malware|ransomware|phishing)",
 ]
 
-MAX_INPUT_LENGTH = 32000  # 最大输入字符数
+from maestro.app_config import MAX_INPUT_LENGTH  # 最大输入字符数
 
 # === 输出安全（API 响应 → 用户之前） ===
 
@@ -160,7 +160,7 @@ def sanitize_output(text):
 # === 速率限制 ===
 
 _request_counts = defaultdict(list)
-RATE_LIMIT = 60  # 每分钟最多 60 次请求
+from maestro.app_config import RATE_LIMIT_PER_MINUTE as RATE_LIMIT  # 每分钟最多 60 次请求
 
 
 def check_rate_limit(user_id="default"):

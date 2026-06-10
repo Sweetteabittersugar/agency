@@ -7,8 +7,7 @@ from pathlib import Path
 
 log = logging.getLogger(__name__)
 
-PORT = int(os.environ.get("AGENCY_PORT", "8800"))
-BIND_ADDR = os.environ.get("AGENCY_HOST", "127.0.0.1")  # 默认仅本机，远端需设 AGENCY_HOST=0.0.0.0 + AGENCY_TOKEN
+from maestro.app_config import PORT, BIND_ADDR  # 默认仅本机，远端需设 AGENCY_HOST=0.0.0.0 + AGENCY_TOKEN
 
 # 内存中的 token（None=未初始化，\"\"=已显式关闭，其他=密码）
 _token = None
