@@ -8,6 +8,7 @@ v2: 集成 PermissionEngine 三级权限审批
 
 import re
 import time
+import threading
 from collections import defaultdict
 from typing import Tuple, Optional
 
@@ -160,19 +161,21 @@ def sanitize_output(text):
 # === 速率限制 ===
 
 _request_counts = defaultdict(list)
+_rate_lock = threading.Lock()
 from maestro.app_config import RATE_LIMIT_PER_MINUTE as RATE_LIMIT  # 每分钟最多 60 次请求
 
 
 def check_rate_limit(user_id="default"):
     """简单的滑动窗口速率限制"""
-    now = time.time()
-    window = now - 60  # 1 分钟窗口
+    with _rate_lock:
+        now = time.time()
+        window = now - 60  # 1 分钟窗口
 
-    # 清理过期记录
-    _request_counts[user_id] = [t for t in _request_counts[user_id] if t > window]
+        # 清理过期记录
+        _request_counts[user_id] = [t for t in _request_counts[user_id] if t > window]
 
-    if len(_request_counts[user_id]) >= RATE_LIMIT:
-        return False
+        if len(_request_counts[user_id]) >= RATE_LIMIT:
+            return False
 
-    _request_counts[user_id].append(now)
-    return True
+        _request_counts[user_id].append(now)
+        return True

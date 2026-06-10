@@ -1,0 +1,21 @@
+/* 从 style.css 拆分 — 重置与基础排版 */
+*{margin:0;padding:0;box-sizing:border-box}
+body{font:14px/1.55 "DM Sans","Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;overflow:hidden}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0;height:0}
+
+/* ── 焦点可见 ── */
+:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px;border-radius:2px}
+button:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px solid var(--focus-ring);outline-offset:1px}
+
+/* ── 自定义滚动条（消息区和侧边栏面板）hover 时显示 ── */
+.sidebar-panel::-webkit-scrollbar,.panel-msgs::-webkit-scrollbar{width:0;transition:width .3s}
+.sidebar-panel:hover::-webkit-scrollbar,.panel-msgs:hover::-webkit-scrollbar{width:3px}
+.sidebar-panel:hover::-webkit-scrollbar-thumb,.panel-msgs:hover::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* ══════════════════════════════════════════
+   状态颜色 (WCAG AA)
+   ══════════════════════════════════════════ */
+.error,.fail{color:var(--danger)}
+.success,.ok{color:var(--success)}
+.warn{color:var(--warn)}

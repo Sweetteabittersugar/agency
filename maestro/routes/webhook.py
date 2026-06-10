@@ -13,6 +13,19 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 def handle_webhook(handler, body):
     """POST /api/webhook/:channel — 外部服务触发 Agent"""
+    # 认证检查
+    token = handler.headers.get("Authorization", "").replace("Bearer ", "").strip()
+    expected = os.environ.get("AGENCY_AUTH_TOKEN", "")
+    if expected:
+        if token != expected:
+            handler.send_json({"ok": False, "error": "未授权"}, 401)
+            return True
+    else:
+        client_ip = handler.client_address[0] if handler.client_address else ""
+        if client_ip not in ("127.0.0.1", "::1", "localhost"):
+            handler.send_json({"ok": False, "error": "未授权"}, 401)
+            return True
+
     path = urlparse(handler.path).path
     channel = path[len("/api/webhook/"):] if path.startswith("/api/webhook/") else "generic"
 
