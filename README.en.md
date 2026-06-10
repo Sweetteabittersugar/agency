@@ -11,7 +11,7 @@
 [![Version](https://img.shields.io/badge/version-0.1.0-green)](VERSION)
 [![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://python.org)
 [![Agents](https://img.shields.io/badge/Agents-31-purple)]()
-[![Skills](https://img.shields.io/badge/Skills-40+-orange)]()
+[![Skills](https://img.shields.io/badge/Skills-34-orange)]()
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 > *中文用户？[点此阅读中文 README](README.md)*
@@ -45,7 +45,7 @@ agency start
 | 🔧 | 🎨 | 🔌 |
 |:---:|:---:|:---:|
 | **Skill Workflows** | **Split Panels** | **11 Providers** |
-| 40+ reusable skill templates | 1/2/4 panel layouts | DeepSeek · GPT · Claude · Gemini |
+| 34 reusable skill templates | 1/2/4 panel layouts | DeepSeek · GPT · Claude · Gemini |
 | Edit source, toggle on/off | Independent sessions per panel | Kimi · Qwen · GLM · MiniMax… |
 
 ## Installation

@@ -4,13 +4,12 @@
 
 ## 路由矩阵
 
-> 33 个 Agent，按 12 大类组织。路由先定类再选 Agent：高置信度直派 / 中置信度列候选 / 低置信度反问。
+> 31 个 Agent，按 13 大类组织。路由先定类再选 Agent：高置信度直派 / 中置信度列候选 / 低置信度反问。
 
 ### 架构设计
 | 关键词 | Agent | 说明 |
 |--------|-------|------|
 | 系统设计/架构设计/技术选型/接口设计 | `architect` | 软件架构师，只出方案不写代码 |
-| API设计/REST/GraphQL/gRPC/接口规范 | `api-designer` | API 架构设计与规范制定 |
 
 ### 编码实现
 | 关键词 | Agent | 说明 |
@@ -23,6 +22,9 @@
 | 关键词 | Agent | 说明 |
 |--------|-------|------|
 | 审查/review/检查（通用） | `code-reviewer` | 多维度通用代码审查（含各语言） |
+| Go审查/go代码/go项目 | `go-reviewer` | Go 代码专项审查：错误处理、并发安全、接口设计 |
+| Python审查/py代码/Django/Flask | `python-reviewer` | Python 代码专项审查：PEP 8、类型注解、框架最佳实践 |
+| TS审查/ts代码/React/Node | `typescript-reviewer` | TypeScript 代码专项审查：类型安全、React、Node.js |
 | 评估输出/质量检查/输出审查 | `critic` | 三维评估 Agent 输出，放行或打回 |
 
 ### 测试质量
@@ -30,6 +32,7 @@
 |--------|-------|------|
 | 测试/验证/跑/确认/test/测试策略/边界用例/回归 | `test-runner` | 执行测试、测试策略，报告结果 |
 | TDD/测试先行/红绿重构/生成测试/写测试用例 | `tdd-guide` | TDD 五步循环向导（含测试生成） |
+| 生成测试/自动测试/测试用例生成 | `test-generator` | 分析代码路径，自动生成单元/集成/API 测试用例 |
 | E2E/端到端/Playwright/浏览器测试 | `e2e-runner` | Playwright 端到端测试 |
 | 验证改动/检查修复/确认修复 | `verifier` | 独立验证改动是否解决问题 |
 
@@ -37,28 +40,22 @@
 | 关键词 | Agent | 说明 |
 |--------|-------|------|
 | 安全/审计/漏洞 | `security-reviewer` | 深度安全审查 |
-| 渗透/攻击/红队/攻防 | `pentester` | 安全渗透测试 |
-| 密钥/泄露/敏感信息/扫描 | `secret-scanner` | 密钥泄露检测与轮换建议 |
-| 事故/应急/on-call/宕机 | `incident-responder` | 事故响应与根因分析 |
 
 ### 运维部署
 | 关键词 | Agent | 说明 |
 |--------|-------|------|
 | CI/CD/Docker/部署/环境 | `devops` | CI/CD 与基础设施 |
 | 发版/发布/CHANGELOG/版本管理 | `release-manager` | 版本管理与发布检查 |
-| 监控/日志/追踪/可观测/告警 | `observability-engineer` | 监控/日志/分布式追踪 |
 
 ### 数据工程
 | 关键词 | Agent | 说明 |
 |--------|-------|------|
-| ETL/数据管道/数仓/数据清洗 | `data-engineer` | 数据管道与 ETL 工程 |
-| 数据库/SQL/Schema/索引/查询优化 | `database-optimizer` | SQL 性能与 Schema 优化 |
+| 数据库/SQL/Schema/索引/查询优化 | `database-reviewer` | SQL 性能与 Schema 优化 |
 
 ### 前端交互
 | 关键词 | Agent | 说明 |
 |--------|-------|------|
 | 界面设计/UI设计/UX设计/交互设计 | `designer` | UI/UX 设计，可生成原型 |
-| 无障碍/WCAG/ARIA/a11y/包容性 | `a11y-expert` | WCAG 无障碍审计 |
 
 ### 编排调度
 | 关键词 | Agent | 说明 |
@@ -67,13 +64,18 @@
 | 路由/意图识别/agent选择 | `router` | 智能路由，成本优化 |
 | 规划/设计/方案/计划 | `planner` | 先规划再执行 |
 | 带队/领导/统筹 | `lead` | 多 Agent 任务领导者 |
+| 产品/需求/功能范围/验收标准/优先级 | `ceo` | 产品决策：功能范围、验收标准、优先级排序 |
+
+### 内容创作
+| 关键词 | Agent | 说明 |
+|--------|-------|------|
+| 写小说/网文/世界观/大纲/章节写作 | `webnovel-writer` | 专业中文网文作家：世界观构建、人物设计、章节写作 |
 
 ### 文档知识
 | 关键词 | Agent | 说明 |
 |--------|-------|------|
 | 更新文档/README/CHANGELOG | `doc-updater` | 代码改完文档跟着改 |
 | 压缩上下文/摘要/记忆管理 | `memory-keeper` | 长任务摘要，上下文压缩 |
-| 知识聚合/跨会话/研究综述 | `knowledge-synthesizer` | 跨会话知识聚合与梳理 |
 
 ### 探查搜索
 | 关键词 | Agent | 说明 |
@@ -119,39 +121,37 @@
 （STATUS + 详细结果 + 用户摘要）
 ```
 
-### 现有 Agent 清单（33 个，12 大类）
+### 现有 Agent 清单（31 个，13 大类）
 
 | 分类 | Agent 文件 | 说明 | 适合模型 |
 |------|-----------|------|----------|
 | 架构设计 | `architect.md` | 软件架构师，只出方案不写代码 | opus |
-| 架构设计 | `api-designer.md` | API 架构设计与规范 | sonnet |
 | 编码实现 | `coder.md` | 代码执行者+清理员 | deepseek-v4 / sonnet |
 | 编码实现 | `build-error-resolver.md` | 构建错误修复 | sonnet |
 | 编码实现 | `performance-optimizer.md` | 性能优化师 | sonnet |
 | 审查验证 | `code-reviewer.md` | 代码审查员（通用） | sonnet |
+| 审查验证 | `go-reviewer.md` | Go 代码专项审查 | sonnet |
+| 审查验证 | `python-reviewer.md` | Python 代码专项审查 | sonnet |
+| 审查验证 | `typescript-reviewer.md` | TypeScript 代码专项审查 | sonnet |
 | 审查验证 | `critic.md` | 输出评估员 | sonnet |
 | 测试质量 | `test-runner.md` | 测试执行员+策略 | haiku |
 | 测试质量 | `tdd-guide.md` | TDD 向导（含测试生成） | sonnet |
 | 测试质量 | `e2e-runner.md` | E2E 测试专家 | sonnet |
 | 测试质量 | `verifier.md` | 实施验证员 | sonnet |
+| 测试质量 | `test-generator.md` | 测试生成器 | sonnet |
 | 安全防护 | `security-reviewer.md` | 安全审计员 | sonnet |
-| 安全防护 | `pentester.md` | 安全渗透测试专家 | sonnet |
-| 安全防护 | `secret-scanner.md` | 密钥泄露检测 | haiku |
-| 安全防护 | `incident-responder.md` | 事故响应专家 | sonnet |
 | 运维部署 | `devops.md` | DevOps 工程师 | sonnet |
 | 运维部署 | `release-manager.md` | 发布经理 | haiku |
-| 运维部署 | `observability-engineer.md` | 可观测性工程师 | sonnet |
-| 数据工程 | `data-engineer.md` | 数据工程师 | sonnet |
-| 数据工程 | `database-optimizer.md` | 数据库优化师 | sonnet |
+| 数据工程 | `database-reviewer.md` | 数据库优化师 | sonnet |
 | 前端交互 | `designer.md` | UI/UX 设计师 | sonnet |
-| 前端交互 | `a11y-expert.md` | 无障碍审计专家 | sonnet |
 | 编排调度 | `orchestrator.md` | 总调度 | sonnet |
 | 编排调度 | `router.md` | 智能路由器 | haiku |
 | 编排调度 | `planner.md` | 规划架构师 | sonnet / opus |
 | 编排调度 | `lead.md` | 任务领导者 | sonnet |
+| 编排调度 | `ceo.md` | 产品决策者 | sonnet |
+| 内容创作 | `webnovel-writer.md` | 专业中文网文作家 | opus |
 | 文档知识 | `doc-updater.md` | 文档更新员 | haiku |
 | 文档知识 | `memory-keeper.md` | 记忆管理者 | haiku |
-| 文档知识 | `knowledge-synthesizer.md` | 知识合成师 | haiku |
 | 探查搜索 | `explorer.md` | 代码探索员 | haiku |
 | 探查搜索 | `debugger.md` | 调试专家 | sonnet |
 | 通用工具 | `general-worker.md` | 通用执行者 | sonnet |

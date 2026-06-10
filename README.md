@@ -42,7 +42,7 @@ agency start
 | 🔧 | 🎨 | 🔌 |
 |:---:|:---:|:---:|
 | **Skill 工作流** | **多面板分屏** | **11 家模型供应商** |
-| 40+ 可复用技能模板 | 1/2/4 窗随心切换 | DeepSeek · GPT · Claude · Gemini |
+| 34 个可复用技能模板 | 1/2/4 窗随心切换 | DeepSeek · GPT · Claude · Gemini |
 | 一键编辑源码、启用/禁用 | 面板间独立会话互不干扰 | Kimi · 通义 · 智谱 · MiniMax… |
 
 ## 安装
@@ -105,7 +105,7 @@ agency/
 ├── maestro/        调度引擎（路由/聊天/编排/成本/安全）
 ├── webui/          前端（模块化 JS + CSS 暗色主题 + HTML）
 ├── agents/         33 个 Agent 定义（12 大类）
-├── .claude/skills/ 40+ 个 Skill 工作流
+├── .claude/skills/ 34 个 Skill 工作流
 ├── rules/          工程规范
 ├── hooks/          生命周期自动化
 ├── commands/       快捷命令
