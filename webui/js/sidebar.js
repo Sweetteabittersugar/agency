@@ -4,6 +4,76 @@ var allSkills=[];
 var _multiSelectMode = false;
 var _selectedAgents = {};
 var STARTER_AGENTS = ['coder', 'explorer', 'general-worker', 'orchestrator'];
+var currentNav = 'chat';
+
+/* ── 导航切换 ── */
+window.switchNav = function(nav) {
+  currentNav = nav;
+  document.querySelectorAll('#sidebar-nav .nav-item').forEach(function(el) {
+    el.classList.toggle('active', el.getAttribute('data-nav') === nav);
+  });
+  document.querySelectorAll('#sidebar-content .nav-panel').forEach(function(el) {
+    el.style.display = 'none';
+  });
+  var panel = document.getElementById('nav-' + nav);
+  if (panel) panel.style.display = 'block';
+  if (nav === 'agents') { loadSidebarAgents(); loadSidebarSkills(); }
+  if (nav === 'dashboard') { loadSidebarDashboard(); }
+  if (nav === 'connect') { loadSidebarConnect(); }
+  try { localStorage.setItem('agency-nav', nav); } catch(e) {}
+};
+
+function loadSidebarAgents() {
+  if (window.agents && window.agents.length) {
+    renderAgents(window.agents);
+  } else {
+    loadAgents();
+  }
+}
+
+function loadSidebarDashboard() {
+  api.get('/api/cost/summary').then(function(d) {
+    var total = d.total_cost || (d.total && d.total.cost) || 0;
+    var el = document.getElementById('sidebar-cost-summary');
+    if (el) el.innerHTML = '<div style="display:flex;justify-content:space-between;padding:8px;"><span>今日费用</span><strong>$' + Number(total).toFixed(4) + '</strong></div>';
+  }).catch(function() {
+    var el = document.getElementById('sidebar-cost-summary');
+    if (el) el.textContent = '无法加载';
+  });
+  api.get('/api/operations').then(function(d) {
+    var ops = (d.operations || []).slice(0, 3);
+    var html = ops.map(function(o) {
+      var ts = o.ts || o.timestamp || 0;
+      return '<div style="padding:2px 8px;font-size:10px;color:var(--muted);">' +
+        new Date(ts * 1000).toLocaleTimeString('zh-CN') + ' ' + escHtml((o.type || '') + ' ' + (o.target || '')).slice(0, 40) + '</div>';
+    }).join('');
+    var el = document.getElementById('sidebar-ops-summary');
+    if (el) el.innerHTML = html || '<div style="padding:8px;color:var(--muted);font-size:11px;">暂无操作</div>';
+  }).catch(function() {
+    var el = document.getElementById('sidebar-ops-summary');
+    if (el) el.textContent = '无法加载';
+  });
+}
+
+function loadSidebarConnect() {
+  api.get('/api/weixin/status').then(function(d) {
+    var el = document.getElementById('sidebar-wx-status');
+    if (el) el.innerHTML =
+      '<span style="color:' + (d.logged_in ? 'var(--success)' : 'var(--muted)') + '">' + (d.logged_in ? '✅ 已连接' : '⚪ 未连接') + '</span>' +
+      (d.logged_in ? '' : '<br><a href="#" onclick="toggleDashboard();return false" style="font-size:11px;color:var(--accent);">去登录 →</a>');
+  }).catch(function() {
+    var el = document.getElementById('sidebar-wx-status');
+    if (el) el.textContent = '加载失败';
+  });
+  api.get('/api/mcp/status').then(function(d) {
+    var servers = d.servers || [];
+    var el = document.getElementById('sidebar-mcp-status');
+    if (el) el.innerHTML = servers.length + ' 个服务器' + (servers.length ? '' : ' (未配置)');
+  }).catch(function() {
+    var el = document.getElementById('sidebar-mcp-status');
+    if (el) el.textContent = '无法加载';
+  });
+}
 
 /* ── Demo 模式横幅 ── */
 function checkDemoBanner() {

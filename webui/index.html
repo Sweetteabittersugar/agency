@@ -17,25 +17,49 @@
 </head>
 <body>
 <nav class="sidebar">
-<div class="sidebar-tabs">
-<div class="sidebar-tab active" data-tab="agents">Agent</div>
-<div class="sidebar-tab" data-tab="skills">Skills</div>
-<div class="sidebar-tab" data-tab="history">历史</div>
+<div id="sidebar-nav">
+  <div class="nav-item active" data-nav="chat" onclick="switchNav('chat')">
+    <span class="nav-icon">💬</span><span class="nav-label">聊天</span>
+    <span class="nav-badge" id="chat-badge" style="display:none">●</span>
+  </div>
+  <div class="nav-item" data-nav="agents" onclick="switchNav('agents')">
+    <span class="nav-icon">🤖</span><span class="nav-label">Agent</span>
+  </div>
+  <div class="nav-item" data-nav="dashboard" onclick="switchNav('dashboard')">
+    <span class="nav-icon">📊</span><span class="nav-label">看板</span>
+  </div>
+  <div class="nav-item" data-nav="connect" onclick="switchNav('connect')">
+    <span class="nav-icon">🔌</span><span class="nav-label">连接</span>
+  </div>
 </div>
-<div class="sidebar-panel active" id="panel-agents">
-	<div id="demo-banner" style="display:none;padding:8px 10px;background:linear-gradient(135deg,#f39c12,#e74c3c);color:#fff;text-align:center;font-size:11px;font-weight:600;border-radius:var(--radius-sm);margin-bottom:8px;flex-shrink:0;">
-	⚡ Demo 模式 — 免 API Key 体验全部功能
-	<button onclick="enterDemoMode()" style="margin-left:6px;padding:2px 10px;background:#fff;color:#e74c3c;border:none;border-radius:4px;cursor:pointer;font-weight:600;font-size:11px;">立即体验</button>
-	<button onclick="dismissDemoBanner()" style="margin-left:4px;padding:2px 6px;background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.5);border-radius:4px;cursor:pointer;font-size:10px;">关闭</button>
-	</div>
-<input class="agent-search" id="agent-search" placeholder="搜索 Agent…" autocomplete="off">
-<div class="agent-list" id="agent-list"></div>
-</div>
-	<div class="sidebar-panel" id="panel-skills">
-	<div style="flex:1;overflow-y:auto;font-size:11px" id="sidebar-skills-list">点击 Skills 标签加载...</div>
-	</div>
-<div class="sidebar-panel" id="panel-history">
-<div style="flex:1;overflow-y:auto" id="history-list"></div>
+<div id="sidebar-content">
+  <div id="nav-chat" class="nav-panel">
+    <div class="sidebar-section-header">💬 对话历史</div>
+    <div style="flex:1;overflow-y:auto" id="history-list">加载中...</div>
+  </div>
+  <div id="nav-agents" class="nav-panel" style="display:none">
+    <div id="demo-banner" style="display:none;padding:8px 10px;background:var(--surface2);color:var(--text);text-align:center;font-size:11px;font-weight:500;border-radius:var(--radius-sm);margin:0 8px 8px;flex-shrink:0;border:1px solid var(--accent);">
+    ⚡ Demo 模式 — 免 API Key 体验全部功能
+    <button onclick="enterDemoMode()" style="margin-left:6px;padding:2px 10px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:600;font-size:11px;">立即体验</button>
+    <button onclick="dismissDemoBanner()" style="margin-left:4px;padding:2px 6px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:10px;">关闭</button>
+    </div>
+    <div style="padding:4px 8px 0;"><input class="agent-search" id="agent-search" placeholder="搜索 Agent…" autocomplete="off"></div>
+    <div class="agent-list" id="agent-list"></div>
+    <div class="sidebar-section-header" style="margin-top:8px;">🧩 Skill</div>
+    <div style="flex:1;overflow-y:auto;font-size:11px" id="sidebar-skills-list">点击 Agent 标签以加载...</div>
+  </div>
+  <div id="nav-dashboard" class="nav-panel" style="display:none">
+    <div class="sidebar-section-header">📊 今日费用</div>
+    <div id="sidebar-cost-summary" style="padding:8px;font-size:12px;">加载中...</div>
+    <div class="sidebar-section-header">📋 最近操作</div>
+    <div id="sidebar-ops-summary" style="padding:8px;font-size:11px;">加载中...</div>
+  </div>
+  <div id="nav-connect" class="nav-panel" style="display:none">
+    <div class="sidebar-section-header">💬 微信 Bot</div>
+    <div id="sidebar-wx-status" style="padding:8px;font-size:12px;">加载中...</div>
+    <div class="sidebar-section-header">🔌 MCP 服务器</div>
+    <div id="sidebar-mcp-status" style="padding:8px;font-size:12px;">加载中...</div>
+  </div>
 </div>
 </nav>
 <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar()"></div>
@@ -70,18 +94,7 @@
 <div class="grid g1" id="grid"></div>
 <div class="harness-overlay" id="harnessOverlay">
 <div class="harness-overlay-tabs" id="harnessTabs">
-<div class="harness-overlay-tab active" data-htab="overview">概览</div>
-<div class="harness-overlay-tab" data-htab="cost">💰 费用</div>
-<div class="harness-overlay-tab" data-htab="permission">权限</div>
-<div class="harness-overlay-tab" data-htab="subagents">SubAgent</div>
-<div class="harness-overlay-tab" data-htab="hooks">Hooks</div>
-<div class="harness-overlay-tab" data-htab="mcp">MCP</div>
-<div class="harness-overlay-tab" data-htab="env">环境</div>
-<div class="harness-overlay-tab" data-htab="test">测试</div>
-<div class="harness-overlay-tab" data-htab="worktree">🌳 Worktree</div>
-<div class="harness-overlay-tab" data-htab="operations">📋 操作</div>
-<div class="harness-overlay-tab" data-htab="memory">🧠 记忆</div>
-    <div class="harness-overlay-tab" data-htab="weixin">💬 微信</div>
+<span style="font-weight:600;color:var(--accent);padding:10px 0">📊 仪表盘</span>
 <button class="btn" style="align-self:center" onclick="toggleDashboard()">✕</button>
 </div>
 <div class="harness-overlay-content" id="harnessContent"></div>

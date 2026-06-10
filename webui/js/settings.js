@@ -1,6 +1,69 @@
 /* Agency — 开发者设置面板 */
 function saveApiKey(){var newKey=$('api-key').value.trim();var newProvider=$('api-provider').value;var oldKey=apiKey;var oldProvider=apiProvider;apiKey=newKey;apiProvider=newProvider;localStorage.setItem('agency_api_key',apiKey);localStorage.setItem('agency_api_provider',apiProvider);$('api-status').textContent=apiKey?'已保存':'已清除';if(!apiKey){localStorage.removeItem('agency_api_key');localStorage.removeItem('agency_api_provider')}showUndoableToast(t('configSaved'),function(){apiKey=oldKey;apiProvider=oldProvider;localStorage.setItem('agency_api_key',oldKey);localStorage.setItem('agency_api_provider',oldProvider);$('api-key').value=oldKey;$('api-provider').value=oldProvider;$('api-status').textContent=oldKey?'已保存':'已清除';if(!oldKey){localStorage.removeItem('agency_api_key');localStorage.removeItem('agency_api_provider')}},5000)}
-function toggleDevOverlay(){devMode=!devMode;var ov=$('devOverlay'),btn=$('devBtn');ov.classList.toggle('on',devMode);btn.classList.toggle('on',devMode);if(devMode){var ak=$('api-key');if(ak&&apiKey)ak.value=apiKey;var ap=$('api-provider');if(ap&&apiProvider)ap.value=apiProvider;loadMemList();loadRemotePanel();loadIntegrationPanel();loadMCPConfig()}}
+function toggleDevOverlay(){devMode=!devMode;var ov=$('devOverlay'),btn=$('devBtn');ov.classList.toggle('on',devMode);btn.classList.toggle('on',devMode);if(devMode){var ak=$('api-key');if(ak&&apiKey)ak.value=apiKey;var ap=$('api-provider');if(ap&&apiProvider)ap.value=apiProvider;loadMemList();loadRemotePanel();loadIntegrationPanel();loadMCPConfig();setTimeout(initSettingsAccordion,200)}}
+
+/* ── 设置面板折叠分组 ── */
+var _settingsAccordionDone=false;
+function initSettingsAccordion(){
+  if(_settingsAccordionDone)return;
+  var container=document.querySelector('#devOverlay .harness-overlay-content');
+  if(!container)return;
+  var sections=container.querySelectorAll('.settings-section');
+  if(!sections.length)return;
+
+  // 分组映射：h3 文本关键词 -> group key
+  var groupMap={
+    'API Key':'api','MCP':'api','集成':'api','远端':'api',
+    '主题':'appearance','Profile':'appearance',
+    '信任模式':'security','功能解锁':'security',
+    '记忆':'data','输出目录':'data','配置管理':'data','恢复默认':'data','清空':'data','快捷键':'data','默认 Agent':'data'
+  };
+  var groups={api:{icon:'🔑',title:'API 与 Provider',sections:[]},appearance:{icon:'🎨',title:'外观',sections:[]},security:{icon:'🛡️',title:'安全',sections:[]},data:{icon:'💾',title:'数据管理',sections:[]}};
+  var uncategorized=[];
+
+  // 先分类、同时从 DOM 分离
+  var secArr=Array.prototype.slice.call(sections);
+  secArr.forEach(function(sec){
+    sec.remove();
+    var h3=sec.querySelector('h3');
+    var title=h3?h3.textContent.trim():'';
+    var cleanTitle=title.replace(/^[^一-龥a-zA-Z]+/,'');
+    var matched=false;
+    for(var k in groupMap){
+      if(cleanTitle.indexOf(k)===0){groups[groupMap[k]].sections.push(sec);matched=true;break}
+    }
+    if(!matched)uncategorized.push(sec);
+  });
+
+  // 构建折叠组 HTML
+  var wrapper=document.createElement('div');
+  var groupKeys=['api','appearance','security','data'];
+  groupKeys.forEach(function(key){
+    var g=groups[key];
+    if(!g.sections.length)return;
+    var groupDiv=document.createElement('div');
+    groupDiv.className='settings-group';
+    groupDiv.innerHTML='<div class="settings-group-header"><span class="settings-group-icon">▼</span> '+g.icon+' '+g.title+'</div><div class="settings-group-body"></div>';
+    var body=groupDiv.querySelector('.settings-group-body');
+    g.sections.forEach(function(sec){body.appendChild(sec)});
+    var header=groupDiv.querySelector('.settings-group-header');
+    header.addEventListener('click',function(){
+      var icon=this.querySelector('.settings-group-icon');
+      var bd=this.parentNode.querySelector('.settings-group-body');
+      var collapsed=bd.style.display==='none';
+      bd.style.display=collapsed?'block':'none';
+      if(icon)icon.textContent=collapsed?'▼':'▶';
+    });
+    wrapper.appendChild(groupDiv);
+  });
+
+  // Agent 工厂、Skills 保持原样追加（未归组）
+  uncategorized.forEach(function(sec){wrapper.appendChild(sec)});
+
+  // 挂到容器最前面（resize-handle 保持原位）
+  container.insertBefore(wrapper,container.firstChild);
+  _settingsAccordionDone=true;
+}
 
 function loadMemList(){var domEl=$('mem-list');if(!domEl)return;fetch('/api/memory').then(function(r){return r.json()}).then(function(d){var files=d.files||[];domEl.innerHTML=files.length?files.map(function(f){return'<div class="mem-file" onclick="openMemEditor(\''+escHtml(f.path)+'\',\''+escHtml(f.name)+'\')"><span class="icon">📄</span><span>'+escHtml(f.name)+'</span><span style="color:var(--muted);font-size:10px;margin-left:auto">'+(f.size||0)+'B</span></div>'}).join(''):'暂无记忆文件'}).catch(function(){domEl.innerHTML='无法加载记忆文件列表。服务可能未启动，请刷新页面重试'})}
 function generateAgent(){var input=$('agent-factory-input'),output=$('agent-factory-output');var req=input.value.trim();if(!req)return;output.innerHTML='生成中…';fetch('/api/agent-generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requirement:req,api_key:apiKey||undefined,api_provider:apiProvider||undefined})}).then(function(resp){var reader=resp.body.getReader(),decoder=new TextDecoder(),buf='',txt='';function read(){reader.read().then(function(result){if(result.done){finish();return}buf+=decoder.decode(result.value,{stream:!0});buf=buf.replace(/\r\n/g,'\n');var lines=buf.split('\n');buf=lines.pop()||'';for(var i=0;i<lines.length;i++){if(lines[i].indexOf('data: ')!==0)continue;try{var d=JSON.parse(lines[i].slice(6));if(d.content)txt+=d.content;if(d.error){output.innerHTML='<span style=color:var(--danger)>'+escHtml(d.error)+'</span>';return}}catch(_){}}read()})}function finish(){output.innerHTML='<pre style=\"font-size:10px;max-height:200px;overflow:auto;background:var(--bg);padding:8px;border-radius:4px\">'+escHtml(txt)+'</pre><button class=\"new-chat-btn\" style=\"margin-top:4px\" onclick=\"saveAgent()\">保存此 Agent</button>';output._agentContent=txt}read()}).catch(function(){output.innerHTML='AI 生成中断。可能是网络问题或 API Key 无效，请检查后重试'})}

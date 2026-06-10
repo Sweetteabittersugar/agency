@@ -10,46 +10,87 @@ function toggleDashboard(){
   ov.classList.toggle('on',harnessActive);
   btn.classList.toggle('on',harnessActive);
   if(harnessActive){
-    var activeTab=document.querySelector('.harness-overlay-tab[data-htab="'+_lastHarnessTab+'"]');
-    if(activeTab){
-      document.querySelectorAll('.harness-overlay-tab').forEach(function(x){x.classList.remove('active')});
-      activeTab.classList.add('active');
-    }
-    renderHarnessTab(_lastHarnessTab);
+    renderDashboardGrid($('harnessContent'));
   }else{
-    var cur=document.querySelector('.harness-overlay-tab.active');
-    if(cur)_lastHarnessTab=cur.dataset.htab;
     [_subTimer,_ctxTimer].forEach(function(t){if(t){clearInterval(t)}});_subTimer=_ctxTimer=null;
   }
 }
-document.querySelectorAll('.harness-overlay-tab').forEach(function(t){t.addEventListener('click',function(){document.querySelectorAll('.harness-overlay-tab').forEach(function(x){x.classList.remove('active')});t.classList.add('active');_lastHarnessTab=t.dataset.htab;renderHarnessTab(t.dataset.htab)})});
-function renderHarnessTab(tab){
-  var domEl=$('harnessContent');if(!domEl)return;
-  // 功能门控：某些仪表盘标签页需要更高解锁等级 (Demo 模式下跳过)
-  var gatedTabs = {subagents:'routing',hooks:'routing'};
-  if(!(typeof _demoMode!=='undefined'&&_demoMode) && gatedTabs[tab] && !isFeatureUnlocked(gatedTabs[tab])){
-    domEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:24px;margin-bottom:8px">🔒</div><p>'+t('featureLocked').replace('{day}', FEATURE_UNLOCK_DAYS[gatedTabs[tab]]||3)+'</p></div>';
-    return;
-  }
-  if(typeof _demoMode!=='undefined'&&_demoMode){renderDemoDashboard(tab,domEl);return}
-  if(tab==='overview'){
-    domEl.innerHTML='<div class="cost-kpis" style="margin-bottom:10px"><div class="cost-kpi"><span class="kpi-val" id="hov-cost-today">—</span><span class="kpi-label">今日费用</span></div><div class="cost-kpi"><span class="kpi-val" id="hov-cost-30d">—</span><span class="kpi-label">30天</span></div><div class="cost-kpi"><span class="kpi-val" id="hov-calls">—</span><span class="kpi-label">调用</span></div></div><div style="margin-bottom:8px"><span style="font-size:11px;color:var(--muted);font-weight:600">每日费用趋势</span><canvas id="cost-trend-canvas" width="440" height="100" style="width:100%;height:100px;display:block;background:var(--surface2);border-radius:6px;margin-top:4px"></canvas></div><div style="margin-bottom:8px"><span style="font-size:11px;color:var(--muted);font-weight:600">模型费用分布</span><div id="model-bars" style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;color:var(--muted);min-height:60px">—</div></div><div style="margin-bottom:8px;padding:8px 10px;background:var(--surface2);border-radius:6px" id="opus-panel"><span style="font-size:11px;color:var(--muted);font-weight:600">Opus 调用占比 <span data-tooltip="tooltipOpus" style="cursor:help">?</span></span><div id="opus-ratio" style="margin-top:4px;font-size:10px;color:var(--muted)">加载中…</div></div><div style="display:flex;gap:6px;margin-bottom:8px"><div class="cost-kpi" style="flex:1"><span class="kpi-val" id="hov-cache-saved" style="color:var(--warn)">$0</span><span class="kpi-label">缓存节省</span></div><div class="cost-kpi" style="flex:1"><span class="kpi-val" id="hov-cache-tokens" style="font-size:11px">0</span><span class="kpi-label">缓存Token</span></div></div><div id="cost-alerts" style="margin-bottom:6px;font-size:10px"></div><h4 style="font-size:11px;color:var(--muted);margin-bottom:6px">上下文窗口</h4><div class="ctx-gauge" style="height:14px;margin-bottom:4px"><div class="ctx-gauge-fill" id="hctx-fill" style="width:0%"></div></div><div style="font-size:11px;display:flex;justify-content:space-between"><span id="hctx-text">0 / 500K</span><span id="hctx-cache" style="color:var(--muted)">缓存: —</span></div><div id="hctx-detail" style="font-size:10px;color:var(--muted);margin-top:4px"></div>';
-    loadContextDetail();loadCostOverview();
-  }
-  else if(tab==='cost'){
-    domEl.innerHTML='<div style="padding:4px 0"><div id="cost-dash-totals" class="cost-kpis" style="margin-bottom:10px"><div class="cost-kpi"><span class="kpi-val" id="cdash-total-cost">—</span><span class="kpi-label">30天总费用</span></div><div class="cost-kpi"><span class="kpi-val" id="cdash-total-tokens">—</span><span class="kpi-label">总Token</span></div><div class="cost-kpi"><span class="kpi-val" id="cdash-total-calls">—</span><span class="kpi-label">总调用</span></div></div><div style="margin-bottom:10px"><span style="font-size:11px;color:var(--muted);font-weight:600">📈 每日费用趋势</span><div id="cost-bar-chart" style="background:var(--surface2);border-radius:6px;padding:6px 8px;min-height:80px;margin-top:4px">加载中…</div></div><div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap"><div style="flex:1;min-width:200px"><span style="font-size:11px;color:var(--muted);font-weight:600">🏆 Top Agent 消费</span><div id="cost-agent-bars" style="background:var(--surface2);border-radius:6px;padding:6px 8px;min-height:60px;margin-top:4px">加载中…</div></div><div style="flex:1;min-width:200px"><span style="font-size:11px;color:var(--muted);font-weight:600">📋 近7天明细</span><div id="cost-daily-table" style="background:var(--surface2);border-radius:6px;padding:6px 8px;min-height:60px;margin-top:4px;font-size:10px">加载中…</div></div></div></div>';
-    loadCostDashboard();
-  }
-  else if(tab==='permission'){domEl.innerHTML='<h3 style="margin-bottom:8px">权限管线</h3><div id="hperm-log" style="font-size:11px">加载中…</div><h4 style="margin-top:12px;margin-bottom:6px;font-size:11px;color:var(--muted)">审计日志</h4><div id="perm-audit-list" style="font-size:11px">加载中…</div>';loadPermHistory();loadDashboardPermissionAudit()}
-  else if(tab==='subagents'){domEl.innerHTML='<h3 style="margin-bottom:8px">SubAgent 任务树</h3><div id="hsub-tree" style="font-size:11px;color:var(--muted)">加载中…</div>';loadSubagents()}
-  else if(tab==='hooks'){domEl.innerHTML='<h3 style="margin-bottom:8px">Hooks 生命周期</h3><div id="hhooks-log" style="font-size:11px;color:var(--muted)">从事件日志中加载…</div>';loadHooksLog()}
-  else if(tab==='mcp'){domEl.innerHTML='<h3 style="margin-bottom:8px">MCP 集成</h3><div id="hmcp-list" style="font-size:11px;color:var(--muted)">加载中…</div>';loadMCPDetail()}
-  else if(tab==='env'){domEl.innerHTML='<h3 style="margin-bottom:8px">环境状态</h3><div id="henv-status" style="font-size:11px;color:var(--muted)">加载中…</div>';loadEnvStatus()}
-  else if(tab==='test'){domEl.innerHTML='<h3 style="margin-bottom:8px">🧪 测试运行器</h3><div style="margin-bottom:8px"><input class="proj-input" id="test-url" type="text" placeholder="输入测试 URL，如 https://example.com" style="width:100%;margin-bottom:4px"><button class="new-chat-btn" onclick="runTest()" style="font-size:11px;padding:6px 16px;width:auto" id="test-run-btn">▶ 开始测试</button><span id="test-status" style="font-size:11px;color:var(--muted);margin-left:8px"></span></div><div id="test-results" style="font-size:11px;color:var(--muted);margin-top:8px"></div><div id="test-screenshot" style="margin-top:8px"></div>';_testPollTimer=null}
-  else if(tab==='worktree'){renderWorktreeTab(domEl)}
-  else if(tab==='operations'){renderOperationsTab(domEl)}
-  else if(tab==='weixin'){renderWeixinTab(domEl)}
-  else if(tab==='memory'){renderMemoryTab(domEl)}
+
+/* —— 仪表盘卡片网格 —— */
+function renderDashboardGrid(container){
+  if(!container)return;
+  if(typeof _demoMode!=='undefined'&&_demoMode){renderDemoDashboardGrid(container);return}
+  container.innerHTML=
+    '<div class="dash-grid">'+
+      buildDashCard('💰','费用','cost','loadCostCard')+
+      buildDashCard('⚙️','操作','operations','loadOpsCard')+
+      buildDashCard('🧠','上下文','context','loadContextCard')+
+      buildDashCard('🌳','工作区','worktree','loadWorktreeCard')+
+      buildDashCard('💬','微信','weixin','loadWeixinCard')+
+      buildDashCard('🧪','测试','test','loadTestCard')+
+      buildDashCard('🔌','MCP','mcp','loadMCPCard')+
+      buildDashCard('🧩','记忆','memory','loadMemoryCard')+
+    '</div>'+
+    '<div id="dash-detail" style="display:none;margin-top:16px;padding:16px;background:var(--surface2);border-radius:12px;"></div>';
+  setTimeout(function(){
+    document.querySelectorAll('.dash-card[data-card]').forEach(function(card){
+      var fn=window[card.getAttribute('data-load')];
+      if(fn)fn(card);
+    });
+  },100);
+}
+
+function buildDashCard(icon,title,cardType,loadFn){
+  return '<div class="dash-card" data-card="'+cardType+'" data-load="'+loadFn+'" onclick="openDashDetail(\''+cardType+'\')">'+
+    '<div class="dash-card-icon">'+icon+'</div>'+
+    '<div class="dash-card-title">'+title+'</div>'+
+    '<div class="dash-card-body" id="dash-card-'+cardType+'">加载中...</div>'+
+    '</div>';
+}
+
+function loadCostCard(card){api.get('/api/cost/summary').then(function(d){var total=(d.total_cost||(d.total&&d.total.cost)||0);var calls=(d.total_calls||(d.total&&d.total.calls)||0);card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat">$'+Number(total).toFixed(4)+'</div><div class="dash-sub">'+calls+' 次调用</div>';}).catch(function(){card.querySelector('.dash-card-body').textContent='—';});}
+function loadOpsCard(card){api.get('/api/operations').then(function(d){var count=(d.operations||[]).length;card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat">'+count+'</div><div class="dash-sub">条记录</div>';}).catch(function(){card.querySelector('.dash-card-body').textContent='—';});}
+function loadContextCard(card){api.get('/api/harness/context').then(function(d){card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat">'+(d.token_usage||'—')+'</div><div class="dash-sub">tokens</div>';}).catch(function(){card.querySelector('.dash-card-body').textContent='—';});}
+function loadWorktreeCard(card){api.get('/api/worktrees').then(function(d){card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat">'+(d.count||0)+'</div><div class="dash-sub">活跃 worktree</div>';}).catch(function(){card.querySelector('.dash-card-body').textContent='—';});}
+function loadWeixinCard(card){api.get('/api/weixin/status').then(function(d){var status=d.logged_in?(d.running?'运行中':'已连接'):'未连接';var color=d.logged_in?'#27ae60':'#888';card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat" style="color:'+color+'">'+status+'</div>';}).catch(function(){card.querySelector('.dash-card-body').textContent='—';});}
+function loadTestCard(card){card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat" style="color:var(--muted)">—</div><div class="dash-sub">未运行</div>';}
+function loadMCPCard(card){api.get('/api/mcp/status').then(function(d){var servers=d.servers||[];card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat">'+servers.length+'</div><div class="dash-sub">MCP 服务器</div>';}).catch(function(){card.querySelector('.dash-card-body').textContent='—';});}
+function loadMemoryCard(card){api.get('/api/memory/timeline').then(function(d){var count=(d.entries||[]).length;card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat">'+count+'</div><div class="dash-sub">条记忆</div>';}).catch(function(){card.querySelector('.dash-card-body').textContent='—';});}
+
+function openDashDetail(cardType){
+  var detail=document.getElementById('dash-detail');
+  var panelFns={cost:renderCostDetail,worktree:renderWorktreeTab,weixin:renderWeixinTab,operations:renderOperationsTab,memory:renderMemoryTab,mcp:renderMCPDetail,context:renderContextDetail,test:renderTestDetail};
+  var fn=panelFns[cardType];
+  if(fn){detail.style.display='block';fn(detail);detail.scrollIntoView({behavior:'smooth'});}
+}
+
+function renderCostDetail(container){api.get('/api/cost?days=30').then(function(d){if(!d||!d.total){container.innerHTML='<p style="color:var(--muted);padding:12px;text-align:center">暂无费用数据</p>';return}var t=d.total,td=d.today;container.innerHTML='<h3 style="margin-bottom:8px">💰 费用详情</h3><div class="cost-kpis" style="margin-bottom:10px"><div class="cost-kpi"><span class="kpi-val">$'+(td.cost||0).toFixed(4)+'</span><span class="kpi-label">今日</span></div><div class="cost-kpi"><span class="kpi-val">$'+(t.cost||0).toFixed(4)+'</span><span class="kpi-label">30天</span></div><div class="cost-kpi"><span class="kpi-val">'+(t.calls||0)+'</span><span class="kpi-label">调用</span></div></div><div style="margin-bottom:8px"><span style="font-size:11px;color:var(--muted);font-weight:600">每日费用趋势</span><canvas id="cost-trend-canvas" width="440" height="100" style="width:100%;height:100px;display:block;background:var(--bg);border-radius:6px;margin-top:4px"></canvas></div><div style="margin-bottom:8px"><span style="font-size:11px;color:var(--muted);font-weight:600">模型费用分布</span><div id="model-bars" style="background:var(--bg);border-radius:6px;padding:6px 8px;font-size:10px;min-height:60px">—</div></div><div id="cost-alerts" style="margin-bottom:6px;font-size:10px"></div>';loadCostOverview();}).catch(function(){container.innerHTML='<p style="color:var(--muted);padding:12px;text-align:center">无法加载费用数据</p>';});}
+function renderMCPDetail(container){api.get('/api/mcp/status').then(function(d){var servers=d.servers||[];if(!servers.length){container.innerHTML='<p style="color:var(--muted);text-align:center;padding:20px">暂无 MCP 服务器</p>';return}container.innerHTML='<h3 style="margin-bottom:8px">🔌 MCP 服务器</h3>'+servers.map(function(s){return'<div style="padding:8px 10px;margin:4px 0;background:var(--bg);border-radius:6px"><div style="font-weight:600;font-size:12px">'+escHtml(s.name)+' <span style="font-size:9px;color:'+(s.running?'var(--accent)':'var(--muted)')+'">● '+(s.running?'活跃':'离线')+'</span></div><div style="font-size:10px;color:var(--muted)">'+escHtml(s.command||'')+'</div></div>'}).join('');}).catch(function(){container.innerHTML='<p style="color:var(--muted);text-align:center;padding:20px">无法加载 MCP 状态</p>';});}
+function renderContextDetail(container){api.get('/api/harness/context').then(function(d){var ttl=d.total_tokens||0,pct=ttl>0?Math.min(100,Math.round(ttl/500000*100)):0;container.innerHTML='<h3 style="margin-bottom:8px">🧠 上下文窗口</h3><div class="ctx-gauge" style="height:14px;margin-bottom:4px"><div class="ctx-gauge-fill'+(pct>85?' danger':pct>60?' warn':'')+'" style="width:'+pct+'%"></div></div><div style="font-size:13px;display:flex;justify-content:space-between;margin-bottom:12px"><span>'+ttl.toLocaleString()+' / 500K</span><span style="color:var(--muted)">缓存: '+(d.cache_hit_rate||0)+'%</span></div><div style="font-size:11px;color:var(--text2)">输入 '+(d.input_tokens||0).toLocaleString()+' · 输出 '+(d.output_tokens||0).toLocaleString()+' · 费用 $'+(d.cost_est?d.cost_est.total.toFixed(6):'0')+(d.last_update?' · '+d.last_update:'')+'</div>';}).catch(function(){container.innerHTML='<p style="color:var(--muted);text-align:center;padding:20px">无法加载上下文数据</p>';});}
+function renderTestDetail(container){container.innerHTML='<h3 style="margin-bottom:8px">🧪 测试运行器</h3><div style="margin-bottom:8px"><input class="proj-input" id="test-url" type="text" placeholder="输入测试 URL，如 https://example.com" style="width:100%;margin-bottom:4px"><button class="new-chat-btn" onclick="runTest()" style="font-size:11px;padding:6px 16px;width:auto" id="test-run-btn">▶ 开始测试</button><span id="test-status" style="font-size:11px;color:var(--muted);margin-left:8px"></span></div><div id="test-results" style="font-size:11px;color:var(--muted);margin-top:8px"></div><div id="test-screenshot" style="margin-top:8px"></div>';_testPollTimer=null;}
+
+/* —— Demo 仪表盘卡片网格 —— */
+function renderDemoDashboardGrid(container){
+  container.innerHTML=
+    '<div style="margin-bottom:10px;font-size:10px;color:var(--warn);text-align:center;border-bottom:1px dashed var(--warn);padding-bottom:6px;opacity:.7">⚠ '+escHtml(t('demoTooltip'))+'</div>'+
+    '<div class="dash-grid">'+
+      buildDemoCard('💰','费用','$0.2341','今日 · 42 次调用')+
+      buildDemoCard('⚙️','操作','5','条记录')+
+      buildDemoCard('🧠','上下文','32%','160K / 500K tokens')+
+      buildDemoCard('🌳','工作区','3','活跃 worktree')+
+      buildDemoCard('💬','微信','已连接','运行中')+
+      buildDemoCard('🧪','测试','—','未运行')+
+      buildDemoCard('🔌','MCP','4','MCP 服务器')+
+      buildDemoCard('🧩','记忆','12','条记忆')+
+    '</div>';
+}
+function buildDemoCard(icon,title,stat,sub){
+  return '<div class="dash-card" style="cursor:default;opacity:.7">'+
+    '<div class="dash-card-icon">'+icon+'</div>'+
+    '<div class="dash-card-title">'+title+'</div>'+
+    '<div class="dash-stat">'+stat+'</div>'+
+    '<div class="dash-sub">'+sub+'</div>'+
+    '</div>';
 }
 function loadCostOverview(){
   api.get('/api/cost?days=30').then(function(d){

@@ -45,13 +45,17 @@ var pInput=$('proj-dir');if(pInput)pInput.value=projDir;
 pInput&&pInput.addEventListener('change',function(){projDir=pInput.value.trim();localStorage.setItem('agency_proj_dir',projDir);loadFileTree(projDir)});
 
 // ── Agent 搜索绑定 ──
-$('agent-search').addEventListener('input',function(){var q=$('agent-search').value.toLowerCase();renderAgents(agents.filter(function(a){return a.name.includes(q)||(a.description||'').includes(q)||(a.keywords||[]).some(function(k){return k.includes(q)})}))});
+var agentSearchEl=$('agent-search');
+if(agentSearchEl)agentSearchEl.addEventListener('input',function(){var q=agentSearchEl.value.toLowerCase();renderAgents(agents.filter(function(a){return a.name.includes(q)||(a.description||'').includes(q)||(a.keywords||[]).some(function(k){return k.includes(q)})}))});
 
-// ── 侧边栏标签切换 ──
-document.querySelectorAll('.sidebar-tab').forEach(function(tab){tab.addEventListener('click',function(){document.querySelectorAll('.sidebar-tab').forEach(function(t){t.classList.remove('active')});document.querySelectorAll('.sidebar-panel').forEach(function(p){p.classList.remove('active')});tab.classList.add('active');var p=$('panel-'+tab.dataset.tab);if(p)p.classList.add('active');})});
-document.querySelector('.sidebar-tab[data-tab="skills"]')&&document.querySelector('.sidebar-tab[data-tab="skills"]').addEventListener('click',function(){if(typeof _demoMode!=='undefined'&&_demoMode)return;loadSidebarSkills()});
-document.querySelector('.sidebar-tab[data-tab="history"]')&&document.querySelector('.sidebar-tab[data-tab="history"]').addEventListener('click',function(){if(typeof _demoMode!=='undefined'&&_demoMode)return;renderHistory()});
-document.querySelector('.sidebar-tab[data-tab="project"]')&&document.querySelector('.sidebar-tab[data-tab="project"]').addEventListener('click',function(){loadFileTree(projDir)});
+// ── 侧边栏导航 ──
+(function initSidebarNav(){
+  var saved=null;
+  try{saved=localStorage.getItem('agency-nav')}catch(e){}
+  if(saved&&['chat','agents','dashboard','connect'].indexOf(saved)>=0){
+    setTimeout(function(){ if(typeof switchNav==='function') switchNav(saved); }, 200);
+  }
+})();
 
 // ── Profile 快捷切换 ──
 function cycleProfile(){

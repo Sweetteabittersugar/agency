@@ -93,7 +93,7 @@ var commandPalette = {
       {name:'清空对话', description:'清空所有面板聊天历史', category:'面板', action:function() { self.close(); clearAllPanels(); }},
       {name:'设置', description:'打开开发者设置面板', category:'导航', action:function() { self.close(); if (!devMode) toggleDevOverlay(); }, shortcut:'Ctrl+,'},
       {name:'仪表盘', description:'切换仪表盘显示', category:'导航', action:function() { self.close(); toggleDashboard(); }},
-      {name:'演示模式', description:'进入 Demo 演示模式', category:'模式', action:function() { self.close(); _demoMode=true; document.querySelector('.sidebar-tab[data-tab="agents"]').click(); loadAgents(); renderHistory(); renderDemoWelcome(); showToast('已进入 Demo 模式'); }},
+      {name:'演示模式', description:'进入 Demo 演示模式', category:'模式', action:function() { self.close(); _demoMode=true; if(typeof switchNav==='function')switchNav('agents'); loadAgents(); renderHistory(); renderDemoWelcome(); showToast('已进入 Demo 模式'); }},
       {name:'主题切换', description:'切换亮色/暗色/高对比度主题', category:'外观', action:function() { self._toggleTheme(); }},
       {name:'导出配置', description:'导出当前配置到 JSON 文件', category:'工具', action:function() { self._exportConfig(); }},
       {name:'快捷键帮助', description:'列出所有键盘快捷键', category:'帮助', action:function() { self._showShortcutsHelp(); }, shortcut:'Ctrl+/'},
@@ -153,7 +153,7 @@ var commandPalette = {
     if (q === 'demo' || q === '演示') {
       this.close();
       _demoMode = true;
-      document.querySelector('.sidebar-tab[data-tab="agents"]').click();
+      if(typeof switchNav==='function')switchNav('agents');
       loadAgents();
       renderHistory();
       renderDemoWelcome();
@@ -364,8 +364,7 @@ var commandPalette = {
 
   // ── 跳转到侧边栏 Agent ──
   _jumpToAgent: function(name) {
-    var tab = document.querySelector('.sidebar-tab[data-tab="agents"]');
-    if (tab) tab.click();
+    if(typeof switchNav==='function')switchNav('agents');
     // 搜索框中填入 agent 名以过滤
     var searchInput = document.getElementById('agent-search');
     if (searchInput) {
@@ -392,11 +391,8 @@ var commandPalette = {
 
   // ── 跳转到侧边栏 Skill ──
   _jumpToSkill: function(name) {
-    var tab = document.querySelector('.sidebar-tab[data-tab="skills"]');
-    if (tab) {
-      tab.click();
-      if (typeof loadSidebarSkills === 'function') loadSidebarSkills();
-    }
+    if(typeof switchNav==='function')switchNav('agents');
+    if (typeof loadSidebarSkills === 'function') loadSidebarSkills();
     setTimeout(function() {
       var cards = document.querySelectorAll('.skill-card');
       for (var i = 0; i < cards.length; i++) {
@@ -523,20 +519,6 @@ var commandPalette = {
           if (fp && fp.isStreaming) {
             stopStream(focusedPid);
             return;
-          }
-        }
-      }
-      // 1-5 切换仪表盘标签
-      if (harnessActive && e.key >= '1' && e.key <= '5' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        var tabMap = {1:'overview', 2:'permission', 3:'subagents', 4:'hooks', 5:'mcp'};
-        var targetHtab = tabMap[e.key];
-        if (targetHtab) {
-          var tabEl = document.querySelector('.harness-overlay-tab[data-htab="' + targetHtab + '"]');
-          if (tabEl) {
-            document.querySelectorAll('.harness-overlay-tab').forEach(function(t) { t.classList.remove('active'); });
-            tabEl.classList.add('active');
-            if (typeof renderHarnessTab === 'function') renderHarnessTab(targetHtab);
-            if (typeof _lastHarnessTab !== 'undefined') _lastHarnessTab = targetHtab;
           }
         }
       }

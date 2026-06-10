@@ -41,7 +41,7 @@
 [data-theme="high-contrast"] .panel-bar{border-bottom:2px solid var(--border)}
 [data-theme="high-contrast"] .panel-inp{border-top:2px solid var(--border)}
 [data-theme="high-contrast"] .panel-route{border-top:2px solid var(--border)}
-[data-theme="high-contrast"] .sidebar-tab.active{border-bottom:3px solid var(--accent)}
+[data-theme="high-contrast"] .nav-item.active{outline:2px solid var(--accent);outline-offset:-2px}
 [data-theme="high-contrast"] .harness-overlay-tab.active{border-bottom:3px solid var(--accent)}
 [data-theme="high-contrast"] .msg.user .bubble{border:2px solid var(--accent)}
 [data-theme="high-contrast"] .msg.assistant .bubble{border:2px solid var(--border)}

@@ -296,3 +296,28 @@
    Agent 进度指示器动画
    ══════════════════════════════════════════ */
 @keyframes progressPulse{0%,100%{opacity:1}50%{opacity:0.3}}
+
+/* ══════════════════════════════════════════
+   仪表盘卡片网格
+   ══════════════════════════════════════════ */
+.dash-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:16px}
+@media(max-width:900px){.dash-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:500px){.dash-grid{grid-template-columns:1fr}}
+.dash-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;cursor:pointer;transition:all .2s}
+.dash-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 4px 20px rgba(0,0,0,.2)}
+.dash-card-icon{font-size:24px;margin-bottom:8px}
+.dash-card-title{font-size:13px;color:var(--muted);margin-bottom:6px}
+.dash-stat{font-size:22px;font-weight:700;color:var(--text)}
+.dash-sub{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* ══════════════════════════════════════════
+   设置面板折叠分组
+   ══════════════════════════════════════════ */
+.settings-group{margin-bottom:2px;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.settings-group-header{padding:10px 14px;background:var(--surface2);font-size:13px;font-weight:600;cursor:pointer;user-select:none;display:flex;align-items:center;gap:8px}
+.settings-group-header:hover{background:var(--surface3)}
+.settings-group-icon{font-size:10px;color:var(--muted);flex-shrink:0;transition:transform .2s}
+.settings-group.collapsed .settings-group-icon{transform:rotate(-90deg)}
+.settings-group-body{padding:8px 14px 12px}
+.settings-group-body .settings-section{margin-top:12px}
+.settings-group-body .settings-section:first-child{margin-top:0}

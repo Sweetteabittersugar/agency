@@ -120,3 +120,59 @@
   .sidebar-backdrop{display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,.5);z-index:999}
   .sidebar.open + .sidebar-backdrop{display:block}
 }
+
+/* ══════════════════════════════════════════
+   侧边栏导航 (v2 — 按意图分组)
+   ══════════════════════════════════════════ */
+#sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--muted);
+  transition: all 0.15s;
+  user-select: none;
+}
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+.nav-item.active { background: var(--accent); color: #fff; }
+.nav-icon { font-size: 16px; width: 24px; text-align: center; flex-shrink: 0; }
+.nav-label { font-weight: 500; }
+.nav-badge { font-size: 8px; margin-left: auto; flex-shrink: 0; }
+
+#sidebar-content { flex: 1; overflow-y: auto; }
+.nav-panel { display: none; }
+.nav-panel:first-child { display: block; }
+.sidebar-section-header {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 8px 12px 4px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* 响应式：平板收起导航文字 */
+@media (max-width:1024px) {
+  #sidebar-nav { padding: 4px 2px; gap: 0; }
+  .nav-item { justify-content: center; padding: 10px 6px; }
+  .nav-label, .nav-badge { display: none; }
+  .nav-icon { font-size: 18px; width: auto; }
+}
+
+/* 响应式：手机恢复 */
+@media (max-width:768px) {
+  .nav-item { justify-content: flex-start; padding: 8px 10px; }
+  .nav-label { display: inline; }
+}
