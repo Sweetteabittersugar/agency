@@ -44,6 +44,7 @@ def register_all(Handler):
         ("/api/routing/feedback/stats", routing_feedback.handle_stats),
         ("/api/worktrees", worktree_manager.worktree_handle_list),
         ("/api/sessions", sessions.handle_list),
+        ("/api/sessions/search", sessions.handle_search),
         ("/api/sessions/", sessions.handle_get),
         ("/api/operations", operations.handle_list),
         ("/api/weixin/status", weixin_api.handle_status),

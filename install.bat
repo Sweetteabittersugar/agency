@@ -3,6 +3,10 @@ chcp 65001 >nul
 setlocal enabledelayedexpansion
 
 echo.
+echo  ========================================
+echo    Agency v0.4.0 — Claude Code Web 面板
+echo  ========================================
+echo.
 echo  ╔══════════════════════════════════════════════════╗
 echo  ║       Agency — Claude Code Web 操作面板           ║
 echo  ║       一键安装脚本 (Windows)                      ║

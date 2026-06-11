@@ -356,36 +356,6 @@ def classify_task_complexity(task: str) -> str:
     return "normal"
 
 
-def simple_route(task):
-    """三级路由 + 置信度门控：关键词(40%) + 语义(48%) + LLM兜底(12%)
-
-    返回: {"agent": "...", "model": "...", "confidence": 0.85, "keyword_score": 0.9,
-           "semantic_score": 0.72, "source": "keyword|semantic|cross_validated|llm|...",
-           "method": "three_tier", "matched_keywords": 3, "candidates": [...],
-           "low_confidence": false, "fallback_chain": [...]}
-    或 None（完全无匹配）
-    """
-    # 先走三级路由
-    from maestro.main import route_with_fallback
-    result = route_with_fallback(task)
-
-    if result and result.get("agent"):
-        return {
-            "agent": result["agent"],
-            "model": result.get("model", ""),
-            "confidence": result.get("confidence", 0),
-            "keyword_score": result.get("keyword_score", 0),
-            "semantic_score": result.get("semantic_score", 0),
-            "source": result.get("source", "keyword"),
-            "method": result.get("method", "three_tier"),
-            "matched_keywords": result.get("matched_keywords", 0),
-            "candidates": result.get("candidates", []),
-            "low_confidence": result.get("low_confidence", False),
-            "fallback_chain": result.get("fallback_chain", []),
-        }
-    return None
-
-
 def _extract_plan(text: str):
     """从 orchestrator 输出中提取 JSON 计划"""
     m = re.search(r'```json\s*\n(.*?)\n```', text, re.DOTALL)

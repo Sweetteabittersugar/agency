@@ -39,7 +39,7 @@ log = logging.getLogger('agency')
 # ── 共享状态（从 shared.py 导入，避免循环依赖）──
 from maestro.shared import (
     PROJECT_ROOT, ISOLATED_CONFIG, _claude_dir, AGENCY_VERSION, CLAUDE_BIN,
-    load_agents, simple_route, _extract_plan, _scan_subagents, check_for_updates,
+    load_agents, _extract_plan, _scan_subagents, check_for_updates,
 )
 # 修正 PROJECT_ROOT（shared.py 在其自己的目录上下文计算）
 PROJECT_ROOT = Path(__file__).resolve().parent.parent

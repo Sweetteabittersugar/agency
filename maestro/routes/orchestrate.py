@@ -8,9 +8,10 @@ import subprocess
 import logging
 
 from maestro.shared import (
-    PROJECT_ROOT, CLAUDE_BIN, ISOLATED_CONFIG, simple_route,
+    PROJECT_ROOT, CLAUDE_BIN, ISOLATED_CONFIG,
     _extract_plan, build_isolated_env, classify_task_complexity,
 )
+from maestro.main import simple_route
 from maestro.pipeline import (
     PipelineStateMachine, pass_k_verify, select_model,
     resolve_model_name, STAGE_ORDER, TASK_STATES, hard_gate_check,
@@ -77,7 +78,6 @@ def handle_route(handler, body):
         })
         return True
 
-    from maestro.shared import simple_route
     route_info = simple_route(task)
 
     if route_info:

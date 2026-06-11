@@ -34,6 +34,7 @@
 <div id="sidebar-content">
   <div id="nav-chat" class="nav-panel">
     <div class="sidebar-section-header">💬 对话历史</div>
+    <div style="padding:0 8px 6px"><input id="history-search" placeholder="搜索对话..." style="width:100%;padding:6px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;font-size:11px;box-sizing:border-box" onkeyup="if(event.key==='Enter')searchHistory(this.value)" onblur="if(!this.value.trim())renderHistory()" autocomplete="off"></div>
     <div style="flex:1;overflow-y:auto" id="history-list">加载中...</div>
   </div>
   <div id="nav-agents" class="nav-panel" style="display:none">
@@ -277,6 +278,7 @@ t<select id="profile-select" style="display:none" aria-hidden="true"><option val
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="js/undo.js"></script>
 <script src="js/command-palette.js"></script>
 <script src="js/utils.js"></script>

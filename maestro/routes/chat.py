@@ -71,8 +71,9 @@ def _try_pool_execute(actual_task, agent_name, model, session_id, is_new,
 def handle_chat(handler, body):
     from maestro.shared import (
         PROJECT_ROOT, CLAUDE_BIN, ISOLATED_CONFIG, _claude_dir_path,
-        simple_route, _scan_subagents, build_isolated_env,
+        _scan_subagents, build_isolated_env,
     )
+    from maestro.main import simple_route
     from maestro.agent_parser import parse_agent_md
     from maestro.proc_manager import track_proc, untrack_proc, kill_proc
     from maestro.models import estimate_cost

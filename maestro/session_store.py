@@ -149,3 +149,41 @@ def delete_session(session_id: str) -> dict:
         except Exception as e:
             return {"ok": False, "error": str(e)}
     return {"ok": False, "error": "会话不存在"}
+
+
+def search_sessions(query: str, limit: int = 20) -> list:
+    """全文搜索所有会话"""
+    results = []
+    if not STORE_DIR.exists():
+        return results
+
+    q = query.lower()
+    for f in STORE_DIR.glob("*.jsonl"):
+        try:
+            with open(f, "r", encoding="utf-8", errors="ignore") as fp:
+                for line in fp:
+                    if q in line.lower():
+                        evt = json.loads(line)
+                        results.append({
+                            "session_id": f.stem,
+                            "ts": evt.get("ts", 0),
+                            "type": evt.get("type", "?"),
+                            "snippet": str(evt.get("data", ""))[:200],
+                            "full_event": evt,
+                        })
+                        if len(results) >= limit * 5:
+                            break
+        except Exception:
+            pass
+
+    seen = set()
+    unique = []
+    for r in sorted(results, key=lambda x: x["ts"], reverse=True):
+        key = r["session_id"] + str(r["ts"])
+        if key not in seen:
+            seen.add(key)
+            unique.append(r)
+        if len(unique) >= limit:
+            break
+
+    return unique

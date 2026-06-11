@@ -1,8 +1,8 @@
 """会话管理 API — 事件溯源持久化"""
 import json
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 from maestro.session_store import (
-    append_event, get_session, list_sessions, delete_session
+    append_event, get_session, list_sessions, delete_session, search_sessions
 )
 
 
@@ -51,4 +51,16 @@ def handle_delete(handler, parsed):
     session_id = path[len(prefix):]
     result = delete_session(session_id)
     handler.send_json(result, 200 if result["ok"] else 404)
+    return True
+
+
+def handle_search(handler, parsed):
+    """GET /api/sessions/search?q=xxx"""
+    query = parse_qs(parsed.query).get("q", [""])[0].strip()
+    if not query:
+        handler.send_json({"ok": False, "error": "缺少搜索词 q"}, 400)
+        return True
+
+    results = search_sessions(query)
+    handler.send_json({"ok": True, "query": query, "results": results, "count": len(results)})
     return True
