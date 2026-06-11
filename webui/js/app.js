@@ -121,6 +121,29 @@ function loadProfileDescriptions(){
 loadAgents();
 renderHistory();
 addPanel();
+// 从 localStorage 恢复上次会话
+setTimeout(function(){
+  var saved = conversations;
+  if (saved && saved.length > 0) {
+    var last = saved[0];
+    var p = panels[0];
+    if (p && last.messages && last.messages.length > 0) {
+      if (p.dom.empty) p.dom.empty.style.display = 'none';
+      p.currentConvo = {id: last.id, title: last.title || '', messages: [], sessionId: last.sessionId || ''};
+      last.messages.forEach(function(m) {
+        p.currentConvo.messages.push(m);
+        if (m.role === 'user') {
+          addMsg(p, 'user', m.content);
+        } else if (m.role === 'assistant') {
+          var bubble = addMsg(p, 'assistant', typeof renderMD === 'function' ? renderMD(m.content) : m.content);
+          if (typeof highlightCode === 'function') highlightCode(bubble);
+        }
+      });
+      var agent = last.sessionId ? localStorage.getItem('sticky_agent') : '';
+      if (agent) { p._lastAgent = agent; p.dom.route.innerHTML = '<span style="color:var(--accent);font-size:9px">📌 ' + escHtml(agent) + '</span>'; }
+    }
+  }
+}, 500);
 updateProfileUI();
 loadProfileDescriptions();
 initTheme();
