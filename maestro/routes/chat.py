@@ -148,7 +148,13 @@ def handle_chat(handler, body):
         model = agent_model_override
 
     if not CLAUDE_BIN:
-        handler.send_json({"error": "Claude Code CLI 未安装。请安装后重试。"})
+        handler.send_json({
+            "ok": False,
+            "error": "Claude Code CLI 未安装",
+            "friendly_message": "需要安装 Claude Code CLI 才能发送任务",
+            "action": "install_claude",
+            "install_cmd": "npm install -g @anthropic-ai/claude-code"
+        })
         return True
 
     # ── 思考/工具输出过滤 ──

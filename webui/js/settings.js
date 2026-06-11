@@ -526,6 +526,8 @@ window.fullReset = function() {
       if (data.ok) {
         alert('已恢复出厂设置。建议重启 Agency。');
         location.reload();
+      } else if (data.issues) {
+        alert('无法恢复出厂设置:\n' + data.issues.join('\n'));
       } else {
         alert('恢复失败: ' + (data.error || '未知'));
       }

@@ -151,6 +151,28 @@ def handle_reset_system_category(handler, parsed):
 
 def handle_reset_full(handler, parsed):
     """POST /api/reset/full"""
+    # 前置检查
+    import shutil as _shutil
+    issues = []
+
+    # 检查 git
+    try:
+        subprocess.run(["git", "--version"], capture_output=True, check=True)
+    except Exception:
+        issues.append("git 不可用，系统文件恢复将失败")
+
+    # 检查备份空间
+    try:
+        free = _shutil.disk_usage(PROJECT_ROOT).free
+        if free < 50 * 1024 * 1024:  # < 50MB
+            issues.append("磁盘空间不足 50MB，备份可能失败")
+    except Exception:
+        pass
+
+    if issues:
+        handler.send_json({"ok": False, "error": "前置检查失败", "issues": issues})
+        return True
+
     results = []
 
     for d in [USER_AGENTS_DIR, USER_SKILLS_DIR]:
