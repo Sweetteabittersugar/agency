@@ -453,6 +453,13 @@ function drawDemoCostTrend(){
   });
 }
 
+// beforeunload 清理定时器
+window.addEventListener('beforeunload', function() {
+  if (_ctxTimer) { clearInterval(_ctxTimer); _ctxTimer = null; }
+  if (_subTimer) { clearInterval(_subTimer); _subTimer = null; }
+  if (_testPollTimer) { clearTimeout(_testPollTimer); _testPollTimer = null; }
+});
+
 // ES module bridge
 window.toggleDashboard = toggleDashboard;
 window.renderDashboardGrid = renderDashboardGrid;

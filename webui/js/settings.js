@@ -1,5 +1,5 @@
 /* Agency — 开发者设置面板 */
-function saveApiKey(){var newKey=$('api-key').value.trim();var newProvider=$('api-provider').value;var oldKey=apiKey;var oldProvider=apiProvider;apiKey=newKey;apiProvider=newProvider;localStorage.setItem('agency_api_provider',apiProvider);$('api-status').textContent=apiKey?'已保存（仅内存，刷新后需重输）':'已清除';if(!apiKey){localStorage.removeItem('agency_api_key')}showUndoableToast(t('configSaved'),function(){apiKey=oldKey;apiProvider=oldProvider;localStorage.setItem('agency_api_provider',oldProvider);$('api-key').value=oldKey;$('api-provider').value=oldProvider;$('api-status').textContent=oldKey?'已保存（仅内存，刷新后需重输）':'已清除';if(!oldKey){localStorage.removeItem('agency_api_key')}},5000)}
+function saveApiKey(){var newKey=$('api-key').value.trim();var newProvider=$('api-provider').value;var oldKey=apiKey;var oldProvider=apiProvider;apiKey=newKey;apiProvider=newProvider;localStorage.setItem('agency_api_provider',apiProvider);window.apiKey=apiKey;$('api-status').textContent=apiKey?'已保存（仅内存，刷新后需重输）':'已清除';showUndoableToast(t('configSaved'),function(){apiKey=oldKey;apiProvider=oldProvider;localStorage.setItem('agency_api_provider',oldProvider);window.apiKey=oldKey;$('api-key').value=oldKey;$('api-provider').value=oldProvider;$('api-status').textContent=oldKey?'已保存（仅内存，刷新后需重输）':'已清除'},5000)}
 function toggleDevOverlay(){devMode=!devMode;var ov=$('devOverlay'),btn=$('devBtn');ov.classList.toggle('on',devMode);btn.classList.toggle('on',devMode);if(devMode){var ak=$('api-key');if(ak&&apiKey)ak.value=apiKey;var ap=$('api-provider');if(ap&&apiProvider)ap.value=apiProvider;loadMemList();loadRemotePanel();loadIntegrationPanel();loadMCPConfig();setTimeout(initSettingsAccordion,200)}}
 
 /* ── 设置面板折叠分组 ── */
@@ -483,7 +483,7 @@ window.resetUserFile = function(path) {
         var container = document.getElementById('reset-container');
         if (container) renderResetSection(container);
       } else {
-        alert('删除失败: ' + (data.error || '未知'));
+        showToast('删除失败: ' + (data.error || '未知'), true);
       }
     });
 };
@@ -513,7 +513,7 @@ window.resetSystemCategory = function(category, type) {
       if (data.ok) {
         showToast('已恢复: ' + category, false, 'success');
       } else {
-        alert('恢复失败: ' + (data.error || '未知'));
+        showToast('恢复失败: ' + (data.error || '未知'), true);
       }
     });
 };
@@ -524,12 +524,12 @@ window.fullReset = function() {
     .then(function(r) { return r.json(); })
     .then(function(data) {
       if (data.ok) {
-        alert('已恢复出厂设置。建议重启 Agency。');
+        showToast('已恢复出厂设置。建议重启 Agency。', false, 'success', 5000);
         location.reload();
       } else if (data.issues) {
-        alert('无法恢复出厂设置:\n' + data.issues.join('\n'));
+        showToast('无法恢复出厂设置: ' + data.issues.join('; '), true);
       } else {
-        alert('恢复失败: ' + (data.error || '未知'));
+        showToast('恢复失败: ' + (data.error || '未知'), true);
       }
     });
 };

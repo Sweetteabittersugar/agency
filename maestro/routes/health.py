@@ -2,8 +2,12 @@
 import sys
 import time
 import subprocess
+from pathlib import Path
 
 _boot = time.time()
+
+_version_file = Path(__file__).resolve().parent.parent.parent / "VERSION"
+_version = _version_file.read_text().strip() if _version_file.exists() else "unknown"
 
 
 def _count_active_procs():
@@ -25,7 +29,7 @@ def handle_health(handler, parsed):
     handler.send_json({
         "status": "ok",
         "uptime": round(time.time() - _boot, 1),
-        "version": "0.1.0",
+        "version": _version,
         "active_procs": _count_active_procs(),
     })
     return True

@@ -349,6 +349,7 @@ function escAttr(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;')
 /* ── Tooltip 帮助系统 ── */
 function initTooltips(){
   var activeTooltip = null;
+  var _cleanupListeners = [];
   function createTooltip(text, target){
     removeTooltip();
     var tip = document.createElement('div');
@@ -378,19 +379,23 @@ function initTooltips(){
     if(activeTooltip){ activeTooltip.el.remove(); activeTooltip = null; }
   }
   // Desktop: hover
-  document.addEventListener('mouseover', function(e){
+  var _onToolMouseOver = function(e){
     var el = e.target.closest('[data-tooltip]');
     if(!el) return;
-    if(window.innerWidth < 768) return; // mobile uses click
+    if(window.innerWidth < 768) return;
     var text = el.getAttribute('data-tooltip');
     if(text) createTooltip(t(text) || text, el);
-  });
-  document.addEventListener('mouseout', function(e){
+  };
+  var _onToolMouseOut = function(e){
     var el = e.target.closest('[data-tooltip]');
     if(el && window.innerWidth >= 768) removeTooltip();
-  });
+  };
+  document.addEventListener('mouseover', _onToolMouseOver);
+  document.addEventListener('mouseout', _onToolMouseOut);
+  _cleanupListeners.push({el: document, event: 'mouseover', fn: _onToolMouseOver});
+  _cleanupListeners.push({el: document, event: 'mouseout', fn: _onToolMouseOut});
   // Mobile: click
-  document.addEventListener('click', function(e){
+  var _onToolClick = function(e){
     if(window.innerWidth >= 768) return;
     var el = e.target.closest('[data-tooltip]');
     if(!el){
@@ -404,12 +409,26 @@ function initTooltips(){
     var text = el.getAttribute('data-tooltip');
     if(text) createTooltip(t(text) || text, el);
     e.stopPropagation();
-  });
+  };
+  document.addEventListener('click', _onToolClick);
+  _cleanupListeners.push({el: document, event: 'click', fn: _onToolClick});
   // Close on scroll/resize
-  window.addEventListener('scroll', function(){ if(activeTooltip) positionTooltip(activeTooltip.el, activeTooltip.target); }, true);
-  window.addEventListener('resize', function(){ removeTooltip(); });
+  var _onToolScroll = function(){ if(activeTooltip) positionTooltip(activeTooltip.el, activeTooltip.target); };
+  var _onToolResize = function(){ removeTooltip(); };
+  window.addEventListener('scroll', _onToolScroll, true);
+  window.addEventListener('resize', _onToolResize);
+  _cleanupListeners.push({el: window, event: 'scroll', fn: _onToolScroll});
+  _cleanupListeners.push({el: window, event: 'resize', fn: _onToolResize});
   // Close on Escape
-  document.addEventListener('keydown', function(e){ if(e.key === 'Escape') removeTooltip(); });
+  var _onToolKeydown = function(e){ if(e.key === 'Escape') removeTooltip(); };
+  document.addEventListener('keydown', _onToolKeydown);
+  _cleanupListeners.push({el: document, event: 'keydown', fn: _onToolKeydown});
+  // beforeunload 清理
+  window.addEventListener('beforeunload', function(){
+    _cleanupListeners.forEach(function(item){
+      item.el.removeEventListener(item.event, item.fn);
+    });
+  });
 }
 
 /* ── 文件路径检测 ── */

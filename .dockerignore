@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.git/
+.env
+credentials/
+maestro/sessions/
+maestro/worktrees/
+maestro/logs/
+maestro/*.db
+maestro/*.jsonl
+node_modules/
+.venv/

@@ -322,7 +322,7 @@ function setupFinish(){
       setTimeout(function(){
         $('setupOverlay').classList.remove('on');
         apiKey=setupData._api_key||'';apiProvider=setupData._api_provider||'deepseek';
-        localStorage.setItem('agency_api_key',apiKey);localStorage.setItem('agency_api_provider',apiProvider);
+        localStorage.setItem('agency_api_provider',apiProvider);
         if(remoteToken){authToken=remoteToken;localStorage.setItem('agency_auth_token',remoteToken)}
         _demoMode=false;
         showToast('配置完成！发送一条消息试试吧 🚀');

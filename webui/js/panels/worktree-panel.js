@@ -40,10 +40,10 @@ function createWorktree() {
         document.getElementById('wt-new-name').value = '';
         loadWorktrees();
       } else {
-        alert('创建失败: ' + (data.error || '未知错误'));
+        showToast('创建失败: ' + (data.error || '未知错误'), true);
       }
     })
-    .catch(function() { alert('网络错误'); });
+    .catch(function() { showToast('网络错误', true); });
 }
 
 function removeWorktree(name) {
@@ -51,9 +51,9 @@ function removeWorktree(name) {
   api.post('/api/worktrees/remove', {name: name, force: true})
     .then(function(data) {
       if (data.ok) loadWorktrees();
-      else alert('删除失败: ' + (data.error || '未知错误'));
+      else showToast('删除失败: ' + (data.error || '未知错误'), true);
     })
-    .catch(function() { alert('网络错误'); });
+    .catch(function() { showToast('网络错误', true); });
 }
 
 window.createWorktree = createWorktree;

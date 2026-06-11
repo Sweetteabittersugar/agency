@@ -3,7 +3,7 @@
 Agency — Claude Code Web 前端
   python maestro/web.py   →   http://localhost:8800
 """
-import os, sys, json, time, uuid, threading, subprocess, logging, logging.handlers
+import os, sys, json, time, uuid, threading, subprocess, signal, logging, logging.handlers
 from pathlib import Path
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingMixIn
@@ -129,6 +129,12 @@ class Handler(BaseHTTPRequestHandler):
             return
         parsed = urlparse(self.path)
         path = parsed.path
+
+        if path.startswith('/api/'):
+            from maestro.safety import check_rate_limit
+            if not check_rate_limit():
+                self.send_json({"ok": False, "error": "请求过于频繁"}, 429)
+                return
 
         if path == "/":
             from maestro.routes.static import handle_index
@@ -260,7 +266,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("X-Frame-Options", "DENY")
-        self.send_header("Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' ws: wss:")
+        self.send_header("Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' ws: wss:; require-trusted-types-for 'script'")
         self.end_headers()
         self.wfile.write(json.dumps(data, ensure_ascii=False).encode("utf-8"))
 
@@ -308,6 +314,13 @@ def _kill_old():
     except Exception:
         log.debug("Failed to kill old process on port 8800", exc_info=True)
 
+def _shutdown(signum, frame):
+    """SIGTERM/SIGINT 优雅关闭"""
+    print("\n⏹️ 正在关闭...")
+    cleanup_all_procs()
+    sys.exit(0)
+
+
 def main():
     """CLI 入口：agency start 启动 Web 服务。"""
     import webbrowser, socket
@@ -335,11 +348,9 @@ def main():
     else:
         print("  [提示] 安装 Docker 可启用沙箱隔离，更安全。详见 README", file=sys.stderr)
 
-    try:
-        httpd.serve_forever()
-    except KeyboardInterrupt:
-        cleanup_all_procs()
-        httpd.shutdown()
+    signal.signal(signal.SIGTERM, _shutdown)
+    signal.signal(signal.SIGINT, _shutdown)
+    httpd.serve_forever()
 
 
 if __name__ == "__main__":

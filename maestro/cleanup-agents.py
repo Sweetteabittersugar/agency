@@ -10,7 +10,10 @@ import subprocess
 import json
 import sys
 import os
+import logging
 from datetime import datetime
+
+_logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = os.environ.get("CLAUDE_PROJECT_DIR", os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -44,7 +47,8 @@ def get_claude_processes() -> list[dict]:
     raw = result.stdout.strip()
     try:
         data = json.loads(raw)
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
+        _logger.debug(f"cleanup-agents get_claude_processes JSON: {e}")
         return []
 
     # 单个进程时 ConvertTo-Json 返回对象而非数组
@@ -60,6 +64,7 @@ def get_claude_processes() -> list[dict]:
             # CreationDate 格式: "2026/6/1 17:57:54"（本地时间）
             created = datetime.strptime(created_str.strip(), "%Y/%m/%d %H:%M:%S")
         except (ValueError, IndexError):
+            _logger.debug(f"cleanup-agents parse created date: {created_str}")
             created = datetime.now()  # 解析失败用当前时间，避免误杀
 
         processes.append({"pid": pid, "memory_kb": mem // 1024, "created": created, "raw_created": created_str})
@@ -115,7 +120,8 @@ def _search_process(method):
         if isinstance(data, dict):
             data = [data]
         return [p.get("ProcessId") for p in data if p.get("ProcessId")]
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
+        _logger.debug(f"cleanup-agents search_process JSON: {e}")
         return []
 
 
@@ -226,6 +232,7 @@ def main():
             if now_ts - last_ts < THROTTLE_SEC:
                 return  # 静默跳过
     except (ValueError, OSError):
+        _logger.debug(f"cleanup-agents throttle stamp read")
         pass
 
     # 更新时间戳

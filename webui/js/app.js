@@ -5,9 +5,7 @@ var panels=[],pidSeq=0,perPage=1,curPage=0,focusedPid=null,orchMode=!1,devMode=!
 var conversations=[],agents=[];try{conversations=JSON.parse(localStorage.getItem('agency_convos')||'[]')}catch(_){}
 var projDir='',apiKey='',apiProvider='deepseek',authToken='';
 try{projDir=localStorage.getItem('agency_proj_dir')||''}catch(_){}
-// 注意：API Key 明文存 localStorage 有 XSS 泄漏风险
-// 生产环境建议用 session token 替代，或后端代理持有 Key
-try{apiKey=localStorage.getItem('agency_api_key')||''}catch(_){}
+// API Key 仅内存保存，不从 localStorage 读取
 try{apiProvider=localStorage.getItem('agency_api_provider')||'deepseek'}catch(_){}
 try{authToken=localStorage.getItem('agency_auth_token')||''}catch(_){}
 var _saveTimer=null;
@@ -289,21 +287,27 @@ function onFolderPicked(e){var files=e.target.files;if(!files.length)return;var 
 (function(){
   var sidebar=document.querySelector('.sidebar');
   var isResizing=false;
+  var _onSidebarMove=function(e){
+    if(!isResizing)return;
+    var w=Math.max(200,Math.min(500,e.clientX));
+    sidebar.style.width=w+'px';
+    sidebar.style.minWidth=w+'px';
+    localStorage.setItem('agency_sidebar_width',w);
+  };
+  var _onSidebarUp=function(){isResizing=false};
   if(sidebar){
     sidebar.addEventListener('mousedown',function(e){
       if(e.offsetX>sidebar.offsetWidth-6){isResizing=true;e.preventDefault()}
     });
-    document.addEventListener('mousemove',function(e){
-      if(!isResizing)return;
-      var w=Math.max(200,Math.min(500,e.clientX));
-      sidebar.style.width=w+'px';
-      sidebar.style.minWidth=w+'px';
-      localStorage.setItem('agency_sidebar_width',w);
-    });
-    document.addEventListener('mouseup',function(){isResizing=false});
+    document.addEventListener('mousemove',_onSidebarMove);
+    document.addEventListener('mouseup',_onSidebarUp);
     var saved=localStorage.getItem('agency_sidebar_width');
     if(saved){sidebar.style.width=saved+'px';sidebar.style.minWidth=saved+'px'}
   }
+  window.addEventListener('beforeunload',function(){
+    document.removeEventListener('mousemove',_onSidebarMove);
+    document.removeEventListener('mouseup',_onSidebarUp);
+  });
 })();
 
 // ── Ctrl+ +/- 调整字体大小 ──

@@ -165,6 +165,36 @@ _rate_lock = threading.Lock()
 from maestro.app_config import RATE_LIMIT_PER_MINUTE as RATE_LIMIT  # 每分钟最多 60 次请求
 
 
+def _persist_counts():
+    """保存限速数据到文件，重启后恢复"""
+    try:
+        import json
+        from pathlib import Path
+        data = {k: [t for t in v if time.time() - t < 60] for k, v in _request_counts.items()}
+        with open(Path(__file__).parent / '.rate_limit_state.json', 'w') as f:
+            json.dump(data, f)
+    except Exception:
+        pass
+
+
+def _load_counts():
+    """启动时恢复限速数据"""
+    try:
+        import json
+        from pathlib import Path
+        state_file = Path(__file__).parent / '.rate_limit_state.json'
+        if state_file.exists():
+            with open(state_file) as f:
+                data = json.load(f)
+            for k, v in data.items():
+                _request_counts[k] = v
+    except Exception:
+        pass
+
+
+_load_counts()
+
+
 def check_rate_limit(user_id="default"):
     """简单的滑动窗口速率限制"""
     with _rate_lock:
@@ -178,4 +208,11 @@ def check_rate_limit(user_id="default"):
             return False
 
         _request_counts[user_id].append(now)
+
+        # 定期持久化（每 50 次检查保存一次）
+        _check_count = getattr(check_rate_limit, '_call_count', 0) + 1
+        check_rate_limit._call_count = _check_count
+        if _check_count % 50 == 0:
+            _persist_counts()
+
         return True

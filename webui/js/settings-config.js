@@ -199,10 +199,8 @@ function executeImport(imported, decisions){
 /* ── 配置重置 ── */
 function resetConfig(){
   showDeleteConfirm(t('confirmReset'), function(){
-    var savedKey = localStorage.getItem('agency_api_key');
     var savedProvider = localStorage.getItem('agency_api_provider');
     localStorage.clear();
-    if(savedKey) localStorage.setItem('agency_api_key', savedKey);
     if(savedProvider) localStorage.setItem('agency_api_provider', savedProvider);
     showToast(t('resetDone'));
     setTimeout(function(){ location.reload(); }, 800);

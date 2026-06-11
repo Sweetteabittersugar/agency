@@ -223,11 +223,8 @@
     if (pgNum) pgNum.style.display = 'none';
   };
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
+  // DOM 已就绪（ES module defer），直接执行
+  init();
 })();
 
 const setLayout = window.setLayout;

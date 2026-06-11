@@ -68,6 +68,24 @@ agency start
 
 ## Installation
 
+### Prerequisites
+
+| Required | Version | Notes |
+|----------|---------|-------|
+| **Python** | 3.10+ | [python.org](https://www.python.org/downloads/) |
+| **Node.js** | auto-installed | Handled by install script (winget/brew/apt) |
+| **Claude Code CLI** | auto-installed | Handled by install script |
+| **Git** | any version | [git-scm.com](https://git-scm.com/) |
+
+| Recommended | Purpose |
+|-------------|---------|
+| **Docker** | Sandbox isolation (safer execution) |
+| **Node.js 18+** | JS syntax checking (developers) |
+
+| You'll need | Sign up at |
+|-------------|------------|
+| **API Key** | [DeepSeek](https://platform.deepseek.com/) · [Anthropic](https://console.anthropic.com/) · [OpenAI](https://platform.openai.com/) |
+
 <details open>
 <summary><b>pip install (recommended)</b></summary>
 
@@ -96,6 +114,16 @@ cp agents/L1_executor/coder.md ~/.claude/agents/
 </details>
 
 > **Need Claude CLI?** `npm install -g @anthropic-ai/claude-code`. No Claude Key? DeepSeek works great too.
+
+### Docker Sandbox Isolation (recommended)
+
+With Docker installed, Agents execute in isolated containers, protecting your host environment:
+
+```bash
+docker pull claude-code-worker:latest  # optional
+```
+
+When Docker is unavailable, Agency automatically falls back to degraded mode (direct subprocess), without affecting normal usage.
 
 ## 🔄 Updating
 
@@ -147,6 +175,21 @@ To disable: set `AGENCY_NO_UPDATE_CHECK=1`
 │  Agents · Skills · Hooks · Rules                 │
 │  Playwright · Context7 · Brave Search …          │
 └─────────────────────────────────────────────────┘
+```
+
+## Project Structure
+
+```
+agency/
+├── maestro/        Orchestration engine (routing/chat/cost/security)
+├── webui/          Frontend (modular JS + CSS dark theme + HTML)
+├── agents/         32 Agent definitions (L3/L2/L1/L0 layers)
+├── .claude/skills/ 34 Skill workflows
+├── rules/          Engineering standards
+├── hooks/          Lifecycle automation
+├── commands/       Shortcut commands
+├── docs/           Documentation
+└── tests/          Tests
 ```
 
 ## FAQ

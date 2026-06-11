@@ -21,8 +21,8 @@ function dismissUpdate(){
   sessionStorage.setItem('agency_update_dismissed', '1');
 }
 
-document.addEventListener('DOMContentLoaded', function(){
+(function init(){
   setTimeout(checkUpdate, 500);
-});
+})();
 
 export { checkUpdate, dismissUpdate };

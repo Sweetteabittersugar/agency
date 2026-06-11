@@ -2,7 +2,10 @@
 import json
 import time
 import os
+import logging
 from pathlib import Path
+
+log = logging.getLogger(__name__)
 
 STORE_DIR = Path(__file__).resolve().parent / "sessions"
 from maestro.app_config import SESSION_SNAPSHOT_THRESHOLD as SNAPSHOT_THRESHOLD  # JSONL 超过 2MB 时压缩快照
@@ -35,13 +38,14 @@ def append_event(session_id: str, event_type: str, data: dict) -> dict:
         with open(path, "a", encoding="utf-8") as f:
             f.write(json.dumps(event, ensure_ascii=False) + "\n")
     except Exception as e:
+        log.debug(f"session_store append_event: {e}")
         return {"ok": False, "error": str(e)}
 
     try:
         if path.stat().st_size > SNAPSHOT_THRESHOLD:
             _compress_snapshot(session_id)
-    except Exception:
-        pass
+    except Exception as e:
+        log.debug(f"session_store snap threshold check: {e}")
 
     return {"ok": True, "event": event}
 
@@ -59,7 +63,8 @@ def _compress_snapshot(session_id: str):
                 line = line.strip()
                 if line:
                     events.append(json.loads(line))
-    except Exception:
+    except Exception as e:
+        log.debug(f"session_store compress read: {e}")
         return
 
     keep_types = {"user_message", "agent_selected", "agent_response", "route_decision",
@@ -76,13 +81,14 @@ def _compress_snapshot(session_id: str):
                 "compressed_count": len(snapshot),
                 "events": snapshot
             }, f, ensure_ascii=False)
-    except Exception:
+    except Exception as e:
+        log.debug(f"session_store compress write: {e}")
         return
 
     try:
         os.replace(snap_path, path)
-    except Exception:
-        pass
+    except Exception as e:
+        log.debug(f"session_store replace snapshot: {e}")
 
 
 def get_session(session_id: str) -> dict:
@@ -98,7 +104,8 @@ def get_session(session_id: str) -> dict:
                 line = line.strip()
                 if line:
                     events.append(json.loads(line))
-    except Exception:
+    except Exception as e:
+        log.debug(f"session_store get_session: {e}")
         return {"session_id": session_id, "events": [], "count": 0, "error": "读取失败"}
 
     return {"session_id": session_id, "events": events, "count": len(events)}
@@ -134,7 +141,8 @@ def list_sessions() -> list:
                 "created": first_ts,
                 "updated": last_ts
             })
-        except Exception:
+        except Exception as e:
+            log.debug(f"session_store list_sessions: {e}")
             sessions.append({"id": name, "size_kb": 0, "events": 0, "created": 0, "updated": 0})
     return sessions
 
@@ -147,6 +155,7 @@ def delete_session(session_id: str) -> dict:
             path.unlink()
             return {"ok": True, "deleted": session_id}
         except Exception as e:
+            log.debug(f"session_store delete_session: {e}")
             return {"ok": False, "error": str(e)}
     return {"ok": False, "error": "会话不存在"}
 
@@ -173,8 +182,8 @@ def search_sessions(query: str, limit: int = 20) -> list:
                         })
                         if len(results) >= limit * 5:
                             break
-        except Exception:
-            pass
+        except Exception as e:
+            log.debug(f"session_store search_sessions: {e}")
 
     seen = set()
     unique = []

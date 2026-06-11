@@ -168,7 +168,7 @@ def handle_orchestrate(handler, body):
                 break
 
         try: proc.wait(timeout=15)
-        except subprocess.TimeoutExpired: pass
+        except subprocess.TimeoutExpired: log.warning(f"orchestrate proc wait timeout")
 
         from maestro.models import estimate_cost
         from maestro.web_cost import record_cost
@@ -190,7 +190,7 @@ def handle_orchestrate(handler, body):
         try:
             handler.wfile.write(f"event: error\ndata: {json.dumps({'msg': str(e)})}\n\n".encode())
             handler.wfile.flush()
-        except Exception: pass
+        except Exception as e2: log.warning(f"orchestrate SSE error write error: {e2}")
     finally:
         if proc:
             from maestro.proc_manager import kill_proc, untrack_proc

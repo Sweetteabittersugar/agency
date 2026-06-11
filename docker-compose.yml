@@ -1,0 +1,17 @@
+version: '3.8'
+services:
+  agency:
+    build: .
+    ports:
+      - "8800:8800"
+    volumes:
+      - ./maestro/sessions:/app/maestro/sessions
+      - ./maestro/worktrees:/app/maestro/worktrees
+      - ./credentials:/app/credentials
+      - ./.env:/app/.env:ro
+      - ./pricing.json:/app/pricing.json:ro
+      - ./.claude/agents/user:/app/.claude/agents/user
+      - ./.claude/skills/user:/app/.claude/skills/user
+    environment:
+      - AGENCY_HOST=0.0.0.0
+    restart: unless-stopped

@@ -78,7 +78,7 @@ def handle_webhook(handler, body):
                 break
 
         try: proc.wait(timeout=15)
-        except subprocess.TimeoutExpired: pass
+        except subprocess.TimeoutExpired: log.warning(f"webhook proc wait timeout")
 
         # 费用记录
         from maestro.models import estimate_cost
@@ -87,13 +87,13 @@ def handle_webhook(handler, body):
         try:
             handler.wfile.write(f"event: done\ndata: {json.dumps({'elapsed': elapsed})}\n\n".encode())
             handler.wfile.flush()
-        except Exception: pass
+        except Exception as e: log.warning(f"webhook SSE write error: {e}")
 
     except Exception as e:
         try:
             handler.wfile.write(f"data: {json.dumps({'error': str(e)})}\n\n".encode())
             handler.wfile.flush()
-        except Exception: pass
+        except Exception as e2: log.warning(f"webhook SSE error write error: {e2}")
     finally:
         if proc:
             from maestro.proc_manager import kill_proc, untrack_proc

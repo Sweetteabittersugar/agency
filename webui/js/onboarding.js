@@ -25,11 +25,11 @@
   // 不再自动触发：改由 main.js 在所有模块加载后控制
   // document.addEventListener('DOMContentLoaded', function() { ... });
 
-  // dismiss 按钮绑定保留（不依赖 DOMContentLoaded，因为覆盖层已经是 DOM 的一部分）
-  document.addEventListener('DOMContentLoaded', function() {
+  // DOM 已就绪（ES module defer），直接执行
+  (function init() {
     var btn = document.getElementById('onboard-dismiss');
     if (btn) btn.addEventListener('click', dismissOnboard);
-  });
+  })();
 })();
 
 // 输入框示例任务轮播
@@ -59,8 +59,11 @@
     }
   }
 
-  setInterval(rotatePlaceholder, 4000);
+  var _placeholderTimer = setInterval(rotatePlaceholder, 4000);
   setTimeout(rotatePlaceholder, 500);
+  window.addEventListener('beforeunload', function() {
+    if (window._placeholderTimer) clearInterval(window._placeholderTimer);
+  });
 })();
 
 const dismissOnboard = window.dismissOnboard;
