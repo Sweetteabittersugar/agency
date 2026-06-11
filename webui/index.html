@@ -16,48 +16,46 @@
 </head>
 <body>
 <nav class="sidebar">
-<div id="sidebar-nav">
-  <div class="nav-item active" data-nav="chat" onclick="switchNav('chat')">
-    <span class="nav-icon">💬</span><span class="nav-label">聊天</span>
-    <span class="nav-badge" id="chat-badge" style="display:none">●</span>
-  </div>
-  <div class="nav-item" data-nav="agents" onclick="switchNav('agents')">
-    <span class="nav-icon">🤖</span><span class="nav-label">Agent</span>
-  </div>
-  <div class="nav-item" data-nav="dashboard" onclick="switchNav('dashboard')">
-    <span class="nav-icon">📊</span><span class="nav-label">看板</span>
-  </div>
-  <div class="nav-item" data-nav="connect" onclick="switchNav('connect')">
-    <span class="nav-icon">🔌</span><span class="nav-label">连接</span>
-  </div>
-</div>
 <div id="sidebar-content">
-  <div id="nav-chat" class="nav-panel">
-    <div class="sidebar-section-header">💬 对话历史</div>
-    <div style="flex:1;overflow-y:auto" id="history-list">加载中...</div>
-  </div>
-  <div id="nav-agents" class="nav-panel" style="display:none">
-    <div id="demo-banner" style="display:none;padding:8px 10px;background:var(--surface2);color:var(--text);text-align:center;font-size:11px;font-weight:500;border-radius:var(--radius-sm);margin:0 8px 8px;flex-shrink:0;border:1px solid var(--accent);">
-    ⚡ Demo 模式 — 免 API Key 体验全部功能
-    <button onclick="enterDemoMode()" style="margin-left:6px;padding:2px 10px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:600;font-size:11px;">立即体验</button>
-    <button onclick="dismissDemoBanner()" style="margin-left:4px;padding:2px 6px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:10px;">关闭</button>
+  <!-- 💬 会话 — 始终展开 -->
+  <div class="sidebar-section">
+    <div class="sidebar-section-header" onclick="toggleSidebarSection(this)">
+      <span>💬 会话</span>
+      <span class="section-toggle">▼</span>
     </div>
-    <div style="padding:4px 8px 0;"><input class="agent-search" id="agent-search" placeholder="搜索 Agent…" autocomplete="off"></div>
-    <div class="agent-list" id="agent-list"></div>
-    <div class="sidebar-section-header" style="margin-top:8px;">🧩 Skill</div>
-    <div style="flex:1;overflow-y:auto;font-size:11px" id="sidebar-skills-list">点击 Agent 标签以加载...</div>
+    <div class="sidebar-section-body" id="sb-conversations">
+      <div style="padding:0 8px 6px">
+        <input placeholder="搜索对话..." style="width:100%;padding:6px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:11px;box-sizing:border-box"
+          onkeyup="if(event.key==='Enter')searchHistory(this.value)" onblur="if(!this.value.trim())renderHistory()">
+      </div>
+      <div style="overflow-y:auto;max-height:200px" id="history-list">加载中...</div>
+    </div>
   </div>
-  <div id="nav-dashboard" class="nav-panel" style="display:none">
-    <div class="sidebar-section-header">📊 今日费用</div>
-    <div id="sidebar-cost-summary" style="padding:8px;font-size:12px;">加载中...</div>
-    <div class="sidebar-section-header">📋 最近操作</div>
-    <div id="sidebar-ops-summary" style="padding:8px;font-size:11px;">加载中...</div>
+  <!-- 🤖 Agent — 始终展开 -->
+  <div class="sidebar-section">
+    <div class="sidebar-section-header" onclick="toggleSidebarSection(this)">
+      <span>🤖 Agent</span>
+      <span class="section-toggle">▼</span>
+    </div>
+    <div class="sidebar-section-body" id="sb-agents">
+      <div id="demo-banner" style="display:none;padding:8px 10px;background:var(--surface2);color:var(--text);text-align:center;font-size:11px;font-weight:500;border-radius:var(--radius-sm);margin:0 8px 8px;flex-shrink:0;border:1px solid var(--accent);">
+      ⚡ Demo 模式 — 免 API Key 体验全部功能
+      <button onclick="enterDemoMode()" style="margin-left:6px;padding:2px 10px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:600;font-size:11px;">立即体验</button>
+      <button onclick="dismissDemoBanner()" style="margin-left:4px;padding:2px 6px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:10px;">关闭</button>
+      </div>
+      <div style="padding:0 8px 4px"><input class="agent-search" id="agent-search" placeholder="搜索 Agent…" autocomplete="off"></div>
+      <div class="agent-list" id="agent-list"></div>
+    </div>
   </div>
-  <div id="nav-connect" class="nav-panel" style="display:none">
-    <div class="sidebar-section-header">💬 微信 Bot</div>
-    <div id="sidebar-wx-status" style="padding:8px;font-size:12px;">加载中...</div>
-    <div class="sidebar-section-header">🔌 MCP 服务器</div>
-    <div id="sidebar-mcp-status" style="padding:8px;font-size:12px;">加载中...</div>
+  <!-- 🧩 Skill — 可折叠 -->
+  <div class="sidebar-section collapsed">
+    <div class="sidebar-section-header" onclick="toggleSidebarSection(this)">
+      <span>🧩 Skill</span>
+      <span class="section-toggle">▼</span>
+    </div>
+    <div class="sidebar-section-body" id="sb-skills">
+      <div style="padding:0 8px;font-size:11px" id="sidebar-skills-list">点击 Agent 标签以加载...</div>
+    </div>
   </div>
 </div>
 </nav>
@@ -67,14 +65,14 @@
 <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebar()">☰</button>
 <h1><span class="dot"></span>Agency</h1>
 <div class="header-actions">
+<span id="trust-badge" style="padding:2px 8px;border-radius:4px;font-size:10px;cursor:pointer;border:1px solid var(--border)" onclick="cycleTrustMode()" title="切换信任模式">🛡️ 普通</span>
 <span style="font-size:10px;color:var(--muted)" id="summary"></span>
-<button class="btn" onclick="toggleHelpOverlay()" data-tooltip="tooltipSend">❓</button>
-<button class="btn" id="dashboardBtn" onclick="toggleDashboard()">📊</button>
-<button class="btn" id="devBtn" onclick="toggleDevOverlay()">🔧</button>
-<button class="btn" id="profileQuickBtn" onclick="cycleProfile()" title="切换 Profile 级别" style="font-size:10px;font-weight:600">⚙</button>
-<button class="btn" id="orchBtn" onclick="toggleOrchMode()">🧠</button>
-<button class="btn" id="gridBtn" onclick="cycleGrid()">⊞</button>
-<button class="btn" onclick="addPanel()">＋</button>
+<button class="btn" id="dashboardBtn" onclick="toggleDashboard()" title="看板">📊</button>
+<button class="btn" id="devBtn" onclick="toggleDevOverlay()" title="设置">⚙️</button>
+<button class="btn" onclick="addPanel()" title="新建面板">＋</button>
+<button class="btn" id="gridBtn" onclick="cycleGrid()" title="切换布局">⊞</button>
+<button class="btn" id="profileQuickBtn" onclick="cycleProfile()" title="切换 Profile 级别" style="display:none;font-size:10px;font-weight:600">⚙</button>
+<button class="btn" id="orchBtn" onclick="toggleOrchMode()" style="display:none">🧠</button>
 </div>
 </div>
 <div class="mobile-tabs" id="mobile-tabs">

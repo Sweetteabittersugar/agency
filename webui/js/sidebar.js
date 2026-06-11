@@ -6,21 +6,25 @@ var _selectedAgents = {};
 var STARTER_AGENTS = ['coder', 'explorer', 'general-worker', 'orchestrator'];
 var currentNav = 'chat';
 
-/* ── 导航切换 ── */
+/* ── 导航切换 (v3兼容 — 侧边栏已改为可折叠区域) ── */
 window.switchNav = function(nav) {
   currentNav = nav;
-  document.querySelectorAll('#sidebar-nav .nav-item').forEach(function(el) {
-    el.classList.toggle('active', el.getAttribute('data-nav') === nav);
-  });
-  document.querySelectorAll('#sidebar-content .nav-panel').forEach(function(el) {
-    el.style.display = 'none';
-  });
-  var panel = document.getElementById('nav-' + nav);
-  if (panel) panel.style.display = 'block';
-  if (nav === 'agents') { loadSidebarAgents(); loadSidebarSkills(); }
-  if (nav === 'dashboard') { loadSidebarDashboard(); }
-  if (nav === 'connect') { loadSidebarConnect(); }
   try { localStorage.setItem('agency-nav', nav); } catch(e) {}
+  if (nav === 'agents') {
+    // 展开 Agent 区域并滚动到可见
+    var sec = document.getElementById('sb-agents');
+    if (sec) {
+      var section = sec.closest('.sidebar-section');
+      if (section) section.classList.remove('collapsed');
+      sec.scrollIntoView({behavior:'smooth'});
+    }
+    loadSidebarAgents(); loadSidebarSkills();
+  } else if (nav === 'dashboard') {
+    if (typeof toggleDashboard === 'function') toggleDashboard();
+  } else if (nav === 'connect') {
+    if (typeof toggleDashboard === 'function') toggleDashboard();
+  }
+  // chat → 默认即展开，无需操作
 };
 
 function loadSidebarAgents() {
@@ -519,6 +523,53 @@ function pickAgentForRoute(agentName, pid) {
   setTimeout(function(){ handleSend(pid); }, 200);
 }
 
+/* ── 侧边栏折叠 (v3) ── */
+window.toggleSidebarSection = function(header) {
+  var section = header.closest('.sidebar-section');
+  if (section) section.classList.toggle('collapsed');
+};
+
+window.toggleSidebarSub = function(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  var toggle = document.getElementById(id.replace('sub','toggle'));
+  var show = el.style.display === 'none';
+  el.style.display = show ? 'block' : 'none';
+  if (toggle) toggle.textContent = show ? '▼' : '▶';
+};
+
+/* ── 信任模式循环 ── */
+window.cycleTrustMode = function() {
+  var modes = ['cautious', 'normal', 'trusted'];
+  var idx = modes.indexOf(typeof trustMode !== 'undefined' ? trustMode : 'cautious');
+  var next = modes[(idx + 1) % modes.length];
+  if (typeof setTrustMode === 'function') setTrustMode(next);
+  updateTrustBadge();
+};
+
+window.updateTrustBadge = function() {
+  var badge = document.getElementById('trust-badge');
+  if (!badge) return;
+  var mode = typeof trustMode !== 'undefined' ? trustMode : 'cautious';
+  var labels = {cautious:'🛡️ 谨慎', normal:'⚖️ 正常', trusted:'🚀 信任'};
+  badge.textContent = labels[mode] || '🛡️ 谨慎';
+  badge.className = mode;
+};
+
+// 页面加载时初始化信任徽章 + 预加载 Agent/Skill 列表
+document.addEventListener('DOMContentLoaded', function() {
+  updateTrustBadge();
+  // 延迟加载 Agent 和 Skill，确保 API 就绪
+  setTimeout(function() {
+    if (typeof loadAgents === 'function' && (!window.agents || !window.agents.length)) {
+      loadAgents();
+    }
+    if (typeof loadSidebarSkills === 'function') {
+      loadSidebarSkills();
+    }
+  }, 500);
+});
+
 // ES module bridge
 window.loadAgents = loadAgents;
 window.renderAgents = renderAgents;
@@ -543,3 +594,7 @@ window.showDemoActionPopup = showDemoActionPopup;
 window.clearAgentPromptText = clearAgentPromptText;
 window.enableAllSkills = enableAllSkills;
 window.disableAllSkills = disableAllSkills;
+window.toggleSidebarSection = toggleSidebarSection;
+window.toggleSidebarSub = toggleSidebarSub;
+window.cycleTrustMode = cycleTrustMode;
+window.updateTrustBadge = updateTrustBadge;

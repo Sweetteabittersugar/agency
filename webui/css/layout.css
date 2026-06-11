@@ -177,3 +177,36 @@
   .nav-item { justify-content: flex-start; padding: 8px 10px; }
   .nav-label { display: inline; }
 }
+
+/* ══════════════════════════════════════════
+   侧边栏可折叠区域 (v3)
+   ══════════════════════════════════════════ */
+.sidebar-section {
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+.sidebar-section-header:hover { background: var(--bg); }
+.section-toggle { font-size: 10px; color: var(--muted); transition: transform 0.2s; }
+.sidebar-section.collapsed .section-toggle { transform: rotate(-90deg); }
+.sidebar-section.collapsed .sidebar-section-body { display: none; }
+.sidebar-sub-header {
+  font-size: 10px;
+  color: var(--muted);
+  padding: 6px 12px 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* 信任徽章状态 */
+#trust-badge.cautious { color: var(--muted); border-color: var(--border); }
+#trust-badge.normal { color: var(--accent); border-color: var(--accent); }
+#trust-badge.trusted { color: var(--warn); border-color: var(--warn); }
