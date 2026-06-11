@@ -383,3 +383,39 @@ function restoreSession(p, events){
   });
   p.currentConvo.sessionId=localStorage.getItem('agency-session-id')||'';
 }
+
+// ES module bridge
+window.addPanel = addPanel;
+window.removePanel = removePanel;
+window.clearAllPanels = clearAllPanels;
+window.handleSend = handleSend;
+window.refreshUI = refreshUI;
+window.pickAgent = pickAgent;
+window.pickAgentNew = pickAgentNew;
+window.toggleOrchMode = toggleOrchMode;
+window.stopStream = stopStream;
+window.retrySend = retrySend;
+window.toggleRouteFix = toggleRouteFix;
+window.cycleGrid = cycleGrid;
+window.prevPage = prevPage;
+window.nextPage = nextPage;
+window.quickAction = quickAction;
+window.renderDemoWelcome = renderDemoWelcome;
+window.toggleTemplateDropdown = toggleTemplateDropdown;
+window.applyTemplate = applyTemplate;
+window.saveNewTemplate = saveNewTemplate;
+window.editCustomTemplate = editCustomTemplate;
+window.deleteCustomTemplate = deleteCustomTemplate;
+window.showRoutePicker = showRoutePicker;
+window.showProgress = showProgress;
+
+export { mkPanel, addPanel, removePanel, clearAllPanels, buildPanelDOM,
+         cycleGrid, prevPage, nextPage, refreshUI, pickAgent, pickAgentNew,
+         toggleOrchMode, setStreaming, addMsg, stopStream, retrySend,
+         sseReconnect, toggleRouteFix, loadAgentDropdown, saveAllConvos,
+         handleSend, handleOrchSend, handleStageEvent, renderPipelineBar,
+         hidePipeline, showProgress, executePlan, updateQueueIndicator,
+         processQueue, renderDAGTree, quickAction, renderDemoWelcome,
+         simulateDemoReply, toggleTemplateDropdown, renderTemplateList,
+         applyTemplate, saveNewTemplate, editCustomTemplate, deleteCustomTemplate,
+         restoreSession, stageStatus };

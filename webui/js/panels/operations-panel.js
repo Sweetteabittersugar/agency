@@ -34,3 +34,5 @@ function loadOperations() {
     if (list) list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">加载失败</div>';
   });
 }
+
+export { renderOperationsTab, loadOperations };

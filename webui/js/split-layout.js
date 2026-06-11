@@ -220,3 +220,7 @@
     init();
   }
 })();
+
+const setLayout = window.setLayout;
+const onPanelAgentChange = window.onPanelAgentChange;
+export { setLayout, onPanelAgentChange };

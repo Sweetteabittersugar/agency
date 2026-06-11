@@ -453,7 +453,22 @@ function drawDemoCostTrend(){
   });
 }
 
+// ES module bridge
+window.toggleDashboard = toggleDashboard;
+window.renderDashboardGrid = renderDashboardGrid;
+window.loadCostOverview = loadCostOverview;
+window.openDashDetail = openDashDetail;
 
-
-
-
+export { harnessActive, toggleDashboard, renderDashboardGrid, buildDashCard,
+         loadCostCard, loadOpsCard, loadContextCard, loadWorktreeCard,
+         loadWeixinCard, loadTestCard, loadMCPCard, loadMemoryCard,
+         openDashDetail, renderCostDetail, renderMCPDetail, renderContextDetail,
+         renderTestDetail, loadCostOverview, drawCostTrend, drawModelBars,
+         drawOpusRatio, renderCostAlerts, showPermToast, sendPermDecision,
+         addAllowRule, loadPermHistory, loadContextDetail, loadSubagents,
+         loadHooksLog, loadMCPDetail, loadDashboardPermissionAudit, loadEnvStatus,
+         runTest, pollTestStatus, renderDemoDashboard, renderDemoDashboardGrid,
+         buildDemoCard, buildDemoModelBars, drawDemoCostTrend, renderOperationsTab,
+         loadOperations, renderMemoryTab, searchMemory, loadMemoryTimeline,
+         loadMemoryFiles, openMemoryFile, renderWeixinTab, loadWeixinStatus,
+         renderWorktreeTab, loadWorktrees, createWorktree, removeWorktree };

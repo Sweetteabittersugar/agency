@@ -140,3 +140,6 @@ document.addEventListener('DOMContentLoaded', function(){
   updateTrustModeUI();
   updateProfileUI();
 });
+
+export { TRUST_MODES, trustMode, getTrustMode, setTrustMode,
+         updateTrustModeUI, showPermissionConfirm, loadPermissionAudit };

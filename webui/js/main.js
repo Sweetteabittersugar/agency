@@ -1,0 +1,24 @@
+/* Agency 前端入口 — ES Modules */
+import './state.js';
+import './utils.js';
+import './api.js';
+import './markdown.js';
+import './undo.js';
+import './command-palette.js';
+import './wizard.js';
+import './onboarding.js';
+import './update-check.js';
+import './settings-theme.js';
+import './settings-config.js';
+import './settings-security.js';
+import './settings.js';
+import './split-layout.js';
+import './sidebar.js';
+import './chat.js';
+import './app.js';
+import './dashboard.js';
+import './panels/cost-panel.js';
+import './panels/weixin-panel.js';
+import './panels/memory-panel.js';
+import './panels/operations-panel.js';
+import './panels/worktree-panel.js';

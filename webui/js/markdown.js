@@ -28,3 +28,6 @@ var renderMD = (function() {
   window.renderMD = renderMarkdown;
   return renderMarkdown;
 })();
+
+window.renderMD = renderMD;
+export { renderMD };

@@ -85,3 +85,5 @@ window.wxLogout = function() {
   api.post('/api/weixin/logout')
     .then(function() { loadWeixinStatus(); });
 };
+
+export { renderWeixinTab, loadWeixinStatus };

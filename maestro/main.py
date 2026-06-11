@@ -631,6 +631,8 @@ def record_cost(in_tokens, out_tokens, cost, model, elapsed):
     try:
         db_path = PROJECT_ROOT / "maestro" / "cost.db"
         conn = sqlite3.connect(str(db_path))
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=5000")
         conn.execute("""
             CREATE TABLE IF NOT EXISTS costs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

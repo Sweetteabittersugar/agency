@@ -386,3 +386,38 @@ function switchMobileTab(tab){
 
 // 同步全局变量到 Store（供后续渐进迁移）
 if (window.Store) setTimeout(function() { Store.syncFromGlobals(); }, 1000);
+
+// ES module — 确保全局变量在模块模式下仍可被其他文件访问
+window.panels = panels;
+window.pidSeq = pidSeq;
+window.perPage = perPage;
+window.curPage = curPage;
+window.focusedPid = focusedPid;
+window.orchMode = orchMode;
+window.devMode = devMode;
+window.conversations = conversations;
+window.agents = agents;
+window.projDir = projDir;
+window.apiKey = apiKey;
+window.apiProvider = apiProvider;
+window.authToken = authToken;
+window._saveTimer = _saveTimer;
+window.agencyProfile = agencyProfile;
+window.grid = grid;
+window.pageBar = pageBar;
+window.agentList = agentList;
+window.historyList = historyList;
+window.outputDir = outputDir;
+window.loadedProfileDescriptions = loadedProfileDescriptions;
+window.dragTarget = dragTarget;
+window.PROFILE_LABELS = PROFILE_LABELS;
+window.PROFILE_ICONS = PROFILE_ICONS;
+window.PROFILE_ROUNDS = PROFILE_ROUNDS;
+window.PROFILE_DESC_FALLBACK = PROFILE_DESC_FALLBACK;
+window.PROFILE_COLORS = PROFILE_COLORS;
+
+export { cycleProfile, setProfile, updateProfileUI, loadProfileDescriptions,
+         toggleHelpOverlay, switchHelpTab,
+         showRemoteLogin, submitRemoteLogin,
+         loadFileTree, openFilePanel, clearProjDir, onFolderPicked,
+         toggleSidebar, switchMobileTab };

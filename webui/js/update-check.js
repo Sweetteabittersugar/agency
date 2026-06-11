@@ -24,3 +24,5 @@ function dismissUpdate(){
 document.addEventListener('DOMContentLoaded', function(){
   setTimeout(checkUpdate, 500);
 });
+
+export { checkUpdate, dismissUpdate };

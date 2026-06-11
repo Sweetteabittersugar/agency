@@ -365,3 +365,9 @@ function enterDemoMode(){
   var dbBtn = document.getElementById('dashboardBtn');
   if(dbBtn) dbBtn.style.display = '';
 }
+
+export { setupData, _demoMode, showSetupStep, enterDemoMode, unlockAllFromWizard,
+         setupNext, setupFinish, selectRegion, selectBudget,
+         renderProviderQ1, renderProviderQ2, renderBudgetCards,
+         getProvidersForRegionBudget, renderAllProvidersDropdown,
+         toggleAllProviders, onProviderSelect };

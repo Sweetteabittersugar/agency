@@ -115,3 +115,6 @@ window.openMemoryFile = function(path, name) {
         '<pre style="padding:12px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--text);white-space:pre-wrap;max-height:400px;overflow-y:auto;">' + escHtml(data.content || '') + '</pre>';
     });
 };
+
+window.openMemoryFile = openMemoryFile;
+export { renderMemoryTab, searchMemory, loadMemoryTimeline, loadMemoryFiles, openMemoryFile };

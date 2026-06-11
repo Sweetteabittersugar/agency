@@ -63,3 +63,7 @@
   setInterval(rotatePlaceholder, 4000);
   setTimeout(rotatePlaceholder, 500);
 })();
+
+const dismissOnboard = window.dismissOnboard;
+const startDemo = window.startDemo;
+export { dismissOnboard, startDemo };

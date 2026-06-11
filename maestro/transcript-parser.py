@@ -60,6 +60,8 @@ DEFAULT_PRICE_OUT = 0.87
 def init_db() -> sqlite3.Connection:
     """初始化 cost.db。统一使用 cost_logs 表（与 cost_mw.py 兼容）。"""
     conn = sqlite3.connect(str(COST_DB))
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=5000")
     conn.execute("""
         CREATE TABLE IF NOT EXISTS cost_logs (
             id         INTEGER PRIMARY KEY AUTOINCREMENT,

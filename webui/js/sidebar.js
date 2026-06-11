@@ -518,3 +518,38 @@ function pickAgentForRoute(agentName, pid) {
   setStreaming(p, false);
   setTimeout(function(){ handleSend(pid); }, 200);
 }
+
+// ES module bridge
+window.loadAgents = loadAgents;
+window.renderAgents = renderAgents;
+window.loadSidebarSkills = loadSidebarSkills;
+window.renderHistory = renderHistory;
+window.delConvo = delConvo;
+window.loadConvo = loadConvo;
+window.switchNav = switchNav;
+window.toggleAgentList = toggleAgentList;
+window.toggleMultiSelect = toggleMultiSelect;
+window.deleteAgent = deleteAgent;
+window.viewAgentPrompt = viewAgentPrompt;
+window.closeAgentPrompt = closeAgentPrompt;
+window.saveAgentPrompt = saveAgentPrompt;
+window.viewSkillDetail = viewSkillDetail;
+window.saveSkillSource = saveSkillSource;
+window.toggleSkill = toggleSkill;
+window.enableSkill = enableSkill;
+window.checkServiceStatus = checkServiceStatus;
+window.showRoutePicker = showRoutePicker;
+window.showDemoActionPopup = showDemoActionPopup;
+window.clearAgentPromptText = clearAgentPromptText;
+window.enableAllSkills = enableAllSkills;
+window.disableAllSkills = disableAllSkills;
+
+export { currentPromptAgent, allSkills, STARTER_AGENTS, currentNav,
+         switchNav, loadAgents, renderAgents, loadSidebarAgents, loadSidebarDashboard,
+         loadSidebarConnect, loadSidebarSkills, renderSidebarSkills, renderHistory,
+         delConvo, loadConvo, toggleMultiSelect, deleteAgent, viewAgentPrompt,
+         closeAgentPrompt, saveAgentPrompt, viewSkillDetail, saveSkillSource,
+         toggleSkill, enableSkill, checkServiceStatus, showRoutePicker,
+         renderDemoAgentsInSidebar, renderDemoSkillsInSidebar, renderDemoHistoryInSidebar,
+         showDemoActionPopup, pickAgentForRoute, clearAgentPromptText,
+         enableAllSkills, disableAllSkills };

@@ -555,3 +555,5 @@ function updateShortcutBindings(){
   // 延迟初始化，确保其他模块已就绪
   setTimeout(function() { commandPalette.init(); }, 200);
 })();
+
+export { KEYBOARD_SHORTCUTS, registerCommand, commandPalette, updateShortcutBindings };

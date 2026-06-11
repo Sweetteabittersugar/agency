@@ -208,3 +208,6 @@ function resetConfig(){
     setTimeout(function(){ location.reload(); }, 800);
   });
 }
+
+export { exportConfig, importConfig, resetConfig, showImportDiff,
+         applyDiffItem, applyAllDiffs, skipAllDiffs, executeImport };

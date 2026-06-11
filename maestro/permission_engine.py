@@ -314,6 +314,8 @@ class PermissionEngine:
         import sqlite3
         try:
             conn = sqlite3.connect(str(self._db_path))
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA busy_timeout=5000")
             conn.row_factory = sqlite3.Row
             try:
                 if decision_filter:

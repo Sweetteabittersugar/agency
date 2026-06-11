@@ -115,3 +115,5 @@ function renderDailyTable(container, data){
   html+='</tbody></table>';
   container.innerHTML=html;
 }
+
+export { loadCostDashboard, renderBarChart, renderHBarChart, renderDailyTable };

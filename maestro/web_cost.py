@@ -191,6 +191,8 @@ def get_permission_audit_log(project_root, limit=100, decision_filter=""):
     if not db.exists():
         return []
     conn = sqlite3.connect(str(db))
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=5000")
     conn.row_factory = sqlite3.Row
     try:
         has_table = conn.execute(
@@ -222,6 +224,8 @@ def get_permission_stats(project_root):
     if not db.exists():
         return {"total": 0, "allowed": 0, "denied": 0, "asked": 0}
     conn = sqlite3.connect(str(db))
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=5000")
     try:
         has_table = conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='permission_audit'"

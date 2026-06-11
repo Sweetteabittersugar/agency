@@ -423,3 +423,33 @@ function detectFilePath(text){
   if(m) return m[1];
   return null;
 }
+
+// ES module bridge — ensure cross-file access
+window.$ = $;
+window.escHtml = escHtml;
+window.showToast = showToast;
+window.apiFetch = apiFetch;
+window.copyText = copyText;
+window.getFocusedPanel = getFocusedPanel;
+window.highlightCode = highlightCode;
+window.t = t;
+window.escAttr = escAttr;
+window.showDeleteConfirm = showDeleteConfirm;
+window.isFeatureUnlocked = isFeatureUnlocked;
+window.checkNewUnlocks = checkNewUnlocks;
+window.initTooltips = initTooltips;
+window.detectFilePath = detectFilePath;
+window.getDemoAgents = getDemoAgents;
+window.getDemoSkills = getDemoSkills;
+window.getDemoHistory = getDemoHistory;
+window.getCustomTemplates = getCustomTemplates;
+window.saveCustomTemplates = saveCustomTemplates;
+window.getAllTemplates = getAllTemplates;
+
+export { $, escHtml, showToast, apiFetch, copyText, getFocusedPanel, highlightCode,
+         PROVIDER_DB, getDemoAgents, getDemoSkills, getDemoHistory,
+         _lang, L, t, showDeleteConfirm,
+         FEATURE_SCHEDULE, FEATURE_UNLOCK_DAYS, getUserDay, isFeatureUnlocked,
+         checkNewUnlocks, autoSelectProfile,
+         WORKFLOW_TEMPLATES, getCustomTemplates, saveCustomTemplates, getAllTemplates,
+         escAttr, initTooltips, detectFilePath };

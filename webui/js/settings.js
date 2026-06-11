@@ -531,3 +531,6 @@ window.fullReset = function() {
       }
     });
 };
+
+export { saveApiKey, toggleDevOverlay, initSettingsAccordion,
+         loadMemList, loadRemotePanel, loadIntegrationPanel, loadMCPConfig };
