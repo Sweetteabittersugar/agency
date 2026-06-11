@@ -286,25 +286,33 @@ function onFolderPicked(e){var files=e.target.files;if(!files.length)return;var 
 })();
 
 // ── 侧边栏拖拽调整宽度 ──
+var _sidebarResizing=false;
+var _onSidebarMove=function(e){
+  if(!_sidebarResizing)return;
+  var sidebar=document.querySelector('.sidebar');
+  if(!sidebar)return;
+  var w=Math.max(200,Math.min(500,e.clientX));
+  sidebar.style.width=w+'px';
+  sidebar.style.minWidth=w+'px';
+  localStorage.setItem('agency_sidebar_width',w);
+};
+var _onSidebarUp=function(){_sidebarResizing=false;};
 (function(){
   var sidebar=document.querySelector('.sidebar');
-  var isResizing=false;
   if(sidebar){
     sidebar.addEventListener('mousedown',function(e){
-      if(e.offsetX>sidebar.offsetWidth-6){isResizing=true;e.preventDefault()}
+      if(e.offsetX>sidebar.offsetWidth-6){_sidebarResizing=true;e.preventDefault()}
     });
-    document.addEventListener('mousemove',function(e){
-      if(!isResizing)return;
-      var w=Math.max(200,Math.min(500,e.clientX));
-      sidebar.style.width=w+'px';
-      sidebar.style.minWidth=w+'px';
-      localStorage.setItem('agency_sidebar_width',w);
-    });
-    document.addEventListener('mouseup',function(){isResizing=false});
+    document.addEventListener('mousemove',_onSidebarMove);
+    document.addEventListener('mouseup',_onSidebarUp);
     var saved=localStorage.getItem('agency_sidebar_width');
     if(saved){sidebar.style.width=saved+'px';sidebar.style.minWidth=saved+'px'}
   }
 })();
+window.addEventListener('beforeunload',function(){
+  document.removeEventListener('mousemove',_onSidebarMove);
+  document.removeEventListener('mouseup',_onSidebarUp);
+});
 
 // ── Ctrl+ +/- 调整字体大小 ──
 (function(){
