@@ -134,7 +134,9 @@ def main():
         legacy_main()
         return
 
-    print(f"🚀 Agency v0.4.0 — Flask 模式")
+    import sys, io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    print(f"\U0001f680 Agency v0.4.0 — Flask 模式")
     print(f"   地址: http://{BIND_ADDR}:{PORT}")
 
     if check_docker_available():
