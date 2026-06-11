@@ -37,15 +37,27 @@ pip3 install -e "$SCRIPT_DIR" --quiet 2>/dev/null || {
 }
 echo "  依赖安装完成"
 
-# ── 3. 检查 Claude CLI ──
+# ── 3. 检查 Node.js + Claude CLI ──
 echo ""
-echo "[3/5] 检查 Claude CLI..."
-if command -v claude &>/dev/null; then
-    echo "  Claude CLI 已就绪"
+echo "[3/5] 安装 Claude Code CLI..."
+
+# 先检查 Node.js（npm 需要它）
+if ! command -v node &>/dev/null; then
+    echo "  [提示] 未找到 Node.js，跳过 Claude CLI 安装"
+    echo "  没有 Claude CLI 也能用 — 启动后在设置页切换为 API 直连模式"
 else
-    echo "  [提示] 未找到 Claude CLI。Agent 调度功能将不可用。"
-    echo "  安装: npm install -g @anthropic-ai/claude-code"
-    echo "  没有 Claude API Key? 用 DeepSeek 也能跑 — 在设置页配置。"
+    if command -v claude &>/dev/null; then
+        echo "  Claude CLI 已就绪"
+    else
+        echo "  Claude CLI 未安装，正在自动安装..."
+        echo "  （需要 Node.js，约 30 秒）"
+        if npm install -g @anthropic-ai/claude-code 2>/dev/null; then
+            echo "  Claude CLI 安装完成"
+        else
+            echo "  [提示] 自动安装失败，可手动执行: npm install -g @anthropic-ai/claude-code"
+            echo "  没有 Claude CLI 也能用 — 启动后浏览器里配置 API Key 即可"
+        fi
+    fi
 fi
 
 # ── 4. 首次配置 ──

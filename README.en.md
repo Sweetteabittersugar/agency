@@ -26,8 +26,8 @@ You're downloading Agency — a Web UI for Claude Code
   ✅ Cost tracking / split panels / WeChat Bot / permission control
   ✅ One-click install scripts
 
-  Agency does NOT include (you need these separately):
-  ❌ Claude Code CLI — npm install -g @anthropic-ai/claude-code
+  Agency does NOT include:
+  ⚡ Claude Code CLI — install script auto-installs it (needs Node.js)
   ❌ API Key — sign up at DeepSeek / Anthropic / OpenAI
   ❌ Python 3.10+ runtime
 ```

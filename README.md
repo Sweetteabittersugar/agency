@@ -24,8 +24,8 @@
   ✅ 费用追踪 / 多面板分屏 / 微信 Bot / 权限管理
   ✅ 一键安装脚本
 
-  Agency 不包含（需要你自行准备）:
-  ❌ Claude Code CLI — npm install -g @anthropic-ai/claude-code
+  Agency 不包含（安装脚本自动处理）:
+  ⚡ Claude Code CLI — 安装脚本自动帮你装（需 Node.js）
   ❌ API Key — DeepSeek / Anthropic / OpenAI 任选一家注册
   ❌ Python 3.10+ 运行环境
 ```
@@ -71,7 +71,7 @@ agency start
 | 必需 | 版本 | 说明 |
 |------|------|------|
 | **Python** | 3.10+ | [python.org](https://www.python.org/downloads/) |
-| **Claude Code CLI** | 最新版 | `npm install -g @anthropic-ai/claude-code` |
+| **Claude Code CLI** | 自动安装 | 安装脚本自动处理（需 Node.js） |
 | **Git** | 任意版本 | [git-scm.com](https://git-scm.com/) |
 
 | 推荐 | 用途 |
