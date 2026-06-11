@@ -27,6 +27,9 @@ classifiers = [
 dependencies = [
     "pyyaml>=6.0",
     "requests>=2.28",
+    "flask>=3.0",
+    "flask-cors>=4.0",
+    "gunicorn>=21.0",
 ]
 
 [project.optional-dependencies]
@@ -37,7 +40,7 @@ dev = [
 ]
 
 [project.scripts]
-agency = "maestro.web:main"
+agency = "maestro.flask_app:main"
 
 [tool.setuptools.packages.find]
 include = ["maestro*"]
