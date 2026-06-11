@@ -78,6 +78,16 @@ cp agents/L1_executor/coder.md ~/.claude/agents/
 
 > **需要 Claude CLI？** `npm install -g @anthropic-ai/claude-code`。没有 Claude Key？用 DeepSeek 也一样跑。
 
+### Docker 沙箱隔离（推荐）
+
+安装 Docker 后，Agent 可在隔离容器中执行，避免影响主机环境：
+
+```bash
+docker pull claude-code-worker:latest  # 可选
+```
+
+Docker 不可用时 Agency 自动以降级模式运行（直接子进程），不影响正常使用。
+
 ## 🔄 更新
 
 ### pip 安装

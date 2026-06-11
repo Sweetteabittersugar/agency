@@ -327,6 +327,14 @@ def main():
     print(f"\n  Agency v{AGENCY_VERSION}  [多线程模式]")
     print(startup_info())
     print(f"  Claude Code config: {_claude_dir}\n")
+
+    # Docker 沙箱检测
+    from maestro.sandbox import check_docker_available
+    if check_docker_available():
+        print("  Docker 已就绪 — 支持沙箱隔离执行", file=sys.stderr)
+    else:
+        print("  [提示] 安装 Docker 可启用沙箱隔离，更安全。详见 README", file=sys.stderr)
+
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

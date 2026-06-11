@@ -44,6 +44,9 @@ credentials.*
 credentials/
 .env.*.local
 
+# User pricing overrides (template tracked)
+pricing.json
+
 # Maestro runtime
 maestro/worktrees/
 maestro/results/

@@ -1,0 +1,5 @@
+{
+  "deepseek-chat": {"input": 0.14, "output": 0.28},
+  "deepseek-reasoner": {"input": 0.55, "output": 2.19},
+  "claude-sonnet-4-6": {"input": 3.0, "output": 15.0}
+}

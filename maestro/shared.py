@@ -1,4 +1,6 @@
 """跨模块共享状态 — 避免 web.py ↔ routes 循环导入"""
+from __future__ import annotations
+
 import json
 import os
 import re
@@ -58,7 +60,7 @@ if not CLAUDE_BIN:
 from maestro.agent_parser import parse_agent_md
 
 
-def load_skill_bindings():
+def load_skill_bindings() -> dict:
     """从 agent.yaml 加载 Agent-Skill 绑定，返回 {agent_name: {required, optional, excluded}}"""
     global _agent_skills_binding
     if _agent_skills_binding:
@@ -87,7 +89,7 @@ def get_agent_skills(agent_name: str) -> dict:
     return bindings.get(agent_name, {"required": [], "optional": [], "excluded": []})
 
 
-def load_agents(profile_complexity: str = None):
+def load_agents(profile_complexity: str | None = None) -> list[dict]:
     """从 agents/ 目录加载 Agent 列表，可选按 profile 过滤。
 
     Args:
@@ -356,7 +358,7 @@ def classify_task_complexity(task: str) -> str:
     return "normal"
 
 
-def _extract_plan(text: str):
+def _extract_plan(text: str) -> dict | None:
     """从 orchestrator 输出中提取 JSON 计划"""
     m = re.search(r'```json\s*\n(.*?)\n```', text, re.DOTALL)
     if not m:
@@ -399,7 +401,7 @@ def _scan_subagents(proj_root: str, session_id: str) -> list:
 from maestro.models import PROVIDER_MAP, PROVIDER_PRESETS  # noqa: F401
 
 
-def build_isolated_env(api_key, api_provider="deepseek"):
+def build_isolated_env(api_key: str | None, api_provider: str = "deepseek") -> dict[str, str]:
     """返回含 API key 注入的隔离环境变量"""
     import os
     iso_env = os.environ.copy()

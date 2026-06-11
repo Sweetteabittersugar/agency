@@ -10,7 +10,10 @@ Agent frontmatter 中的 model 字段是"能力级别"：
 用户配置具体模型，支持自动降级：配了重型用重型，没配自动用标准，标准也没配用轻量。
 """
 
+from __future__ import annotations
+
 import os
+from pathlib import Path
 
 # === 主流模型预设（用户只需选 provider） ===
 
@@ -150,7 +153,7 @@ PROVIDER_MAP = {
 }
 
 
-def get_provider_config():
+def get_provider_config() -> tuple[str, str, dict[str, str]]:
     """
     解析 API 配置。
 
@@ -203,7 +206,7 @@ def get_provider_config():
     return base_url.rstrip("/"), api_key, headers
 
 
-def resolve_model(agent_tier):
+def resolve_model(agent_tier: str | None = None) -> str:
     """
     根据 Agent 的能力级别解析实际模型名。自动降级。
 
@@ -258,12 +261,12 @@ def resolve_model(agent_tier):
     return "deepseek-chat"
 
 
-def get_actual_model(agent_frontmatter_model):
+def get_actual_model(agent_frontmatter_model: str | None = None) -> str:
     """兼容旧 API 的包装器"""
     return resolve_model(agent_frontmatter_model)
 
 
-def get_default_model():
+def get_default_model() -> str:
     """获取默认模型（用于未指定 Agent 的调用）"""
     return os.environ.get("DEFAULT_MODEL") or resolve_model("sonnet")
 
@@ -302,10 +305,37 @@ PRICING = {
 }
 
 
-def estimate_cost(model, in_tokens, out_tokens):
+# === 定价外部化 ===
+
+import json as _json
+
+PRICING_FILE = Path(__file__).resolve().parent.parent / "pricing.json"
+
+
+def load_pricing_overrides() -> dict:
+    """加载用户自定义定价覆盖。"""
+    if PRICING_FILE.exists():
+        try:
+            return _json.loads(PRICING_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {}
+
+
+def get_price(model: str, token_type: str = "input") -> float:
+    """获取模型价格（支持用户覆盖）。"""
+    overrides = load_pricing_overrides()
+    if model in overrides and token_type in overrides[model]:
+        return overrides[model][token_type]
+    idx = 0 if token_type == "input" else 1
+    return PRICING.get(model, (0, 0))[idx]
+
+
+def estimate_cost(model: str, in_tokens: int, out_tokens: int) -> float:
     """估算费用（美元）"""
-    if model in PRICING:
-        in_price, out_price = PRICING[model]
+    in_price = get_price(model, "input")
+    out_price = get_price(model, "output")
+    if in_price > 0 or out_price > 0:
         return (in_tokens / 1_000_000) * in_price + (out_tokens / 1_000_000) * out_price
     # Unknown model: conservative estimate
     return (in_tokens / 1_000_000) * 1.0 + (out_tokens / 1_000_000) * 3.0

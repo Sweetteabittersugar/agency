@@ -21,6 +21,18 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
+
+def check_docker_available() -> bool:
+    """检测 Docker 是否可用。"""
+    try:
+        result = subprocess.run(
+            ["docker", "info"], capture_output=True, timeout=5,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+        )
+        return result.returncode == 0
+    except Exception:
+        return False
+
 PROJECT_ROOT = os.environ.get("CLAUDE_PROJECT_DIR", os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 MAESTRO_DIR = Path(__file__).resolve().parent
