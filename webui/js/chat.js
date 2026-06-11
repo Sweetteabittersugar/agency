@@ -1,6 +1,48 @@
 /* Agency — 聊天面板 + SSE流式 + 分屏 */
 var stageStatus={};
-function mkPanel(){return{id:++pidSeq,isStreaming:!1,abortController:null,_lastAgent:null,currentConvo:{id:Date.now(),title:'',messages:[],sessionId:''},currentAssistantMsg:null,dom:{}}}
+
+/* ── 消息 Item 生命周期状态 ── */
+var ITEM_STATUS = {
+  PENDING:  'pending',
+  ROUTING:  'routing',
+  EXECUTING:'executing',
+  STREAMING:'streaming',
+  DONE:     'done',
+  ERROR:    'error'
+};
+
+function setMessageStatus(panelId, msgIndex, status, detail) {
+  var panel = panels.find(function(p) { return p.id === panelId; });
+  if (!panel) return;
+  if (panel.currentConvo && panel.currentConvo.messages && msgIndex < panel.currentConvo.messages.length) {
+    panel.currentConvo.messages[msgIndex].status = status;
+    panel.currentConvo.messages[msgIndex].statusDetail = detail || '';
+  }
+  updateMessageBubble(panelId, msgIndex);
+}
+
+function updateMessageBubble(panelId, msgIndex) {
+  var panel = panels.find(function(p) { return p.id === panelId; });
+  if (!panel) return;
+  var bubbles = panel.dom.messages.querySelectorAll('.bubble');
+  var bubble = bubbles[msgIndex];
+  if (!bubble) return;
+  var msg = (panel.currentConvo && panel.currentConvo.messages && panel.currentConvo.messages[msgIndex]) || {};
+  bubble.classList.remove('status-pending','status-routing','status-executing','status-streaming','status-done','status-error');
+  if (msg.status) {
+    bubble.classList.add('status-' + msg.status);
+    var indicator = bubble.querySelector('.msg-status');
+    if (!indicator) {
+      indicator = document.createElement('span');
+      indicator.className = 'msg-status';
+      bubble.appendChild(indicator);
+    }
+    var icons = {pending:'⏳', routing:'🔍', executing:'⚙️', streaming:'📝', done:'✅', error:'❌'};
+    indicator.textContent = (icons[msg.status] || '') + (msg.statusDetail ? ' ' + msg.statusDetail : '');
+  }
+}
+
+function mkPanel(){return{id:++pidSeq,isStreaming:!1,abortController:null,_lastAgent:null,_msgIdx:0,currentConvo:{id:Date.now(),title:'',messages:[],sessionId:''},currentAssistantMsg:null,dom:{}}}
 function addPanel(){var s=mkPanel();panels.push(s);buildPanelDOM(s);curPage=Math.floor((panels.length-1)/perPage);refreshUI();return s}
 function removePanel(pid){var p=panels.find(function(x){return x.id===pid});if(!p)return;if(panels.length<=1)return;if(p.isStreaming&&!confirm('面板正在生成回复，确定关闭？'))return;if(p.currentConvo.messages.length>0&&!confirm('关闭面板将丢失当前对话，确定？'))return;var idx=panels.findIndex(function(p){return p.id===pid});if(idx<0)return;if(p.isStreaming&&p.abortController)p.abortController.abort();var savedConvo={id:p.currentConvo.id,title:p.currentConvo.title,messages:p.currentConvo.messages.slice(),sessionId:p.currentConvo.sessionId};var savedRoute=p.dom.route.innerHTML;var savedAgent=p._lastAgent;var savedInput=p.dom.input.value;panels.splice(idx,1);p.dom.wrapper.remove();if(focusedPid===pid)focusedPid=null;var total=Math.ceil(panels.length/perPage);if(curPage>=total)curPage=Math.max(0,total-1);refreshUI();showUndoableToast(t('panelClosed'),function(){var np=mkPanel();panels.push(np);buildPanelDOM(np);np.currentConvo=savedConvo;np._lastAgent=savedAgent;np.dom.route.innerHTML=savedRoute;np.dom.input.value=savedInput;np.dom.sendBtn.disabled=!savedInput.trim();if(savedConvo.messages.length>0){np.dom.empty.style.display='none';savedConvo.messages.forEach(function(m){addMsg(np,m.role,m.content)})}refreshUI()},5000)}
 function clearAllPanels(){panels.forEach(function(p){if(p.isStreaming&&p.abortController)p.abortController.abort()});while(panels.length>1){var p=panels.pop();p.dom.wrapper&&p.dom.wrapper.remove()}var p=panels[0];p.currentConvo={id:Date.now(),title:'',messages:[],sessionId:''};p.dom.messages.innerHTML='<div class="empty-panel"><div class="logo">👋</div><h3>'+t('chatEmptyTitle')+'</h3><div class="empty-state-actions"><button class="btn quick-action" onclick="quickAction('+p.id+',1)">'+t('chatEmptyBtn1')+'</button><button class="btn quick-action" onclick="quickAction('+p.id+',2)">'+t('chatEmptyBtn2')+'</button><button class="btn quick-action" onclick="quickAction('+p.id+',3)">'+t('chatEmptyBtn3')+'</button></div></div>';p.dom.route.innerHTML='<span style="color:var(--muted);font-size:9px">'+t('routeEmpty')+'</span>';p.dom.agentName.textContent='就绪';curPage=0;refreshUI()}
@@ -27,7 +69,7 @@ function pickAgent(name){var p=getFocusedPanel();p.dom.input.value='@'+name+' ';
 function pickAgentNew(name,e){e.preventDefault();var p=addPanel();p.dom.input.value='@'+name+' ';p.dom.input.focus()}
 function toggleOrchMode(){orchMode=!orchMode;var btn=$('orchBtn');btn.classList.toggle('on',orchMode);btn.textContent=orchMode?'🧠 调度中':'🧠 调度';if(orchMode&&perPage<4){if(typeof setLayout==='function'){setLayout(4)}else{perPage=4;refreshUI()}}}
 function setStreaming(p,v){p.isStreaming=v;p.dom.input.disabled=v;p.dom.sendBtn.textContent=v?'停止':'发送';if(v){p.dom.sendBtn.classList.add('stopping');if(p.dom.dot)p.dom.dot.classList.add('busy')}else{p.dom.sendBtn.classList.remove('stopping');if(p.dom.dot)p.dom.dot.classList.remove('busy');p.abortController=null}if(!v)setTimeout(function(){p.dom.input.disabled=!1},50)}
-function addMsg(p,role,content){var w=document.createElement('div');w.className='msg '+role;var c=role==='user'?escHtml(content):content;w.innerHTML='<div class="msg-label">'+(role==='user'?'你':'Agency')+'</div><div class="bubble">'+c+'</div>';p.dom.messages.appendChild(w);p.dom.messages.scrollTop=p.dom.messages.scrollHeight;return w.querySelector('.bubble')}
+function addMsg(p,role,content){var w=document.createElement('div');w.className='msg '+role;var c=role==='user'?escHtml(content):content;var msgIdx=p._msgIdx++;w.innerHTML='<div class="msg-label">'+(role==='user'?'你':'Agency')+'</div><div class="bubble" data-fork-index="'+msgIdx+'">'+c+'</div>';p.dom.messages.appendChild(w);p.dom.messages.scrollTop=p.dom.messages.scrollHeight;addForkButton(w,msgIdx,p);return w.querySelector('.bubble')}
 function stopStream(pid){var p=panels.find(function(x){return x.id===pid});if(p){if(p.abortController){p.abortController.abort();p.abortController=null}if(p._reader){try{p._reader.cancel()}catch(_){}p._reader=null}}if(p&&p.currentAssistantMsg&&(!p.currentAssistantMsg.textContent||p.currentAssistantMsg.textContent.trim()==='')){p.currentAssistantMsg.innerHTML='<span style="color:var(--warn)">⏹ 已停止</span>'}}
 function retrySend(pid){var p=panels.find(function(x){return x.id===pid});if(!p)return;stopStream(pid);setStreaming(p,!1);var lastUser=p.currentConvo.messages.filter(function(m){return m.role==='user'}).pop();if(lastUser){p.dom.input.value=lastUser.content;setTimeout(function(){handleSend(pid)},300)}}
 /* ── SSE 自动重连 ── */function sseReconnect(p){if(!p)return;p._sseRetries=(p._sseRetries||0)+1;var MAX_RETRIES=3;if(p._sseRetries>MAX_RETRIES){p.currentAssistantMsg.innerHTML+='<div class="retry-block"><span>⚠ 连接失败，已达最大重试次数</span><button onclick="retrySend('+p.id+')" class="retry-btn">🔄 手动重试</button></div>';if(p._timeoutId){clearTimeout(p._timeoutId);p._timeoutId=null}var c=p.currentAssistantMsg.querySelector('.cursor');if(c)c.remove();setStreaming(p,!1);p.dom.agentName.textContent='就绪';processQueue(p.id);return}var delays=[2000,5000,15000];var delay=delays[p._sseRetries-1]||15000;showToast('连接中断，'+(delay/1000)+'秒后自动重连 ('+p._sseRetries+'/'+MAX_RETRIES+')');if(p._timeoutId){clearTimeout(p._timeoutId);p._timeoutId=null}if(p.abortController){p.abortController=null}if(p._reader){try{p._reader.cancel()}catch(_){}p._reader=null}var c=p.currentAssistantMsg.querySelector('.cursor');if(c)c.remove();p.currentAssistantMsg.innerHTML+='<div style="color:var(--warn);font-size:11px;margin-top:4px">🔄 重连中 ('+p._sseRetries+'/'+MAX_RETRIES+')...</div>';setTimeout(function(){retrySend(p.id)},delay)}
@@ -49,7 +91,7 @@ function handleSend(pid){var p=panels.find(function(x){return x.id===pid});if(!p
 if(!p._msgQueue)p._msgQueue=[];
 if(p.isStreaming||p._pendingRequest){p._msgQueue.push(pid);updateQueueIndicator(p);return}
 updateQueueIndicator(p);
-/* ── 排队结束 ── */if(orchMode){handleOrchSend(p);return}var task=p.dom.input.value.trim();if(!task)return;if(typeof _demoMode!=='undefined'&&_demoMode&&!apiKey){if(p.dom.empty)p.dom.empty.style.display='none';addMsg(p,'user',task);p.currentConvo.messages.push({role:'user',content:task});simulateDemoReply(task,pid);return}var isNew=!p.currentConvo.sessionId;if(isNew)p.currentConvo.sessionId='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16)});var forceAgent='',actualTask=task;var m=task.match(/^@(\S+)\s+/);if(m){forceAgent=m[1];actualTask=task.slice(m[0].length);p._lastAgent=forceAgent}else if(p._lastAgent){forceAgent=p._lastAgent}p._pendingRequest=true;p._sseRetries=0;setStreaming(p,!0);p.dom.input.value='';p.dom.input.style.height='auto';p.dom.sendBtn.disabled=true;p.dom.route.innerHTML='<span>🔄 Agent 启动中…</span>';p.dom.agentName.textContent='…';if(p.dom.empty)p.dom.empty.style.display='none';addMsg(p,'user',task);p.currentConvo.messages.push({role:'user',content:task});p.currentAssistantMsg=addMsg(p,'assistant','<span class="cursor"></span>');p._receivedDone=!1;p._timedOut=!1;p.abortController=new AbortController();if(p._timeoutId)clearTimeout(p._timeoutId);p._timeoutId=setTimeout(function(){if(!p._receivedDone&&p.isStreaming){p._timedOut=!0;stopStream(pid);var c2=p.currentAssistantMsg.querySelector('.cursor');if(c2)c2.remove();p.currentAssistantMsg.innerHTML+='<div class="retry-block"><span>⏰ 任务超时（5分钟），是否重试？</span><button onclick="retrySend('+pid+')" class="retry-btn">🔄 重试</button></div>';p.dom.route.innerHTML='<span style="color:var(--warn)">⏰ 超时</span>';setStreaming(p,!1);p.dom.agentName.textContent='超时';processQueue(pid)}},300000);apiFetch('/api/route',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task:actualTask,force_agent:forceAgent,proj_dir:projDir||undefined,api_key:apiKey||undefined,api_provider:apiProvider||undefined,profile:agencyProfile||'standard',output_dir:localStorage.getItem('agency_output_dir')||undefined}),signal:p.abortController.signal}).then(function(r){return r.json()}).then(function(route){if(route.error)throw new Error(route.error);
+/* ── 排队结束 ── */if(orchMode){handleOrchSend(p);return}var task=p.dom.input.value.trim();if(!task)return;if(typeof _demoMode!=='undefined'&&_demoMode&&!apiKey){if(p.dom.empty)p.dom.empty.style.display='none';addMsg(p,'user',task);p.currentConvo.messages.push({role:'user',content:task});simulateDemoReply(task,pid);return}var isNew=!p.currentConvo.sessionId;if(isNew)p.currentConvo.sessionId='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16)});var forceAgent='',actualTask=task;var m=task.match(/^@(\S+)\s+/);if(m){forceAgent=m[1];actualTask=task.slice(m[0].length);p._lastAgent=forceAgent}else if(p._lastAgent){forceAgent=p._lastAgent}p._pendingRequest=true;p._sseRetries=0;setStreaming(p,!0);p.dom.input.value='';p.dom.input.style.height='auto';p.dom.sendBtn.disabled=true;p.dom.route.innerHTML='<span>🔄 Agent 启动中…</span>';p.dom.agentName.textContent='…';if(p.dom.empty)p.dom.empty.style.display='none';addMsg(p,'user',task);p.currentConvo.messages.push({role:'user',content:task});var asstIdx=p.currentConvo.messages.length;p.currentAssistantMsg=addMsg(p,'assistant','<span class="cursor"></span>');p.currentConvo.messages.push({role:'assistant',content:'',status:'pending'});setMessageStatus(p.id,asstIdx,'pending');p._receivedDone=!1;p._timedOut=!1;p._statusStreaming=!1;p.abortController=new AbortController();if(p._timeoutId)clearTimeout(p._timeoutId);p._timeoutId=setTimeout(function(){if(!p._receivedDone&&p.isStreaming){p._timedOut=!0;stopStream(pid);var c2=p.currentAssistantMsg.querySelector('.cursor');if(c2)c2.remove();p.currentAssistantMsg.innerHTML+='<div class="retry-block"><span>⏰ 任务超时（5分钟），是否重试？</span><button onclick="retrySend('+pid+')" class="retry-btn">🔄 重试</button></div>';p.dom.route.innerHTML='<span style="color:var(--warn)">⏰ 超时</span>';setMessageStatus(p.id,asstIdx,'error','超时');setStreaming(p,!1);p.dom.agentName.textContent='超时';processQueue(pid)}},300000);apiFetch('/api/route',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task:actualTask,force_agent:forceAgent,proj_dir:projDir||undefined,api_key:apiKey||undefined,api_provider:apiProvider||undefined,profile:agencyProfile||'standard',output_dir:localStorage.getItem('agency_output_dir')||undefined}),signal:p.abortController.signal}).then(function(r){return r.json()}).then(function(route){if(route.error)throw new Error(route.error);
 // ── 路由可视化 ──
 var category=route.category||'';
 var agent=route.agent||'auto';
@@ -74,8 +116,8 @@ if(confidence<60 && source!=='force'){
 p._lastTask=actualTask;
 routeHTML+=' <span style="position:relative;display:inline-block"><button class="route-fix-btn" onclick="event.stopPropagation();toggleRouteFix(this,'+pid+')" style="font-size:11px;padding:2px 8px;margin-left:4px;background:transparent;border:1px solid var(--border,#444);border-radius:4px;color:var(--muted,#888);cursor:pointer" title="纠正路由">不对，换一个 ▾</button></span>';
 p.dom.route.innerHTML=routeHTML;
-p.dom.agentName.textContent=agent;p._lastAgent=agent;
-var c=p.currentAssistantMsg.querySelector('.cursor');if(c)c.remove();return apiFetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task:actualTask,force_agent:forceAgent,model:route.model,proj_dir:projDir||undefined,session_id:p.currentConvo.sessionId,is_new_session:isNew,api_key:apiKey||undefined,api_provider:apiProvider||undefined,profile:agencyProfile||'standard',output_dir:localStorage.getItem('agency_output_dir')||undefined}),signal:p.abortController.signal})}).then(function(resp){var reader=resp.body.getReader();p._reader=reader;var decoder=new TextDecoder(),buf='',txt='';function read(){reader.read().then(function(result){if(result.done){p._reader=null;if(!p._receivedDone&&p.isStreaming){if(p._timedOut){p.currentAssistantMsg.innerHTML+='<div class="retry-block"><span>⚠ 任务超时</span><button onclick="retrySend('+pid+')" class="retry-btn">🔄 重试</button></div>';finish()}else{sseReconnect(p)}}else{finish()}return}buf+=decoder.decode(result.value,{stream:!0});buf=buf.replace(/\r\n/g,'\n');var lines=buf.split('\n');buf=lines.pop()||'';var eventType='';for(var i=0;i<lines.length;i++){var line=lines[i];if(line.indexOf('event: ')===0){eventType=line.slice(7);continue}if(line.indexOf('data: ')!==0)continue;try{var d=JSON.parse(line.slice(6));if(d.progress){showProgress(p,d.stage,d.message,d.agent||p._lastAgent)}else if(d.content){txt+=d.content;p.currentAssistantMsg.innerHTML=renderMD(txt)+'<span class="cursor"></span>';p.dom.messages.scrollTop=p.dom.messages.scrollHeight}else if(d.elapsed){p._receivedDone=!0;if(p._timeoutId){clearTimeout(p._timeoutId);p._timeoutId=null}p.dom.route.innerHTML+='<span>⏱ '+d.elapsed+'s</span><span>💰 $'+d.cost+'</span>'+(d.via==='pool'?'<span>⚡池</span>':'')}else if(d.error){if(d.action==='open_settings'){showToast(d.friendly_message||'请先配置 API Key','warning');if(typeof toggleDevOverlay==='function'&&!devMode)setTimeout(toggleDevOverlay,1500)}else if(d.action==='install_claude'){showToast(d.friendly_message||'Claude CLI 未安装，请在终端运行安装命令',false)}p.currentAssistantMsg.innerHTML='<span style="color:var(--danger)">❌ '+escHtml(d.error)+'</span>'+(d.install_cmd?' <code style="font-size:10px;background:var(--surface2);padding:2px 6px;border-radius:3px">'+escHtml(d.install_cmd)+'</code>':'')}}catch(_){}eventType=''}read()})}function finish(){if(p._timeoutId){clearTimeout(p._timeoutId);p._timeoutId=null}var c=p.currentAssistantMsg.querySelector('.cursor');if(c)c.remove();p.currentConvo.messages.push({role:'assistant',content:txt});saveAllConvos();setStreaming(p,!1);p.dom.agentName.textContent='就绪';highlightCode(p.currentAssistantMsg);loadCostOverview();processQueue(pid);var msgCount=p.currentConvo.messages.length;if(msgCount>20&&!localStorage.getItem('memory-keeper-reminded')){setTimeout(function(){showToast('对话较长，建议运行 @memory-keeper 压缩上下文',false);try{localStorage.setItem('memory-keeper-reminded','1')}catch(e){}},2000)}}read()}).catch(function(e){if(p._timeoutId){clearTimeout(p._timeoutId);p._timeoutId=null}if(e.name==='AbortError'){if(!p._timedOut){var c=p.currentAssistantMsg.querySelector('.cursor');if(c)c.remove();p.currentAssistantMsg.innerHTML+=' <span style="color:var(--warn)">⏹ 已停止</span>'}var partial=(p.currentAssistantMsg.textContent||'').replace(/⏹\s*已停止/g,'').trim();if(partial){p.currentConvo.messages.push({role:'assistant',content:partial});saveAllConvos()}setStreaming(p,!1);p._reader=null;p.dom.agentName.textContent='就绪';processQueue(pid)}else if(!p._timedOut){sseReconnect(p)}else{if(p.currentAssistantMsg)p.currentAssistantMsg.innerHTML='<span style="color:var(--danger)">❌ '+escHtml(e.message)+'</span>';setStreaming(p,!1);p._reader=null;p.dom.agentName.textContent='就绪';processQueue(pid)}})}
+p.dom.agentName.textContent=agent;p._lastAgent=agent;setMessageStatus(p.id,asstIdx,'executing',agent);
+var c=p.currentAssistantMsg.querySelector('.cursor');if(c)c.remove();return apiFetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task:actualTask,force_agent:forceAgent,model:route.model,proj_dir:projDir||undefined,session_id:p.currentConvo.sessionId,is_new_session:isNew,api_key:apiKey||undefined,api_provider:apiProvider||undefined,profile:agencyProfile||'standard',output_dir:localStorage.getItem('agency_output_dir')||undefined}),signal:p.abortController.signal})}).then(function(resp){var reader=resp.body.getReader();p._reader=reader;var decoder=new TextDecoder(),buf='',txt='';function read(){reader.read().then(function(result){if(result.done){p._reader=null;if(!p._receivedDone&&p.isStreaming){if(p._timedOut){p.currentAssistantMsg.innerHTML+='<div class="retry-block"><span>⚠ 任务超时</span><button onclick="retrySend('+pid+')" class="retry-btn">🔄 重试</button></div>';finish()}else{sseReconnect(p)}}else{finish()}return}buf+=decoder.decode(result.value,{stream:!0});buf=buf.replace(/\r\n/g,'\n');var lines=buf.split('\n');buf=lines.pop()||'';var eventType='';for(var i=0;i<lines.length;i++){var line=lines[i];if(line.indexOf('event: ')===0){eventType=line.slice(7);continue}if(line.indexOf('data: ')!==0)continue;try{var d=JSON.parse(line.slice(6));if(d.progress){showProgress(p,d.stage,d.message,d.agent||p._lastAgent)}else if(d.content){if(!p._statusStreaming){setMessageStatus(p.id,asstIdx,'streaming');p._statusStreaming=!0}txt+=d.content;p.currentAssistantMsg.innerHTML=renderMD(txt)+'<span class="cursor"></span>';p.dom.messages.scrollTop=p.dom.messages.scrollHeight}else if(d.elapsed){p._receivedDone=!0;if(p._timeoutId){clearTimeout(p._timeoutId);p._timeoutId=null}p.dom.route.innerHTML+='<span>⏱ '+d.elapsed+'s</span><span>💰 $'+d.cost+'</span>'+(d.via==='pool'?'<span>⚡池</span>':'')}else if(d.error){if(d.action==='open_settings'){showToast(d.friendly_message||'请先配置 API Key','warning');if(typeof toggleDevOverlay==='function'&&!devMode)setTimeout(toggleDevOverlay,1500)}else if(d.action==='install_claude'){showToast(d.friendly_message||'Claude CLI 未安装，请在终端运行安装命令',false)}p._receivedDone=!0;setMessageStatus(p.id,asstIdx,'error',d.error);p.currentAssistantMsg.innerHTML='<span style="color:var(--danger)">❌ '+escHtml(d.error)+'</span>'+(d.install_cmd?' <code style="font-size:10px;background:var(--surface2);padding:2px 6px;border-radius:3px">'+escHtml(d.install_cmd)+'</code>':'')}}catch(_){}eventType=''}read()})}function finish(){if(p._timeoutId){clearTimeout(p._timeoutId);p._timeoutId=null}var c=p.currentAssistantMsg.querySelector('.cursor');if(c)c.remove();p.currentConvo.messages[asstIdx].content=txt;if(p.currentConvo.messages[asstIdx].status!=='error'){p.currentConvo.messages[asstIdx].status='done';setMessageStatus(p.id,asstIdx,'done')}saveAllConvos();setStreaming(p,!1);p.dom.agentName.textContent='就绪';highlightCode(p.currentAssistantMsg);loadCostOverview();processQueue(pid);var msgCount=p.currentConvo.messages.length;if(msgCount>=30&&!localStorage.getItem('auto-compact-reminded-'+p.id)){setTimeout(function(){showToast('对话较长，建议运行 @memory-keeper 压缩上下文以节省 Token',false,'warn');try{localStorage.setItem('auto-compact-reminded-'+p.id,'1')}catch(e){}},2000)}}read()}).catch(function(e){if(p._timeoutId){clearTimeout(p._timeoutId);p._timeoutId=null}if(e.name==='AbortError'){if(!p._timedOut){var c=p.currentAssistantMsg.querySelector('.cursor');if(c)c.remove();p.currentAssistantMsg.innerHTML+=' <span style="color:var(--warn)">⏹ 已停止</span>'}var partial=(p.currentAssistantMsg.textContent||'').replace(/⏹\s*已停止/g,'').trim();if(partial){p.currentConvo.messages[asstIdx].content=partial;if(p.currentConvo.messages[asstIdx].status!=='error'){p.currentConvo.messages[asstIdx].status='done';setMessageStatus(p.id,asstIdx,'done')}saveAllConvos()}setStreaming(p,!1);p._reader=null;p.dom.agentName.textContent='就绪';processQueue(pid)}else if(!p._timedOut){sseReconnect(p)}else{setMessageStatus(p.id,asstIdx,'error',e.message);if(p.currentAssistantMsg)p.currentAssistantMsg.innerHTML='<span style="color:var(--danger)">❌ '+escHtml(e.message)+'</span>';setStreaming(p,!1);p._reader=null;p.dom.agentName.textContent='就绪';processQueue(pid)}})}
 function handleOrchSend(p){var task=p.dom.input.value.trim();if(!task)return;if(!p._msgQueue)p._msgQueue=[];if(p.isStreaming||p._pendingRequest){p._msgQueue.push(p.id);updateQueueIndicator(p);return}p._pendingRequest=true;updateQueueIndicator(p);setStreaming(p,!0);p.dom.input.value='';p.dom.input.style.height='auto';p.dom.sendBtn.disabled=true;p.dom.route.innerHTML='<span>🧠 智能调度</span>';if(p.dom.empty)p.dom.empty.style.display='none';addMsg(p,'user',task);p.currentConvo.messages.push({role:'user',content:task});p.currentAssistantMsg=addMsg(p,'assistant','<span class="cursor"></span>');p.abortController=new AbortController();var planReceived=!1;var pipelineStages=null;stageStatus={};fetch('/api/orchestrate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task:task,proj_dir:projDir||undefined,api_key:apiKey||undefined,api_provider:apiProvider||undefined,profile:agencyProfile||'standard',output_dir:localStorage.getItem('agency_output_dir')||undefined}),signal:p.abortController.signal}).then(function(resp){var reader=resp.body.getReader();p._reader=reader;var decoder=new TextDecoder(),buf='',txt='',planData=null;function read(){reader.read().then(function(result){if(result.done){p._reader=null;finish();return}buf+=decoder.decode(result.value,{stream:!0});buf=buf.replace(/\r\n/g,'\n');var lines=buf.split('\n');buf=lines.pop()||'';for(var i=0;i<lines.length;i++){var line=lines[i],eventType='';if(line.indexOf('event: ')===0){eventType=line.slice(7);continue}if(line.indexOf('data: ')!==0)continue;try{var d=JSON.parse(line.slice(6));if(eventType==='plan'){planData=d;return}if(eventType==='stage'){handleStageEvent(p,d);return}if(eventType==='phase'){if(d.msg){p.dom.route.innerHTML='<span>'+escHtml(d.msg)+'</span>'}return}if(eventType==='done'){if(d.summary)txt+=d.summary;return}if(eventType==='error'){if(d.msg)p.currentAssistantMsg.innerHTML='<span style="color:var(--danger)">❌ '+escHtml(d.msg)+'</span>';return}if(d.content){txt+=d.content;p.currentAssistantMsg.innerHTML=renderMD(txt)+'<span class="cursor"></span>';p.dom.messages.scrollTop=p.dom.messages.scrollHeight}else if(d.summary){txt+=d.summary}}catch(_){}}read()})}function finish(){var c=p.currentAssistantMsg.querySelector('.cursor');if(c)c.remove();p.currentConvo.messages.push({role:'assistant',content:txt||'调度完成'});saveAllConvos();setStreaming(p,!1);hidePipeline(p);if(planData&&planData.phases){executePlan(planData)}if(planData&&planData.dag_info){renderDAGTree(planData.dag_info,p.currentAssistantMsg)};loadCostOverview();processQueue(p.id)}read()}).catch(function(e){if(e.name==='AbortError'){var c=p.currentAssistantMsg.querySelector('.cursor');if(c)c.remove();p.currentAssistantMsg.innerHTML+=' <span style="color:var(--warn)">⏹ 已停止</span>'}else{if(p.currentAssistantMsg)p.currentAssistantMsg.innerHTML='<span style="color:var(--danger)">❌ '+escHtml(e.message)+'</span>'}setStreaming(p,!1);p._reader=null;hidePipeline(p);processQueue(p.id)})}
 function handleStageEvent(p,d){if(d.pipeline&&!p._pipelineInit){p._pipelineInit=true;p._pipelineStages=d.pipeline;stageStatus={};d.pipeline.forEach(function(s){stageStatus[s.stage]='pending'});renderPipelineBar(p)}if(d.stage){stageStatus[d.stage]=d.status;renderPipelineBar(p);if(d.model_tier){p.dom.route.innerHTML='<span>📋 '+d.stage+'</span><span style="color:var(--accent)">'+d.model_tier+'</span>'}if(d.pass_k){var pk=d.pass_k;var pkSummary='🔍 pass@3: '+(pk.overall?'✅ 通过':'❌ 未通过')+' (';var names=Object.keys(pk.perspectives||{});pkSummary+=names.map(function(n){return (pk.perspectives[n].passed?'✓':'✗')+' '+n}).join(', ');pkSummary+=')';p.dom.route.innerHTML='<span>'+pkSummary+'</span>'}}}
 function renderPipelineBar(p){var bar=p.dom.pipeline;if(!bar)return;var stages=p._pipelineStages||[{stage:'research',label:'研究'},{stage:'plan',label:'方案'},{stage:'dry_run',label:'预演'},{stage:'gate',label:'门控'},{stage:'implement',label:'实施'},{stage:'review',label:'审查'},{stage:'verify',label:'验证'}];var iconMap={pending:'⚪',active:'🔵',passed:'✅',failed:'❌',verifying:'🔍'};bar.style.display='flex';bar.innerHTML=stages.map(function(s,i){var st=stageStatus[s.stage]||'pending';var cls='pipeline-dot '+(st==='active'||st==='verifying'?'active':st==='passed'?'done':st==='failed'?'fail':'');return'<div style="display:flex;align-items:center;gap:3px"><span class="'+cls+'" title="'+escHtml(s.label||s.stage)+': '+st+'"></span><span style="font-size:9px;color:var(--muted)">'+escHtml(s.label||s.stage)+'</span>'+(i<stages.length-1?'<span style="color:var(--border2)">—</span>':'')+'</div>'}).join('')}
@@ -403,6 +445,98 @@ function restoreSession(p, events){
   p.currentConvo.sessionId=localStorage.getItem('agency-session-id')||'';
 }
 
+/* ── 会话 Fork ── */
+function addForkButton(msgEl, msgIndex, panel) {
+  var sid = panel.currentConvo.sessionId;
+  if (!sid) return;
+  var btn = document.createElement('button');
+  btn.className = 'fork-btn';
+  btn.title = '从这里分叉出新对话';
+  btn.innerHTML = '⑂';
+  btn.style.cssText = 'position:absolute;top:2px;right:2px;padding:1px 4px;background:transparent;border:1px solid var(--border);border-radius:3px;color:var(--muted);cursor:pointer;font-size:10px;opacity:0;transition:opacity 0.15s;';
+  msgEl.style.position = 'relative';
+  msgEl.appendChild(btn);
+  msgEl.addEventListener('mouseenter', function(){ btn.style.opacity = '1'; });
+  msgEl.addEventListener('mouseleave', function(){ btn.style.opacity = '0'; });
+  btn.addEventListener('click', function(e){
+    e.stopPropagation();
+    forkSession(sid, msgIndex, panel);
+  });
+}
+
+function forkSession(sessionId, forkPoint, panel) {
+  var label = prompt('分叉标签（可选）：', '分叉 ' + new Date().toLocaleTimeString());
+  if (label === null) return;
+  api.post('/api/sessions/fork', {
+    session_id: sessionId,
+    fork_point: forkPoint,
+    label: label
+  }).then(function(data){
+    if (data.ok) {
+      showToast('已分叉: ' + (label || data.fork_label), false);
+      var pid = addPanel();
+      var newPanel = panels.find(function(p){ return p.id === pid; });
+      if (newPanel) {
+        newPanel.currentConvo.sessionId = data.new_session_id;
+        loadSessionEvents(newPanel, data.new_session_id);
+      }
+    } else {
+      showToast('分叉失败: ' + (data.error || '未知'), true);
+    }
+  });
+}
+
+function loadSessionEvents(panel, sessionId) {
+  api.get('/api/sessions/' + sessionId).then(function(data){
+    var events = data.events || [];
+    if (panel.dom.empty) panel.dom.empty.style.display = 'none';
+    panel._msgIdx = 0;
+    events.forEach(function(evt){
+      if (evt.type === 'user_message') {
+        appendUserBubble(panel, evt.data.task || '');
+        panel.currentConvo.messages.push({role:'user', content: evt.data.task || ''});
+      } else if (evt.type === 'agent_response') {
+        appendAgentBubble(panel, evt.data.agent || '', evt.data.response || '');
+        panel.currentConvo.messages.push({role:'assistant', content: evt.data.response || ''});
+      } else if (evt.type === 'fork') {
+        appendSystemBubble(panel, '⑂ 分叉自: ' + (evt.data.label || ''));
+      }
+    });
+    panel.currentConvo.sessionId = sessionId;
+    panel.dom.messages.scrollTop = panel.dom.messages.scrollHeight;
+  });
+}
+
+function appendUserBubble(p, task) {
+  var w = document.createElement('div');
+  w.className = 'msg user';
+  var msgIdx = p._msgIdx++;
+  w.innerHTML = '<div class="msg-label">你</div><div class="bubble" data-fork-index="'+msgIdx+'">'+escHtml(task)+'</div>';
+  p.dom.messages.appendChild(w);
+  addForkButton(w, msgIdx, p);
+  return w.querySelector('.bubble');
+}
+
+function appendAgentBubble(p, agent, response) {
+  var w = document.createElement('div');
+  w.className = 'msg assistant';
+  var msgIdx = p._msgIdx++;
+  var html = typeof renderMD === 'function' ? renderMD(response) : response;
+  w.innerHTML = '<div class="msg-label">'+(agent||'Agency')+'</div><div class="bubble" data-fork-index="'+msgIdx+'">'+html+'</div>';
+  p.dom.messages.appendChild(w);
+  var bubble = w.querySelector('.bubble');
+  if (typeof renderMD === 'function' && typeof highlightCode === 'function') highlightCode(bubble);
+  addForkButton(w, msgIdx, p);
+  return bubble;
+}
+
+function appendSystemBubble(p, text) {
+  var w = document.createElement('div');
+  w.className = 'msg system';
+  w.innerHTML = '<div class="bubble" style="color:var(--muted);font-size:11px;text-align:center">'+escHtml(text)+'</div>';
+  p.dom.messages.appendChild(w);
+}
+
 // ES module bridge
 window.addPanel = addPanel;
 window.removePanel = removePanel;
@@ -427,6 +561,13 @@ window.editCustomTemplate = editCustomTemplate;
 window.deleteCustomTemplate = deleteCustomTemplate;
 window.showRoutePicker = showRoutePicker;
 window.showProgress = showProgress;
+window.setMessageStatus = setMessageStatus;
+window.updateMessageBubble = updateMessageBubble;
+window.forkSession = forkSession;
+window.loadSessionEvents = loadSessionEvents;
+window.appendUserBubble = appendUserBubble;
+window.appendAgentBubble = appendAgentBubble;
+window.appendSystemBubble = appendSystemBubble;
 
 export { mkPanel, addPanel, removePanel, clearAllPanels, buildPanelDOM,
          cycleGrid, prevPage, nextPage, refreshUI, pickAgent, pickAgentNew,
@@ -437,4 +578,7 @@ export { mkPanel, addPanel, removePanel, clearAllPanels, buildPanelDOM,
          processQueue, renderDAGTree, quickAction, renderDemoWelcome,
          simulateDemoReply, toggleTemplateDropdown, renderTemplateList,
          applyTemplate, saveNewTemplate, editCustomTemplate, deleteCustomTemplate,
-         restoreSession, stageStatus };
+         restoreSession, stageStatus, ITEM_STATUS,
+         setMessageStatus, updateMessageBubble,
+         forkSession, loadSessionEvents, appendUserBubble, appendAgentBubble,
+         appendSystemBubble, addForkButton };

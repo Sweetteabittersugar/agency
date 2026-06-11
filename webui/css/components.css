@@ -331,3 +331,14 @@ input:not([type="checkbox"]):not([type="radio"]):focus{box-shadow:0 0 0 2px rgba
 .settings-group.collapsed .settings-group-body{max-height:0;padding-top:0;padding-bottom:0;opacity:0}
 .settings-group-body .settings-section{margin-top:12px}
 .settings-group-body .settings-section:first-child{margin-top:0}
+
+/* ══════════════════════════════════════════
+   消息 Item 生命周期状态
+   ══════════════════════════════════════════ */
+.msg-status{font-size:10px;color:var(--muted);margin-top:4px;display:block}
+.status-pending{border-left:2px solid #888}
+.status-routing{border-left:2px solid #3498db}
+.status-executing{border-left:2px solid #f39c12}
+.status-streaming{border-left:2px solid #27ae60;animation:pulse 1s infinite}
+.status-done{border-left:2px solid #27ae60}
+.status-error{border-left:2px solid #e74c3c}

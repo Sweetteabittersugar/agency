@@ -14,13 +14,17 @@ def handle_list(handler, parsed):
 
 
 def handle_get(handler, parsed):
-    """GET /api/sessions/{id} — 获取会话详情"""
+    """GET /api/sessions/{id} 或 /api/sessions/{id}/forks"""
     path = parsed.path
     prefix = "/api/sessions/"
     if not path.startswith(prefix) or len(path) <= len(prefix):
         handler.send_json({"ok": False, "error": "缺少 session_id"}, 400)
         return True
-    session_id = path[len(prefix):]
+    rest = path[len(prefix):]
+    if rest.endswith("/forks"):
+        from maestro.routes.session_fork import handle_list_forks
+        return handle_list_forks(handler, parsed)
+    session_id = rest
     result = get_session(session_id)
     handler.send_json({"ok": True, **result})
     return True

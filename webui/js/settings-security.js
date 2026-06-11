@@ -15,12 +15,36 @@ function setTrustMode(mode){
   trustMode = mode;
   localStorage.setItem('agency_trust_mode', mode);
   updateTrustModeUI();
+  updateTrustBadge();
   showToast('信任模式已切换: ' + TRUST_MODES[mode].label);
   fetch('/api/permissions/decision', {
     method:'POST',
     headers:{'Content-Type':'application/json','X-Agency-Trust-Mode':mode},
     body:JSON.stringify({decision:'config',tool_name:'trust_mode',risk:mode,reason:'用户切换信任模式'})
   }).catch(function(){});
+}
+
+function updateTrustBadge(){
+  var badge = document.getElementById('trust-badge');
+  if (!badge) return;
+  var config = {
+    'cautious': { text: '🔒 谨慎', color: '#f39c12', title: '所有操作需确认' },
+    'normal':   { text: '🛡️ 普通', color: '#3498db', title: '安全操作自动放行' },
+    'trusted':  { text: '⚡ 信任', color: '#27ae60', title: '大多数操作自动放行' }
+  };
+  var c = config[trustMode] || config['normal'];
+  badge.textContent = c.text;
+  badge.style.background = c.color + '20';
+  badge.style.color = c.color;
+  badge.style.border = '1px solid ' + c.color;
+  badge.title = c.title + ' — 点击切换';
+}
+
+function cycleTrustMode(){
+  var modes = ['cautious', 'normal', 'trusted'];
+  var idx = modes.indexOf(trustMode);
+  var next = modes[(idx + 1) % modes.length];
+  setTrustMode(next);
 }
 
 function updateTrustModeUI(){
@@ -135,11 +159,16 @@ function loadPermissionAudit(){
   }).catch(function(){ domEl.innerHTML = '权限审计数据加载失败。请检查服务是否正常运行'; });
 }
 
+window.cycleTrustMode = cycleTrustMode;
+window.updateTrustBadge = updateTrustBadge;
+
 // DOM 已就绪（ES module defer），直接执行
 (function init(){
   updateTrustModeUI();
+  updateTrustBadge();
   updateProfileUI();
 })();
 
 export { TRUST_MODES, trustMode, getTrustMode, setTrustMode,
-         updateTrustModeUI, showPermissionConfirm, loadPermissionAudit };
+         updateTrustModeUI, updateTrustBadge, cycleTrustMode,
+         showPermissionConfirm, loadPermissionAudit };
