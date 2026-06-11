@@ -38,14 +38,33 @@ echo   依赖安装完成
 
 :: ── 3. 检查 Node.js + Claude CLI ──
 echo.
-echo [3/5] 安装 Claude Code CLI...
+echo [3/5] 安装 Node.js + Claude Code CLI...
+
+:: 先装 Node.js（如果没有）
 where node >nul 2>&1
 if %errorlevel% neq 0 (
-    echo   [提示] 未找到 Node.js,跳过 Claude CLI 安装
-    echo   没有 Claude CLI 也能用 — 启动后在设置页切换为 API 直连模式
-    goto :skip_claude
+    echo   未找到 Node.js，正在自动安装...
+    where winget >nul 2>&1
+    if %errorlevel% equ 0 (
+        echo   通过 winget 安装（约 1 分钟）...
+        winget install OpenJS.NodeJS.LTS --silent --accept-package-agreements 2>&1
+        if %errorlevel% equ 0 (
+            echo   Node.js 安装完成，请重新打开终端后再次运行 install.bat
+            echo   然后 Node.js 和 Claude CLI 会自动安装
+            pause
+            exit /b 0
+        )
+    )
+    echo   [提示] 自动安装失败，请手动安装 Node.js:
+    echo   https://nodejs.org/ （下载 LTS 版本）
+    echo   安装后重新运行 install.bat 即可
+    pause
+    exit /b 0
 )
+for /f "tokens=2" %%v in ('node --version 2^>^&1') do set NODEVER=%%v
+echo   Node.js %NODEVER%
 
+:: 再装 Claude CLI
 where claude >nul 2>&1
 if %errorlevel% equ 0 (
     echo   Claude CLI 已就绪

@@ -24,8 +24,8 @@
   ✅ 费用追踪 / 多面板分屏 / 微信 Bot / 权限管理
   ✅ 一键安装脚本
 
-  Agency 不包含（安装脚本自动处理）:
-  ⚡ Claude Code CLI — 安装脚本自动帮你装（需 Node.js）
+  Agency 不包含:
+  ⚡ Node.js + Claude CLI — 安装脚本全自动装好
   ❌ API Key — DeepSeek / Anthropic / OpenAI 任选一家注册
   ❌ Python 3.10+ 运行环境
 ```
@@ -71,7 +71,8 @@ agency start
 | 必需 | 版本 | 说明 |
 |------|------|------|
 | **Python** | 3.10+ | [python.org](https://www.python.org/downloads/) |
-| **Claude Code CLI** | 自动安装 | 安装脚本自动处理（需 Node.js） |
+| **Node.js** | 自动安装 | 安装脚本自动处理（winget/brew/apt） |
+| **Claude Code CLI** | 自动安装 | 安装脚本自动处理 |
 | **Git** | 任意版本 | [git-scm.com](https://git-scm.com/) |
 
 | 推荐 | 用途 |

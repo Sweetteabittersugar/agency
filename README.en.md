@@ -27,7 +27,7 @@ You're downloading Agency — a Web UI for Claude Code
   ✅ One-click install scripts
 
   Agency does NOT include:
-  ⚡ Claude Code CLI — install script auto-installs it (needs Node.js)
+  ⚡ Node.js + Claude CLI — install script auto-installs both
   ❌ API Key — sign up at DeepSeek / Anthropic / OpenAI
   ❌ Python 3.10+ runtime
 ```

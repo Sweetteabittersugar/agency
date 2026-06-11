@@ -39,24 +39,37 @@ echo "  依赖安装完成"
 
 # ── 3. 检查 Node.js + Claude CLI ──
 echo ""
-echo "[3/5] 安装 Claude Code CLI..."
+echo "[3/5] 安装 Node.js + Claude Code CLI..."
 
-# 先检查 Node.js（npm 需要它）
+# 先装 Node.js（如果没有）
 if ! command -v node &>/dev/null; then
-    echo "  [提示] 未找到 Node.js，跳过 Claude CLI 安装"
-    echo "  没有 Claude CLI 也能用 — 启动后在设置页切换为 API 直连模式"
+    echo "  未找到 Node.js，正在自动安装..."
+    if [[ "$OSTYPE" == "darwin"* ]] && command -v brew &>/dev/null; then
+        echo "  通过 Homebrew 安装..."
+        brew install node 2>/dev/null && echo "  Node.js 安装完成"
+    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        echo "  通过 apt 安装（可能需要 sudo 密码）..."
+        curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - 2>/dev/null
+        sudo apt-get install -y nodejs 2>/dev/null && echo "  Node.js 安装完成"
+    fi
+
+    if ! command -v node &>/dev/null; then
+        echo "  [提示] 自动安装失败，请手动安装 Node.js: https://nodejs.org/"
+        echo "  安装后重新运行 bash install.sh 即可"
+        exit 0
+    fi
+fi
+echo "  Node.js $(node --version)"
+
+# 再装 Claude CLI
+if command -v claude &>/dev/null; then
+    echo "  Claude CLI 已就绪"
 else
-    if command -v claude &>/dev/null; then
-        echo "  Claude CLI 已就绪"
+    echo "  Claude CLI 未安装，正在自动安装..."
+    if npm install -g @anthropic-ai/claude-code 2>/dev/null; then
+        echo "  Claude CLI 安装完成"
     else
-        echo "  Claude CLI 未安装，正在自动安装..."
-        echo "  （需要 Node.js，约 30 秒）"
-        if npm install -g @anthropic-ai/claude-code 2>/dev/null; then
-            echo "  Claude CLI 安装完成"
-        else
-            echo "  [提示] 自动安装失败，可手动执行: npm install -g @anthropic-ai/claude-code"
-            echo "  没有 Claude CLI 也能用 — 启动后浏览器里配置 API Key 即可"
-        fi
+        echo "  [提示] 自动安装失败，可手动执行: npm install -g @anthropic-ai/claude-code"
     fi
 fi
 
