@@ -48,4 +48,6 @@ function initTheme(){
   }
 }
 
+window.setTheme = setTheme;
+
 export { setTheme, initTheme };

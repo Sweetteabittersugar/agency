@@ -207,5 +207,9 @@ function resetConfig(){
   });
 }
 
+window.exportConfig = exportConfig;
+window.importConfig = importConfig;
+window.resetConfig = resetConfig;
+
 export { exportConfig, importConfig, resetConfig, showImportDiff,
          applyDiffItem, applyAllDiffs, skipAllDiffs, executeImport };

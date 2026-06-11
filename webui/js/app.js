@@ -420,6 +420,10 @@ window.PROFILE_ROUNDS = PROFILE_ROUNDS;
 window.PROFILE_DESC_FALLBACK = PROFILE_DESC_FALLBACK;
 window.PROFILE_COLORS = PROFILE_COLORS;
 
+window.saveOutputDir = saveOutputDir;
+window.cycleProfile = cycleProfile;
+window.setProfile = setProfile;
+
 export { cycleProfile, setProfile, updateProfileUI, loadProfileDescriptions,
          toggleHelpOverlay, switchHelpTab,
          showRemoteLogin, submitRemoteLogin,

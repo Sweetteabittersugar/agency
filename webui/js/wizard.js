@@ -366,6 +366,8 @@ function enterDemoMode(){
   if(dbBtn) dbBtn.style.display = '';
 }
 
+window.enterDemoMode = enterDemoMode;
+
 export { setupData, _demoMode, showSetupStep, enterDemoMode, unlockAllFromWizard,
          setupNext, setupFinish, selectRegion, selectBudget,
          renderProviderQ1, renderProviderQ2, renderBudgetCards,

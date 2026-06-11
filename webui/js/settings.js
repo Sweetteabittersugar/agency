@@ -534,5 +534,11 @@ window.fullReset = function() {
     });
 };
 
+window.saveApiKey = saveApiKey;
+window.generateAgent = generateAgent;
+window.saveAgent = saveAgent;
+window.clearAllHistory = clearAllHistory;
+window.renderResetSection = renderResetSection;
+
 export { saveApiKey, toggleDevOverlay, initSettingsAccordion,
          loadMemList, loadRemotePanel, loadIntegrationPanel, loadMCPConfig };
