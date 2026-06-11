@@ -69,7 +69,6 @@
 <h1><span class="dot"></span>Agency</h1>
 <div class="header-actions">
 <span style="font-size:10px;color:var(--muted)" id="summary"></span>
-<span id="trust-badge" title="当前信任模式" style="padding:2px 8px;border-radius:4px;font-size:11px;cursor:pointer;margin-right:2px" onclick="cycleTrustMode()">🛡️ 普通</span>
 <button class="btn" onclick="toggleHelpOverlay()" data-tooltip="tooltipSend">❓</button>
 <button class="btn" id="dashboardBtn" onclick="toggleDashboard()">📊</button>
 <button class="btn" id="devBtn" onclick="toggleDevOverlay()">🔧</button>
@@ -280,7 +279,29 @@ t<select id="profile-select" style="display:none" aria-hidden="true"><option val
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script type="module" src="js/main.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/api.js"></script>
+<script src="js/state.js"></script>
+<script src="js/markdown.js"></script>
+<script src="js/undo.js"></script>
+<script src="js/command-palette.js"></script>
+<script src="js/wizard.js"></script>
+<script src="js/onboarding.js"></script>
+<script src="js/update-check.js"></script>
+<script src="js/settings-theme.js"></script>
+<script src="js/settings-config.js"></script>
+<script src="js/settings-security.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/split-layout.js"></script>
+<script src="js/sidebar.js"></script>
+<script src="js/chat.js"></script>
+<script src="js/app.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/panels/cost-panel.js"></script>
+<script src="js/panels/weixin-panel.js"></script>
+<script src="js/panels/memory-panel.js"></script>
+<script src="js/panels/operations-panel.js"></script>
+<script src="js/panels/worktree-panel.js"></script>
 <!-- 首次引导覆盖层 -->
 <div id="onboard-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;justify-content:center;align-items:center;">
   <div style="background:var(--bg,#1a1a2e);border:1px solid var(--border,#444);border-radius:16px;padding:32px;max-width:500px;width:90%;text-align:center;">
