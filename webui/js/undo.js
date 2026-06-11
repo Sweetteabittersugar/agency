@@ -65,3 +65,5 @@ function showUndoableToast(label, undoFn, duration, commitFn) {
     commit: commitFn || function() {}
   });
 }
+
+window.showUndoableToast = showUndoableToast;

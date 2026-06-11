@@ -32,8 +32,9 @@ function offDrag(){dragTarget=null;document.removeEventListener('mousemove',onDr
   tab.addEventListener('mousedown',function(e){if(e.target.tagName==='BUTTON')return;dragTarget=domEl;dragOX=e.clientX-domEl.offsetLeft;dragOY=e.clientY-domEl.offsetTop;document.addEventListener('mousemove',onDrag);document.addEventListener('mouseup',offDrag);e.preventDefault()})
 });
 
-// ── API Key 状态显示 ──
-if(apiKey){var ak=$('api-key');if(ak)ak.value=apiKey;var ap=$('api-provider');if(ap)ap.value=apiProvider;$('api-status').textContent='已配置'}
+// ── API Key 状态显示（仅内存，本地存储已清除）──
+localStorage.removeItem('apiKey');localStorage.removeItem('agency_api_key');
+if(apiKey){var ak=$('api-key');if(ak)ak.value=apiKey;var ap=$('api-provider');if(ap)ap.value=apiProvider;$('api-status').textContent='已配置（仅内存，刷新后需重输）'}
 // ── 输出目录 ──
 var outputDir='';try{outputDir=localStorage.getItem('agency_output_dir')||''}catch(_){}
 var odInput=$('output-dir');if(odInput)odInput.value=outputDir;
@@ -385,3 +386,32 @@ function switchMobileTab(tab){
 
 // 同步全局变量到 Store（供后续渐进迁移）
 if (window.Store) setTimeout(function() { Store.syncFromGlobals(); }, 1000);
+
+// ES module — 确保全局变量在模块模式下仍可被其他文件访问
+window.panels = panels;
+window.pidSeq = pidSeq;
+window.perPage = perPage;
+window.curPage = curPage;
+window.focusedPid = focusedPid;
+window.orchMode = orchMode;
+window.devMode = devMode;
+window.conversations = conversations;
+window.agents = agents;
+window.projDir = projDir;
+window.apiKey = apiKey;
+window.apiProvider = apiProvider;
+window.authToken = authToken;
+window._saveTimer = _saveTimer;
+window.agencyProfile = agencyProfile;
+window.grid = grid;
+window.pageBar = pageBar;
+window.agentList = agentList;
+window.historyList = historyList;
+window.outputDir = outputDir;
+window.loadedProfileDescriptions = loadedProfileDescriptions;
+window.dragTarget = dragTarget;
+window.PROFILE_LABELS = PROFILE_LABELS;
+window.PROFILE_ICONS = PROFILE_ICONS;
+window.PROFILE_ROUNDS = PROFILE_ROUNDS;
+window.PROFILE_DESC_FALLBACK = PROFILE_DESC_FALLBACK;
+window.PROFILE_COLORS = PROFILE_COLORS;

@@ -169,6 +169,15 @@
     if (saved >= 1 && saved <= 4) {
       setLayout(saved);
     }
+
+    // 首次使用多面板提示（仅提示一次）
+    var hintShown = localStorage.getItem('split-hint-shown');
+    if (!hintShown && _currentLayout === 1) {
+      setTimeout(function() {
+        showToast('💡 试试多面板分屏？点击工具栏 ⊞ 切换布局', false);
+        try { localStorage.setItem('split-hint-shown', '1'); } catch(e) {}
+      }, 10000);
+    }
   }
 
   // 扩展 addPanel — 新面板也加 Agent 下拉
@@ -220,3 +229,6 @@
     init();
   }
 })();
+
+const setLayout = window.setLayout;
+const onPanelAgentChange = window.onPanelAgentChange;

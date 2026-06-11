@@ -22,12 +22,11 @@
     showToast('🎮 Demo 模式 — 无 Key 也能浏览完整界面', false);
   };
 
-  document.addEventListener('DOMContentLoaded', function() {
-    var onboarded = localStorage.getItem('agency-onboarded');
-    if (!onboarded) {
-      setTimeout(showOnboarding, 800);
-    }
+  // 不再自动触发：改由 main.js 在所有模块加载后控制
+  // document.addEventListener('DOMContentLoaded', function() { ... });
 
+  // dismiss 按钮绑定保留（不依赖 DOMContentLoaded，因为覆盖层已经是 DOM 的一部分）
+  document.addEventListener('DOMContentLoaded', function() {
     var btn = document.getElementById('onboard-dismiss');
     if (btn) btn.addEventListener('click', dismissOnboard);
   });
@@ -63,3 +62,6 @@
   setInterval(rotatePlaceholder, 4000);
   setTimeout(rotatePlaceholder, 500);
 })();
+
+const dismissOnboard = window.dismissOnboard;
+const startDemo = window.startDemo;

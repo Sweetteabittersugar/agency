@@ -55,3 +55,6 @@ function removeWorktree(name) {
     })
     .catch(function() { alert('网络错误'); });
 }
+
+window.createWorktree = createWorktree;
+window.removeWorktree = removeWorktree;

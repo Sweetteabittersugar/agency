@@ -234,8 +234,8 @@ var L={
   mobileAgents:{zh:'👤 Agent',en:'👤 Agents'},
   // 引导解锁
   wizardUnlockAll:{zh:'我是老用户，解锁全部功能',en:"I'm a returning user, unlock all features"},
-  wizardConfigDone:{zh:'🎉 配置完成！功能会随使用天数逐步解锁。在设置→功能解锁可提前开启全部。',en:'🎉 Setup complete! Features unlock gradually. Settings → Feature Unlock to enable all early.'},
-  featureUnlockHint:{zh:'💡 功能随使用天数逐步解锁。需要提前使用全部功能？→ 开启上方"解锁全部功能"开关',en:'💡 Features unlock gradually as you use Agency. Want everything now? → Turn on "Unlock All Features" above'},
+  wizardConfigDone:{zh:'🎉 配置完成！所有功能已解锁，开始使用吧 🚀',en:'🎉 Setup complete! All features unlocked — start creating 🚀'},
+  featureUnlockHint:{zh:'✅ 所有功能已解锁',en:'✅ All features unlocked'},
 };
 function t(key){var entry=L[key];return entry?(_lang==='zh'?entry.zh:entry.en):key}
 
@@ -259,9 +259,9 @@ function showDeleteConfirm(message, onConfirm, onCancel){
 /* ── 渐进式功能暴露 ── */
 var FEATURE_SCHEDULE = {
   day0:       { minDay:0,  features:['chat','settings'],                           desc:{zh:'基础聊天 + Key 配置',en:'Basic chat + Key config'} },
-  day1_2:     { minDay:1,  features:['dashboard','agents'],                        desc:{zh:'仪表盘 + Agent 列表',en:'Dashboard + Agent list'} },
-  day3_5:     { minDay:3,  features:['routing','multipanel'],                      desc:{zh:'智能调度 + 多面板',en:'Smart routing + Multi-panel'} },
-  day7:       { minDay:7,  features:['agent-factory','skills','profiles'],         desc:{zh:'Agent 工厂 + Skill 编辑 + Profile',en:'Agent factory + Skill edit + Profile'} },
+  day1_2:     { minDay:0,  features:['dashboard','agents'],                        desc:{zh:'仪表盘 + Agent 列表',en:'Dashboard + Agent list'} },
+  day3_5:     { minDay:0,  features:['routing','multipanel'],                      desc:{zh:'智能调度 + 多面板',en:'Smart routing + Multi-panel'} },
+  day7:       { minDay:0,  features:['agent-factory','skills','profiles'],         desc:{zh:'Agent 工厂 + Skill 编辑 + Profile',en:'Agent factory + Skill edit + Profile'} },
 };
 var FEATURE_UNLOCK_DAYS = {};
 (function(){
@@ -423,3 +423,25 @@ function detectFilePath(text){
   if(m) return m[1];
   return null;
 }
+
+// ES module bridge — ensure cross-file access
+window.$ = $;
+window.escHtml = escHtml;
+window.showToast = showToast;
+window.apiFetch = apiFetch;
+window.copyText = copyText;
+window.getFocusedPanel = getFocusedPanel;
+window.highlightCode = highlightCode;
+window.t = t;
+window.escAttr = escAttr;
+window.showDeleteConfirm = showDeleteConfirm;
+window.isFeatureUnlocked = isFeatureUnlocked;
+window.checkNewUnlocks = checkNewUnlocks;
+window.initTooltips = initTooltips;
+window.detectFilePath = detectFilePath;
+window.getDemoAgents = getDemoAgents;
+window.getDemoSkills = getDemoSkills;
+window.getDemoHistory = getDemoHistory;
+window.getCustomTemplates = getCustomTemplates;
+window.saveCustomTemplates = saveCustomTemplates;
+window.getAllTemplates = getAllTemplates;

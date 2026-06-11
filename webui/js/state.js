@@ -187,3 +187,5 @@
   restore();
 
 })();
+
+const Store = window.Store;
