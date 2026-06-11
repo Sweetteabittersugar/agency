@@ -234,8 +234,8 @@ var L={
   mobileAgents:{zh:'👤 Agent',en:'👤 Agents'},
   // 引导解锁
   wizardUnlockAll:{zh:'我是老用户，解锁全部功能',en:"I'm a returning user, unlock all features"},
-  wizardConfigDone:{zh:'🎉 配置完成！所有功能已解锁，开始使用吧 🚀',en:'🎉 Setup complete! All features unlocked — start creating 🚀'},
-  featureUnlockHint:{zh:'✅ 所有功能已解锁',en:'✅ All features unlocked'},
+  wizardConfigDone:{zh:'🎉 配置完成！功能会随使用天数逐步解锁。在设置→功能解锁可提前开启全部。',en:'🎉 Setup complete! Features unlock gradually. Settings → Feature Unlock to enable all early.'},
+  featureUnlockHint:{zh:'💡 功能随使用天数逐步解锁。需要提前使用全部功能？→ 开启上方"解锁全部功能"开关',en:'💡 Features unlock gradually as you use Agency. Want everything now? → Turn on "Unlock All Features" above'},
 };
 function t(key){var entry=L[key];return entry?(_lang==='zh'?entry.zh:entry.en):key}
 
@@ -259,9 +259,9 @@ function showDeleteConfirm(message, onConfirm, onCancel){
 /* ── 渐进式功能暴露 ── */
 var FEATURE_SCHEDULE = {
   day0:       { minDay:0,  features:['chat','settings'],                           desc:{zh:'基础聊天 + Key 配置',en:'Basic chat + Key config'} },
-  day1_2:     { minDay:0,  features:['dashboard','agents'],                        desc:{zh:'仪表盘 + Agent 列表',en:'Dashboard + Agent list'} },
-  day3_5:     { minDay:0,  features:['routing','multipanel'],                      desc:{zh:'智能调度 + 多面板',en:'Smart routing + Multi-panel'} },
-  day7:       { minDay:0,  features:['agent-factory','skills','profiles'],         desc:{zh:'Agent 工厂 + Skill 编辑 + Profile',en:'Agent factory + Skill edit + Profile'} },
+  day1_2:     { minDay:1,  features:['dashboard','agents'],                        desc:{zh:'仪表盘 + Agent 列表',en:'Dashboard + Agent list'} },
+  day3_5:     { minDay:3,  features:['routing','multipanel'],                      desc:{zh:'智能调度 + 多面板',en:'Smart routing + Multi-panel'} },
+  day7:       { minDay:7,  features:['agent-factory','skills','profiles'],         desc:{zh:'Agent 工厂 + Skill 编辑 + Profile',en:'Agent factory + Skill edit + Profile'} },
 };
 var FEATURE_UNLOCK_DAYS = {};
 (function(){
@@ -349,7 +349,6 @@ function escAttr(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;')
 /* ── Tooltip 帮助系统 ── */
 function initTooltips(){
   var activeTooltip = null;
-  var _cleanupListeners = [];
   function createTooltip(text, target){
     removeTooltip();
     var tip = document.createElement('div');
@@ -379,23 +378,19 @@ function initTooltips(){
     if(activeTooltip){ activeTooltip.el.remove(); activeTooltip = null; }
   }
   // Desktop: hover
-  var _onToolMouseOver = function(e){
+  document.addEventListener('mouseover', function(e){
     var el = e.target.closest('[data-tooltip]');
     if(!el) return;
-    if(window.innerWidth < 768) return;
+    if(window.innerWidth < 768) return; // mobile uses click
     var text = el.getAttribute('data-tooltip');
     if(text) createTooltip(t(text) || text, el);
-  };
-  var _onToolMouseOut = function(e){
+  });
+  document.addEventListener('mouseout', function(e){
     var el = e.target.closest('[data-tooltip]');
     if(el && window.innerWidth >= 768) removeTooltip();
-  };
-  document.addEventListener('mouseover', _onToolMouseOver);
-  document.addEventListener('mouseout', _onToolMouseOut);
-  _cleanupListeners.push({el: document, event: 'mouseover', fn: _onToolMouseOver});
-  _cleanupListeners.push({el: document, event: 'mouseout', fn: _onToolMouseOut});
+  });
   // Mobile: click
-  var _onToolClick = function(e){
+  document.addEventListener('click', function(e){
     if(window.innerWidth >= 768) return;
     var el = e.target.closest('[data-tooltip]');
     if(!el){
@@ -409,26 +404,12 @@ function initTooltips(){
     var text = el.getAttribute('data-tooltip');
     if(text) createTooltip(t(text) || text, el);
     e.stopPropagation();
-  };
-  document.addEventListener('click', _onToolClick);
-  _cleanupListeners.push({el: document, event: 'click', fn: _onToolClick});
-  // Close on scroll/resize
-  var _onToolScroll = function(){ if(activeTooltip) positionTooltip(activeTooltip.el, activeTooltip.target); };
-  var _onToolResize = function(){ removeTooltip(); };
-  window.addEventListener('scroll', _onToolScroll, true);
-  window.addEventListener('resize', _onToolResize);
-  _cleanupListeners.push({el: window, event: 'scroll', fn: _onToolScroll});
-  _cleanupListeners.push({el: window, event: 'resize', fn: _onToolResize});
-  // Close on Escape
-  var _onToolKeydown = function(e){ if(e.key === 'Escape') removeTooltip(); };
-  document.addEventListener('keydown', _onToolKeydown);
-  _cleanupListeners.push({el: document, event: 'keydown', fn: _onToolKeydown});
-  // beforeunload 清理
-  window.addEventListener('beforeunload', function(){
-    _cleanupListeners.forEach(function(item){
-      item.el.removeEventListener(item.event, item.fn);
-    });
   });
+  // Close on scroll/resize
+  window.addEventListener('scroll', function(){ if(activeTooltip) positionTooltip(activeTooltip.el, activeTooltip.target); }, true);
+  window.addEventListener('resize', function(){ removeTooltip(); });
+  // Close on Escape
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape') removeTooltip(); });
 }
 
 /* ── 文件路径检测 ── */
@@ -442,33 +423,3 @@ function detectFilePath(text){
   if(m) return m[1];
   return null;
 }
-
-// ES module bridge — ensure cross-file access
-window.$ = $;
-window.escHtml = escHtml;
-window.showToast = showToast;
-window.apiFetch = apiFetch;
-window.copyText = copyText;
-window.getFocusedPanel = getFocusedPanel;
-window.highlightCode = highlightCode;
-window.t = t;
-window.escAttr = escAttr;
-window.showDeleteConfirm = showDeleteConfirm;
-window.isFeatureUnlocked = isFeatureUnlocked;
-window.checkNewUnlocks = checkNewUnlocks;
-window.initTooltips = initTooltips;
-window.detectFilePath = detectFilePath;
-window.getDemoAgents = getDemoAgents;
-window.getDemoSkills = getDemoSkills;
-window.getDemoHistory = getDemoHistory;
-window.getCustomTemplates = getCustomTemplates;
-window.saveCustomTemplates = saveCustomTemplates;
-window.getAllTemplates = getAllTemplates;
-
-export { $, escHtml, showToast, apiFetch, copyText, getFocusedPanel, highlightCode,
-         PROVIDER_DB, getDemoAgents, getDemoSkills, getDemoHistory,
-         _lang, L, t, showDeleteConfirm,
-         FEATURE_SCHEDULE, FEATURE_UNLOCK_DAYS, getUserDay, isFeatureUnlocked,
-         checkNewUnlocks, autoSelectProfile,
-         WORKFLOW_TEMPLATES, getCustomTemplates, saveCustomTemplates, getAllTemplates,
-         escAttr, initTooltips, detectFilePath };

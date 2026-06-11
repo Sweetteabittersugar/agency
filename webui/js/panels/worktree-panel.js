@@ -40,10 +40,10 @@ function createWorktree() {
         document.getElementById('wt-new-name').value = '';
         loadWorktrees();
       } else {
-        showToast('创建失败: ' + (data.error || '未知错误'), true);
+        alert('创建失败: ' + (data.error || '未知错误'));
       }
     })
-    .catch(function() { showToast('网络错误', true); });
+    .catch(function() { alert('网络错误'); });
 }
 
 function removeWorktree(name) {
@@ -51,11 +51,7 @@ function removeWorktree(name) {
   api.post('/api/worktrees/remove', {name: name, force: true})
     .then(function(data) {
       if (data.ok) loadWorktrees();
-      else showToast('删除失败: ' + (data.error || '未知错误'), true);
+      else alert('删除失败: ' + (data.error || '未知错误'));
     })
-    .catch(function() { showToast('网络错误', true); });
+    .catch(function() { alert('网络错误'); });
 }
-
-window.createWorktree = createWorktree;
-window.removeWorktree = removeWorktree;
-export { renderWorktreeTab, loadWorktrees, createWorktree, removeWorktree };

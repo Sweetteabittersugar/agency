@@ -1,5 +1,5 @@
 /* Agency — 开发者设置面板 */
-function saveApiKey(){var newKey=$('api-key').value.trim();var newProvider=$('api-provider').value;var oldKey=apiKey;var oldProvider=apiProvider;apiKey=newKey;apiProvider=newProvider;localStorage.setItem('agency_api_provider',apiProvider);window.apiKey=apiKey;$('api-status').textContent=apiKey?'已保存（仅内存，刷新后需重输）':'已清除';showUndoableToast(t('configSaved'),function(){apiKey=oldKey;apiProvider=oldProvider;localStorage.setItem('agency_api_provider',oldProvider);window.apiKey=oldKey;$('api-key').value=oldKey;$('api-provider').value=oldProvider;$('api-status').textContent=oldKey?'已保存（仅内存，刷新后需重输）':'已清除'},5000)}
+function saveApiKey(){var newKey=$('api-key').value.trim();var newProvider=$('api-provider').value;var oldKey=apiKey;var oldProvider=apiProvider;apiKey=newKey;apiProvider=newProvider;localStorage.setItem('agency_api_key',apiKey);localStorage.setItem('agency_api_provider',apiProvider);$('api-status').textContent=apiKey?'已保存':'已清除';if(!apiKey){localStorage.removeItem('agency_api_key');localStorage.removeItem('agency_api_provider')}showUndoableToast(t('configSaved'),function(){apiKey=oldKey;apiProvider=oldProvider;localStorage.setItem('agency_api_key',oldKey);localStorage.setItem('agency_api_provider',oldProvider);$('api-key').value=oldKey;$('api-provider').value=oldProvider;$('api-status').textContent=oldKey?'已保存':'已清除';if(!oldKey){localStorage.removeItem('agency_api_key');localStorage.removeItem('agency_api_provider')}},5000)}
 function toggleDevOverlay(){devMode=!devMode;var ov=$('devOverlay'),btn=$('devBtn');ov.classList.toggle('on',devMode);btn.classList.toggle('on',devMode);if(devMode){var ak=$('api-key');if(ak&&apiKey)ak.value=apiKey;var ap=$('api-provider');if(ap&&apiProvider)ap.value=apiProvider;loadMemList();loadRemotePanel();loadIntegrationPanel();loadMCPConfig();setTimeout(initSettingsAccordion,200)}}
 
 /* ── 设置面板折叠分组 ── */
@@ -48,7 +48,11 @@ function initSettingsAccordion(){
     g.sections.forEach(function(sec){body.appendChild(sec)});
     var header=groupDiv.querySelector('.settings-group-header');
     header.addEventListener('click',function(){
-      this.parentNode.classList.toggle('collapsed');
+      var icon=this.querySelector('.settings-group-icon');
+      var bd=this.parentNode.querySelector('.settings-group-body');
+      var collapsed=bd.style.display==='none';
+      bd.style.display=collapsed?'block':'none';
+      if(icon)icon.textContent=collapsed?'▼':'▶';
     });
     wrapper.appendChild(groupDiv);
   });
@@ -483,7 +487,7 @@ window.resetUserFile = function(path) {
         var container = document.getElementById('reset-container');
         if (container) renderResetSection(container);
       } else {
-        showToast('删除失败: ' + (data.error || '未知'), true);
+        alert('删除失败: ' + (data.error || '未知'));
       }
     });
 };
@@ -513,7 +517,7 @@ window.resetSystemCategory = function(category, type) {
       if (data.ok) {
         showToast('已恢复: ' + category, false, 'success');
       } else {
-        showToast('恢复失败: ' + (data.error || '未知'), true);
+        alert('恢复失败: ' + (data.error || '未知'));
       }
     });
 };
@@ -524,15 +528,10 @@ window.fullReset = function() {
     .then(function(r) { return r.json(); })
     .then(function(data) {
       if (data.ok) {
-        showToast('已恢复出厂设置。建议重启 Agency。', false, 'success', 5000);
+        alert('已恢复出厂设置。建议重启 Agency。');
         location.reload();
-      } else if (data.issues) {
-        showToast('无法恢复出厂设置: ' + data.issues.join('; '), true);
       } else {
-        showToast('恢复失败: ' + (data.error || '未知'), true);
+        alert('恢复失败: ' + (data.error || '未知'));
       }
     });
 };
-
-export { saveApiKey, toggleDevOverlay, initSettingsAccordion,
-         loadMemList, loadRemotePanel, loadIntegrationPanel, loadMCPConfig };

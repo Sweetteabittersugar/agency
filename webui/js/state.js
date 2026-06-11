@@ -187,6 +187,3 @@
   restore();
 
 })();
-
-const Store = window.Store;
-export { Store };

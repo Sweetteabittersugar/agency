@@ -5,7 +5,9 @@ var panels=[],pidSeq=0,perPage=1,curPage=0,focusedPid=null,orchMode=!1,devMode=!
 var conversations=[],agents=[];try{conversations=JSON.parse(localStorage.getItem('agency_convos')||'[]')}catch(_){}
 var projDir='',apiKey='',apiProvider='deepseek',authToken='';
 try{projDir=localStorage.getItem('agency_proj_dir')||''}catch(_){}
-// API Key 仅内存保存，不从 localStorage 读取
+// 注意：API Key 明文存 localStorage 有 XSS 泄漏风险
+// 生产环境建议用 session token 替代，或后端代理持有 Key
+try{apiKey=localStorage.getItem('agency_api_key')||''}catch(_){}
 try{apiProvider=localStorage.getItem('agency_api_provider')||'deepseek'}catch(_){}
 try{authToken=localStorage.getItem('agency_auth_token')||''}catch(_){}
 var _saveTimer=null;
@@ -30,9 +32,8 @@ function offDrag(){dragTarget=null;document.removeEventListener('mousemove',onDr
   tab.addEventListener('mousedown',function(e){if(e.target.tagName==='BUTTON')return;dragTarget=domEl;dragOX=e.clientX-domEl.offsetLeft;dragOY=e.clientY-domEl.offsetTop;document.addEventListener('mousemove',onDrag);document.addEventListener('mouseup',offDrag);e.preventDefault()})
 });
 
-// ── API Key 状态显示（仅内存，本地存储已清除）──
-localStorage.removeItem('apiKey');localStorage.removeItem('agency_api_key');
-if(apiKey){var ak=$('api-key');if(ak)ak.value=apiKey;var ap=$('api-provider');if(ap)ap.value=apiProvider;$('api-status').textContent='已配置（仅内存，刷新后需重输）'}
+// ── API Key 状态显示 ──
+if(apiKey){var ak=$('api-key');if(ak)ak.value=apiKey;var ap=$('api-provider');if(ap)ap.value=apiProvider;$('api-status').textContent='已配置'}
 // ── 输出目录 ──
 var outputDir='';try{outputDir=localStorage.getItem('agency_output_dir')||''}catch(_){}
 var odInput=$('output-dir');if(odInput)odInput.value=outputDir;
@@ -287,27 +288,21 @@ function onFolderPicked(e){var files=e.target.files;if(!files.length)return;var 
 (function(){
   var sidebar=document.querySelector('.sidebar');
   var isResizing=false;
-  var _onSidebarMove=function(e){
-    if(!isResizing)return;
-    var w=Math.max(200,Math.min(500,e.clientX));
-    sidebar.style.width=w+'px';
-    sidebar.style.minWidth=w+'px';
-    localStorage.setItem('agency_sidebar_width',w);
-  };
-  var _onSidebarUp=function(){isResizing=false};
   if(sidebar){
     sidebar.addEventListener('mousedown',function(e){
       if(e.offsetX>sidebar.offsetWidth-6){isResizing=true;e.preventDefault()}
     });
-    document.addEventListener('mousemove',_onSidebarMove);
-    document.addEventListener('mouseup',_onSidebarUp);
+    document.addEventListener('mousemove',function(e){
+      if(!isResizing)return;
+      var w=Math.max(200,Math.min(500,e.clientX));
+      sidebar.style.width=w+'px';
+      sidebar.style.minWidth=w+'px';
+      localStorage.setItem('agency_sidebar_width',w);
+    });
+    document.addEventListener('mouseup',function(){isResizing=false});
     var saved=localStorage.getItem('agency_sidebar_width');
     if(saved){sidebar.style.width=saved+'px';sidebar.style.minWidth=saved+'px'}
   }
-  window.addEventListener('beforeunload',function(){
-    document.removeEventListener('mousemove',_onSidebarMove);
-    document.removeEventListener('mouseup',_onSidebarUp);
-  });
 })();
 
 // ── Ctrl+ +/- 调整字体大小 ──
@@ -390,38 +385,3 @@ function switchMobileTab(tab){
 
 // 同步全局变量到 Store（供后续渐进迁移）
 if (window.Store) setTimeout(function() { Store.syncFromGlobals(); }, 1000);
-
-// ES module — 确保全局变量在模块模式下仍可被其他文件访问
-window.panels = panels;
-window.pidSeq = pidSeq;
-window.perPage = perPage;
-window.curPage = curPage;
-window.focusedPid = focusedPid;
-window.orchMode = orchMode;
-window.devMode = devMode;
-window.conversations = conversations;
-window.agents = agents;
-window.projDir = projDir;
-window.apiKey = apiKey;
-window.apiProvider = apiProvider;
-window.authToken = authToken;
-window._saveTimer = _saveTimer;
-window.agencyProfile = agencyProfile;
-window.grid = grid;
-window.pageBar = pageBar;
-window.agentList = agentList;
-window.historyList = historyList;
-window.outputDir = outputDir;
-window.loadedProfileDescriptions = loadedProfileDescriptions;
-window.dragTarget = dragTarget;
-window.PROFILE_LABELS = PROFILE_LABELS;
-window.PROFILE_ICONS = PROFILE_ICONS;
-window.PROFILE_ROUNDS = PROFILE_ROUNDS;
-window.PROFILE_DESC_FALLBACK = PROFILE_DESC_FALLBACK;
-window.PROFILE_COLORS = PROFILE_COLORS;
-
-export { cycleProfile, setProfile, updateProfileUI, loadProfileDescriptions,
-         toggleHelpOverlay, switchHelpTab,
-         showRemoteLogin, submitRemoteLogin,
-         loadFileTree, openFilePanel, clearProjDir, onFolderPicked,
-         toggleSidebar, switchMobileTab };

@@ -64,7 +64,7 @@ window.wxStartLogin = function() {
       if (data.ok || data.qrcode_img_content) {
         loadWeixinStatus();
       } else {
-        showToast('获取二维码失败: ' + (data.error || '未知'), true);
+        alert('获取二维码失败: ' + (data.error || '未知'));
         if (btn) { btn.disabled = false; btn.textContent = '📱 扫码登录'; }
       }
     });
@@ -85,5 +85,3 @@ window.wxLogout = function() {
   api.post('/api/weixin/logout')
     .then(function() { loadWeixinStatus(); });
 };
-
-export { renderWeixinTab, loadWeixinStatus };

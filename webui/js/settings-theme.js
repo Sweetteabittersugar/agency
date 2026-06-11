@@ -47,5 +47,3 @@ function initTheme(){
     });
   }
 }
-
-export { setTheme, initTheme };

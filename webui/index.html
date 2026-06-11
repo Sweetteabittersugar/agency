@@ -34,7 +34,6 @@
 <div id="sidebar-content">
   <div id="nav-chat" class="nav-panel">
     <div class="sidebar-section-header">💬 对话历史</div>
-    <div style="padding:0 8px 6px"><input id="history-search" placeholder="搜索对话..." style="width:100%;padding:6px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;font-size:11px;box-sizing:border-box" onkeyup="if(event.key==='Enter')searchHistory(this.value)" onblur="if(!this.value.trim())renderHistory()" autocomplete="off"></div>
     <div style="flex:1;overflow-y:auto" id="history-list">加载中...</div>
   </div>
   <div id="nav-agents" class="nav-panel" style="display:none">
@@ -89,7 +88,7 @@
 <button class="layout-btn" data-layout="2" onclick="setLayout(2)" title="双分屏">⬜⬜</button>
 <button class="layout-btn" data-layout="4" onclick="setLayout(4)" title="田字格">🪟</button>
 <span style="flex:1"></span>
-<span style="font-size:12px;color:var(--muted)">拖拽分割条调整大小</span>
+<span style="font-size:9px;color:var(--muted)">拖拽分割条调整大小</span>
 </div>
 <div class="grid g1" id="grid"></div>
 <div class="harness-overlay" id="harnessOverlay">
@@ -108,9 +107,8 @@
 <div class="harness-overlay-content">
 <div class="settings-section">
 <h3 style="font-size:12px;color:var(--text);margin-bottom:8px">🔑 API Key</h3>
-<p style="font-size:10px;color:var(--muted);margin-bottom:6px">支持 DeepSeek / Anthropic / OpenAI 兼容 · Key 仅存本地，永不上传</p>
+<p style="font-size:10px;color:var(--muted);margin-bottom:6px">支持 DeepSeek / Anthropic / OpenAI 兼容 · 🔒 Key 仅存本地，永不上传</p>
 <input class="proj-input" id="api-key" type="password" placeholder="sk-…" autocomplete="off" style="width:100%">
-<span style="font-size:10px;color:var(--muted);">Key 仅在当前会话内存中，刷新页面需重新输入</span>
 <button class="btn" id="key-toggle-btn" onclick="toggleKeyVisibility()" style="position:absolute;right:3px;top:50%;transform:translateY(-50%);font-size:14px;padding:2px 6px;background:transparent;border:none;cursor:pointer;z-index:1" title="显示/隐藏">👁</button>
 <select class="proj-input" id="api-provider" style="width:100%;margin:4px 0" onchange="onProviderChange()">
 <option value="deepseek">DeepSeek</option>
@@ -278,37 +276,35 @@ t<select id="profile-select" style="display:none" aria-hidden="true"><option val
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="js/undo.js"></script>
+<script src="js/command-palette.js"></script>
 <script src="js/utils.js"></script>
 <script src="js/api.js"></script>
 <script src="js/state.js"></script>
 <script src="js/markdown.js"></script>
-<script src="js/undo.js"></script>
-<script src="js/command-palette.js"></script>
 <script src="js/wizard.js"></script>
-<script src="js/onboarding.js"></script>
-<script src="js/update-check.js"></script>
 <script src="js/settings-theme.js"></script>
 <script src="js/settings-config.js"></script>
 <script src="js/settings-security.js"></script>
 <script src="js/settings.js"></script>
-<script src="js/split-layout.js"></script>
-<script src="js/sidebar.js"></script>
-<script src="js/chat.js"></script>
-<script src="js/app.js"></script>
-<script src="js/dashboard.js"></script>
+<script src="js/update-check.js"></script>
 <script src="js/panels/cost-panel.js"></script>
 <script src="js/panels/weixin-panel.js"></script>
 <script src="js/panels/memory-panel.js"></script>
 <script src="js/panels/operations-panel.js"></script>
 <script src="js/panels/worktree-panel.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/sidebar.js"></script>
+<script src="js/chat.js"></script>
+<script src="js/split-layout.js"></script>
+<script src="js/app.js"></script>
+<script src="js/onboarding.js"></script>
 <!-- 首次引导覆盖层 -->
 <div id="onboard-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;justify-content:center;align-items:center;">
   <div style="background:var(--bg,#1a1a2e);border:1px solid var(--border,#444);border-radius:16px;padding:32px;max-width:500px;width:90%;text-align:center;">
     <div style="font-size:48px;margin-bottom:16px;">🚀</div>
     <h2 style="margin:0 0 8px;">欢迎使用 Agency</h2>
     <p style="color:var(--muted,#888);margin:0 0 24px;">Claude Code 的 Web 面板，32 个 AI Agent 协同工作</p>
-    <div id="onboard-key-status" style="margin-bottom:16px;padding:12px;background:var(--bg);border-radius:8px;font-size:13px;text-align:left;">检测中...</div>
     <div style="text-align:left;margin-bottom:24px;">
       <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;">
         <span style="font-size:20px;">1️⃣</span>

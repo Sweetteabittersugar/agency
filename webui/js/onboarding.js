@@ -22,14 +22,15 @@
     showToast('🎮 Demo 模式 — 无 Key 也能浏览完整界面', false);
   };
 
-  // 不再自动触发：改由 main.js 在所有模块加载后控制
-  // document.addEventListener('DOMContentLoaded', function() { ... });
+  document.addEventListener('DOMContentLoaded', function() {
+    var onboarded = localStorage.getItem('agency-onboarded');
+    if (!onboarded) {
+      setTimeout(showOnboarding, 800);
+    }
 
-  // DOM 已就绪（ES module defer），直接执行
-  (function init() {
     var btn = document.getElementById('onboard-dismiss');
     if (btn) btn.addEventListener('click', dismissOnboard);
-  })();
+  });
 })();
 
 // 输入框示例任务轮播
@@ -59,13 +60,6 @@
     }
   }
 
-  var _placeholderTimer = setInterval(rotatePlaceholder, 4000);
+  setInterval(rotatePlaceholder, 4000);
   setTimeout(rotatePlaceholder, 500);
-  window.addEventListener('beforeunload', function() {
-    if (window._placeholderTimer) clearInterval(window._placeholderTimer);
-  });
 })();
-
-const dismissOnboard = window.dismissOnboard;
-const startDemo = window.startDemo;
-export { dismissOnboard, startDemo };

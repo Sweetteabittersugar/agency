@@ -77,6 +77,3 @@
     isAuthError: function(err) { return err instanceof ApiError && (err.status === 401 || err.status === 403); }
   };
 })();
-
-const api = window.api;
-export { api };

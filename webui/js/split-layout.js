@@ -169,15 +169,6 @@
     if (saved >= 1 && saved <= 4) {
       setLayout(saved);
     }
-
-    // 首次使用多面板提示（仅提示一次）
-    var hintShown = localStorage.getItem('split-hint-shown');
-    if (!hintShown && _currentLayout === 1) {
-      setTimeout(function() {
-        showToast('💡 试试多面板分屏？点击工具栏 ⊞ 切换布局', false);
-        try { localStorage.setItem('split-hint-shown', '1'); } catch(e) {}
-      }, 10000);
-    }
   }
 
   // 扩展 addPanel — 新面板也加 Agent 下拉
@@ -223,10 +214,9 @@
     if (pgNum) pgNum.style.display = 'none';
   };
 
-  // DOM 已就绪（ES module defer），直接执行
-  init();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
 })();
-
-const setLayout = window.setLayout;
-const onPanelAgentChange = window.onPanelAgentChange;
-export { setLayout, onPanelAgentChange };

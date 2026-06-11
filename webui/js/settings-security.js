@@ -135,11 +135,8 @@ function loadPermissionAudit(){
   }).catch(function(){ domEl.innerHTML = '权限审计数据加载失败。请检查服务是否正常运行'; });
 }
 
-// DOM 已就绪（ES module defer），直接执行
-(function init(){
+// 初始化信任模式 UI
+document.addEventListener('DOMContentLoaded', function(){
   updateTrustModeUI();
   updateProfileUI();
-})();
-
-export { TRUST_MODES, trustMode, getTrustMode, setTrustMode,
-         updateTrustModeUI, showPermissionConfirm, loadPermissionAudit };
+});

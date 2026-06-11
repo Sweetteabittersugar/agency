@@ -92,7 +92,6 @@ function showSetupStep(step){
         '<p style="font-size:13px;color:var(--text);margin-bottom:4px">配置完成！</p>'+
         '<p style="font-size:11px;color:var(--text2)">Provider: '+escHtml(providerName)+'</p>'+
         '<p style="font-size:11px;color:var(--text2)">项目: '+escHtml(projDir||'当前目录')+'</p>'+
-        '<p style="font-size:11px;color:var(--accent);margin-top:8px;font-weight:600">所有功能已解锁 — 聊天 · 看板 · Agent · 调度 · 多面板</p>'+
         '<p style="font-size:10px;color:var(--muted);margin-top:12px">正在启动 Agency…</p>'+
       '</div>';
     footer.innerHTML='';
@@ -322,7 +321,7 @@ function setupFinish(){
       setTimeout(function(){
         $('setupOverlay').classList.remove('on');
         apiKey=setupData._api_key||'';apiProvider=setupData._api_provider||'deepseek';
-        localStorage.setItem('agency_api_provider',apiProvider);
+        localStorage.setItem('agency_api_key',apiKey);localStorage.setItem('agency_api_provider',apiProvider);
         if(remoteToken){authToken=remoteToken;localStorage.setItem('agency_auth_token',remoteToken)}
         _demoMode=false;
         showToast('配置完成！发送一条消息试试吧 🚀');
@@ -365,9 +364,3 @@ function enterDemoMode(){
   var dbBtn = document.getElementById('dashboardBtn');
   if(dbBtn) dbBtn.style.display = '';
 }
-
-export { setupData, _demoMode, showSetupStep, enterDemoMode, unlockAllFromWizard,
-         setupNext, setupFinish, selectRegion, selectBudget,
-         renderProviderQ1, renderProviderQ2, renderBudgetCards,
-         getProvidersForRegionBudget, renderAllProvidersDropdown,
-         toggleAllProviders, onProviderSelect };
