@@ -7,7 +7,7 @@
 </p>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.1.0-green)](VERSION)
+[![Version](https://img.shields.io/badge/version-0.4.0-green)](VERSION)
 [![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://python.org)
 [![Agents](https://img.shields.io/badge/Agents-32-purple)]()
 [![Skills](https://img.shields.io/badge/Skills-34-orange)]()
@@ -46,6 +46,23 @@ agency start
 | 一键编辑源码、启用/禁用 | 面板间独立会话互不干扰 | Kimi · 通义 · 智谱 · MiniMax… |
 
 ## 安装
+
+### 你需要准备
+
+| 必需 | 版本 | 说明 |
+|------|------|------|
+| **Python** | 3.10+ | [python.org](https://www.python.org/downloads/) |
+| **Claude Code CLI** | 最新版 | `npm install -g @anthropic-ai/claude-code` |
+| **Git** | 任意版本 | [git-scm.com](https://git-scm.com/) |
+
+| 推荐 | 用途 |
+|------|------|
+| **Docker** | 沙箱隔离执行（更安全） |
+| **Node.js 18+** | JS 语法检查（开发者） |
+
+| 你需要获取 | 注册地址 |
+|------------|----------|
+| **API Key** | [DeepSeek](https://platform.deepseek.com/) · [Anthropic](https://console.anthropic.com/) · [OpenAI](https://platform.openai.com/) |
 
 <details open>
 <summary><b>pip install（推荐）</b></summary>

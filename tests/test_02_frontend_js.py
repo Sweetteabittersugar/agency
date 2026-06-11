@@ -64,7 +64,7 @@ class TestFrontendJS(unittest.TestCase):
         self.assertTrue(has_toast, "toast or showToast function not found")
 
     def test_05_renderMD_defined(self):
-        self.assertIn("function renderMD", self.js_code)
+        self.assertIn("renderMD", self.js_code)  # IIFE 模式: var renderMD = (function() {...})()
 
     def test_06_fetch_calls_have_error_handling(self):
         lines = self.js_code.split("\n")
