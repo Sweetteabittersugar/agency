@@ -15,7 +15,24 @@
 [![Skills](https://img.shields.io/badge/Skills-34-orange)]()
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-> *中文用户？[点此阅读中文 README](README.md)*
+## What's in This Repo
+
+```
+You're downloading Agency — a Web UI for Claude Code
+
+  Agency includes:
+  ✅ Browser chat interface (replaces command line)
+  ✅ 32 pre-configured AI Agents (ready to use)
+  ✅ Cost tracking / split panels / WeChat Bot / permission control
+  ✅ One-click install scripts
+
+  Agency does NOT include (you need these separately):
+  ❌ Claude Code CLI — npm install -g @anthropic-ai/claude-code
+  ❌ API Key — sign up at DeepSeek / Anthropic / OpenAI
+  ❌ Python 3.10+ runtime
+```
+
+> **TL;DR: Agency is a web shell for Claude Code. You need Claude Code CLI and an API Key first.**
 
 ## Quick Start
 

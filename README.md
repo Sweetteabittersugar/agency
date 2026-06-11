@@ -13,6 +13,25 @@
 [![Skills](https://img.shields.io/badge/Skills-34-orange)]()
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
+## 这个仓库是什么
+
+```
+你下载的是 Agency — Claude Code 的 Web 操作面板
+
+  Agency 提供:
+  ✅ 浏览器里的聊天界面（替代命令行）
+  ✅ 32 个预配置 AI Agent（开箱即用）
+  ✅ 费用追踪 / 多面板分屏 / 微信 Bot / 权限管理
+  ✅ 一键安装脚本
+
+  Agency 不包含（需要你自行准备）:
+  ❌ Claude Code CLI — npm install -g @anthropic-ai/claude-code
+  ❌ API Key — DeepSeek / Anthropic / OpenAI 任选一家注册
+  ❌ Python 3.10+ 运行环境
+```
+
+> **一句话：Agency 是给 Claude Code 套的 Web 壳。你得先有 Claude Code CLI 和 API Key，Agency 才能干活。**
+
 ## 快速开始
 
 ```bash
