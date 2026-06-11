@@ -1,5 +1,5 @@
 /* Agency — 开发者设置面板 */
-function saveApiKey(){var newKey=$('api-key').value.trim();var newProvider=$('api-provider').value;var oldKey=apiKey;var oldProvider=apiProvider;apiKey=newKey;apiProvider=newProvider;localStorage.setItem('agency_api_key',apiKey);localStorage.setItem('agency_api_provider',apiProvider);$('api-status').textContent=apiKey?'已保存':'已清除';if(!apiKey){localStorage.removeItem('agency_api_key');localStorage.removeItem('agency_api_provider')}showUndoableToast(t('configSaved'),function(){apiKey=oldKey;apiProvider=oldProvider;localStorage.setItem('agency_api_key',oldKey);localStorage.setItem('agency_api_provider',oldProvider);$('api-key').value=oldKey;$('api-provider').value=oldProvider;$('api-status').textContent=oldKey?'已保存':'已清除';if(!oldKey){localStorage.removeItem('agency_api_key');localStorage.removeItem('agency_api_provider')}},5000)}
+function saveApiKey(){var newKey=$('api-key').value.trim();var newProvider=$('api-provider').value;var oldKey=apiKey;var oldProvider=apiProvider;apiKey=newKey;apiProvider=newProvider;localStorage.setItem('agency_api_provider',apiProvider);$('api-status').textContent=apiKey?'已保存（仅内存，刷新后需重输）':'已清除';if(!apiKey){localStorage.removeItem('agency_api_key')}showUndoableToast(t('configSaved'),function(){apiKey=oldKey;apiProvider=oldProvider;localStorage.setItem('agency_api_provider',oldProvider);$('api-key').value=oldKey;$('api-provider').value=oldProvider;$('api-status').textContent=oldKey?'已保存（仅内存，刷新后需重输）':'已清除';if(!oldKey){localStorage.removeItem('agency_api_key')}},5000)}
 function toggleDevOverlay(){devMode=!devMode;var ov=$('devOverlay'),btn=$('devBtn');ov.classList.toggle('on',devMode);btn.classList.toggle('on',devMode);if(devMode){var ak=$('api-key');if(ak&&apiKey)ak.value=apiKey;var ap=$('api-provider');if(ap&&apiProvider)ap.value=apiProvider;loadMemList();loadRemotePanel();loadIntegrationPanel();loadMCPConfig();setTimeout(initSettingsAccordion,200)}}
 
 /* ── 设置面板折叠分组 ── */
@@ -48,11 +48,7 @@ function initSettingsAccordion(){
     g.sections.forEach(function(sec){body.appendChild(sec)});
     var header=groupDiv.querySelector('.settings-group-header');
     header.addEventListener('click',function(){
-      var icon=this.querySelector('.settings-group-icon');
-      var bd=this.parentNode.querySelector('.settings-group-body');
-      var collapsed=bd.style.display==='none';
-      bd.style.display=collapsed?'block':'none';
-      if(icon)icon.textContent=collapsed?'▼':'▶';
+      this.parentNode.classList.toggle('collapsed');
     });
     wrapper.appendChild(groupDiv);
   });

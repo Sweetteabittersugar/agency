@@ -44,7 +44,7 @@ function buildDashCard(icon,title,cardType,loadFn){
   return '<div class="dash-card" data-card="'+cardType+'" data-load="'+loadFn+'" onclick="openDashDetail(\''+cardType+'\')">'+
     '<div class="dash-card-icon">'+icon+'</div>'+
     '<div class="dash-card-title">'+title+'</div>'+
-    '<div class="dash-card-body" id="dash-card-'+cardType+'">加载中...</div>'+
+    '<div class="dash-card-body" id="dash-card-'+cardType+'"><div class="skel-row wide"></div><div class="skel-row narrow"></div></div>'+
     '</div>';
 }
 

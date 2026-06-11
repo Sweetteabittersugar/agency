@@ -1,12 +1,12 @@
 /* 从 style.css 拆分 — 面板特定样式 */
 /* ── Agent/Skill 卡片 ── */
-.agent-card{background:var(--surface2);border-radius:var(--radius);padding:10px 12px;margin-bottom:6px;cursor:pointer;border:1px solid transparent;transition:all .2s}
+.agent-card{background:var(--surface2);border-radius:var(--radius);padding:10px 12px;margin-bottom:6px;cursor:pointer;border:1px solid transparent;transition:all var(--transition-normal)}
 .agent-card:hover{border-color:var(--accent);background:rgba(16,185,129,.05);transform:translateX(2px)}
 .agent-card .name{font-weight:600;font-size:12px;color:var(--text)}
 .agent-card .model{font-size:9px;background:rgba(16,185,129,.15);color:var(--accent);padding:1px 6px;border-radius:4px;margin-left:6px;font-weight:500}
 .agent-card .desc{font-size:10px;color:var(--text2);margin-top:3px;line-height:1.4}
 .agent-card .kw{font-size:9px;color:var(--muted);margin-top:3px;opacity:.8}
-.agent-search{width:100%;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:12px;outline:none;margin-bottom:8px;flex-shrink:0;transition:border-color .2s}
+.agent-search{width:100%;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:12px;outline:none;margin-bottom:8px;flex-shrink:0;transition:border-color var(--transition-normal)}
 .agent-search:focus{border-color:var(--accent)}
 .agent-list{flex:1;overflow-y:auto}
 
@@ -15,17 +15,17 @@
 .skill-card:hover{border-color:var(--accent)}
 .skill-card.disabled{opacity:.5;filter:grayscale(30%)}
 .skill-card.disabled:hover{opacity:.8}
-.skill-enable-btn{border-color:#2e7d32;color:#2e7d32;font-size:10px;background:var(--surface2);border:1px solid #2e7d32;padding:2px 8px;border-radius:var(--radius-sm);cursor:pointer;white-space:nowrap;transition:all .15s}
+.skill-enable-btn{border-color:#2e7d32;color:#2e7d32;font-size:10px;background:var(--surface2);border:1px solid #2e7d32;padding:2px 8px;border-radius:var(--radius-sm);cursor:pointer;white-space:nowrap;transition:all var(--transition-fast)}
 .skill-enable-btn:hover{background:rgba(46,125,50,.15);color:#2e7d32}
 .skill-enable-all-btn{border-color:#2e7d32!important;color:#2e7d32!important}
 .skill-enable-all-btn:hover{background:rgba(46,125,50,.15)!important}
 
 /* ── 历史 ── */
-.history-item{padding:8px 10px;border-radius:6px;cursor:pointer;font-size:11px;margin-bottom:2px;transition:all .15s;position:relative}
+.history-item{padding:8px 10px;border-radius:6px;cursor:pointer;font-size:11px;margin-bottom:2px;transition:all var(--transition-fast);position:relative}
 .history-item:hover{background:rgba(255,255,255,.04)}
 .history-item .time{font-size:9px;color:var(--muted)}
 .history-item .preview{font-size:10px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.del-btn{background:rgba(239,68,68,.1);border:1px solid transparent;color:var(--danger);font-size:12px;cursor:pointer;padding:2px 6px;border-radius:4px;flex-shrink:0;transition:all .15s}
+.del-btn{background:rgba(239,68,68,.1);border:1px solid transparent;color:var(--danger);font-size:12px;cursor:pointer;padding:2px 6px;border-radius:4px;flex-shrink:0;transition:all var(--transition-fast)}
 .del-btn:hover{background:rgba(239,68,68,.2);border-color:var(--danger)}
 
 /* ── Agent 选择器 ── */
@@ -36,7 +36,7 @@
 .harness-overlay{position:fixed;top:60px;right:20px;width:520px;height:420px;background:var(--surface);z-index:100;display:none;flex-direction:column;border-radius:var(--radius-lg);border:1px solid var(--border);box-shadow:var(--shadow-lg);resize:both;overflow:auto;min-width:360px;min-height:260px}
 .harness-overlay.on{display:flex}
 .harness-overlay-tabs{display:flex;border-bottom:1px solid var(--border);background:var(--bg);padding:0 14px;flex-shrink:0;gap:0}
-.harness-overlay-tab{padding:10px 14px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;user-select:none}
+.harness-overlay-tab{padding:10px 14px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all var(--transition-normal);user-select:none}
 .harness-overlay-tab:hover{color:var(--text2)}
 .harness-overlay-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
 .harness-overlay-content{flex:1;overflow-y:auto;padding:16px}
@@ -61,17 +61,17 @@
 .cost-bar-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .5s}
 
 /* ── 设置面板 ── */
-.proj-input{width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:12px;outline:none;font-family:"JetBrains Mono",monospace;margin-bottom:8px;transition:border-color .2s}
+.proj-input{width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:12px;outline:none;font-family:"JetBrains Mono",monospace;margin-bottom:8px;transition:border-color var(--transition-normal)}
 .proj-input:focus{border-color:var(--accent)}
 .settings-section{margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)}
 .settings-section:last-child{border-bottom:none;margin-bottom:0}
 .settings-section h3{font-size:11px;color:var(--text);margin-bottom:8px;font-weight:600}
-.mem-file{cursor:pointer;padding:6px 10px;border-radius:4px;font-size:10px;display:flex;align-items:center;gap:6px;transition:all .15s}
+.mem-file{cursor:pointer;padding:6px 10px;border-radius:4px;font-size:10px;display:flex;align-items:center;gap:6px;transition:all var(--transition-fast)}
 .mem-file:hover{background:rgba(255,255,255,.04)}
 .mem-file .icon{font-size:14px}
-.mem-editor{width:100%;min-height:200px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-size:11px;padding:10px;font-family:"JetBrains Mono",monospace;outline:none;resize:vertical;transition:border-color .2s}
+.mem-editor{width:100%;min-height:200px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-size:11px;padding:10px;font-family:"JetBrains Mono",monospace;outline:none;resize:vertical;transition:border-color var(--transition-normal)}
 .mem-editor:focus{border-color:var(--accent)}
-.new-chat-btn{width:100%;padding:8px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-size:12px;margin-bottom:8px;flex-shrink:0;font-weight:600;transition:all .15s}
+.new-chat-btn{width:100%;padding:8px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-size:12px;margin-bottom:8px;flex-shrink:0;font-weight:600;transition:all var(--transition-fast)}
 .new-chat-btn:hover{background:var(--accent2)}
 
 /* ══════════════════════════════════════════
@@ -79,14 +79,14 @@
    ══════════════════════════════════════════ */
 
 /* ── 主题选项 ── */
-.theme-option{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;cursor:pointer;border:1px solid var(--border2);transition:all .15s;margin-bottom:4px}
+.theme-option{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;cursor:pointer;border:1px solid var(--border2);transition:all var(--transition-fast);margin-bottom:4px}
 .theme-option:hover{border-color:var(--accent)}
 .theme-option.active{border-color:var(--accent);background:rgba(16,185,129,.08)}
 .theme-swatch{width:20px;height:20px;border-radius:50%;flex-shrink:0}
 
 /* ── 侧边栏宽度可拖拽把手 ── */
 .sidebar{position:relative}
-.sidebar::after{content:'';position:absolute;right:0;top:0;bottom:0;width:3px;cursor:col-resize;transition:background .2s;z-index:10}
+.sidebar::after{content:'';position:absolute;right:0;top:0;bottom:0;width:3px;cursor:col-resize;transition:background var(--transition-normal);z-index:10}
 .sidebar::after:hover{background:var(--accent)}
 
 /* ── Pipeline 进度条 ── */
@@ -98,17 +98,17 @@
 
 /* ── 重试提示块 ── */
 .retry-block{display:flex;align-items:center;gap:8px;margin-top:6px;padding:8px 12px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:var(--radius);font-size:12px;color:var(--warn)}
-.retry-btn{padding:4px 12px;border:1px solid var(--accent);border-radius:var(--radius-sm);background:rgba(16,185,129,.1);color:var(--accent);cursor:pointer;font-size:12px;transition:all .15s;white-space:nowrap}
+.retry-btn{padding:4px 12px;border:1px solid var(--accent);border-radius:var(--radius-sm);background:rgba(16,185,129,.1);color:var(--accent);cursor:pointer;font-size:12px;transition:all var(--transition-fast);white-space:nowrap}
 .retry-btn:hover{background:var(--accent);color:#fff}
 
 /* ══════════════════════════════════════════
    Demo 模式样式
    ══════════════════════════════════════════ */
-.demo-agent{border:1px dashed var(--warn)!important;opacity:.85;transition:all .15s}
+.demo-agent{border:1px dashed var(--warn)!important;opacity:.85;transition:all var(--transition-fast)}
 .demo-agent:hover{border-color:var(--accent)!important;opacity:1;background:rgba(16,185,129,.06)!important}
-.demo-skill{border:1px dashed var(--border2)!important;opacity:.8;transition:all .15s}
+.demo-skill{border:1px dashed var(--border2)!important;opacity:.8;transition:all var(--transition-fast)}
 .demo-skill:hover{opacity:1;border-color:var(--warn)!important}
-.demo-history{border:1px dashed var(--border2)!important;opacity:.8;transition:all .15s}
+.demo-history{border:1px dashed var(--border2)!important;opacity:.8;transition:all var(--transition-fast)}
 .demo-history:hover{opacity:1;border-color:var(--warn)!important}
 .demo-block{position:relative;border:1px dashed var(--warn)!important;border-radius:var(--radius);padding:8px;opacity:.85}
 .demo-block::after{content:'Demo';position:absolute;top:2px;right:6px;font-size:7px;color:var(--warn);background:rgba(245,158,11,.1);padding:1px 4px;border-radius:2px;text-transform:uppercase;letter-spacing:.5px}

@@ -32,8 +32,9 @@ function offDrag(){dragTarget=null;document.removeEventListener('mousemove',onDr
   tab.addEventListener('mousedown',function(e){if(e.target.tagName==='BUTTON')return;dragTarget=domEl;dragOX=e.clientX-domEl.offsetLeft;dragOY=e.clientY-domEl.offsetTop;document.addEventListener('mousemove',onDrag);document.addEventListener('mouseup',offDrag);e.preventDefault()})
 });
 
-// ── API Key 状态显示 ──
-if(apiKey){var ak=$('api-key');if(ak)ak.value=apiKey;var ap=$('api-provider');if(ap)ap.value=apiProvider;$('api-status').textContent='已配置'}
+// ── API Key 状态显示（仅内存，本地存储已清除）──
+localStorage.removeItem('apiKey');localStorage.removeItem('agency_api_key');
+if(apiKey){var ak=$('api-key');if(ak)ak.value=apiKey;var ap=$('api-provider');if(ap)ap.value=apiProvider;$('api-status').textContent='已配置（仅内存，刷新后需重输）'}
 // ── 输出目录 ──
 var outputDir='';try{outputDir=localStorage.getItem('agency_output_dir')||''}catch(_){}
 var odInput=$('output-dir');if(odInput)odInput.value=outputDir;

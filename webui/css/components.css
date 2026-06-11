@@ -1,6 +1,6 @@
 /* 从 style.css 拆分 — UI 组件 */
 /* ── 按钮体系 ── */
-.btn{background:var(--surface2);border:1px solid var(--border2);color:var(--text2);padding:5px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:11px;font-weight:500;white-space:nowrap;transition:all .15s}
+.btn{background:var(--surface2);border:1px solid var(--border2);color:var(--text2);padding:5px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:11px;font-weight:500;white-space:nowrap;transition:background var(--transition-fast),border-color var(--transition-fast),color var(--transition-fast),transform var(--transition-fast)}
 .btn:hover{border-color:var(--accent);color:var(--text);background:var(--surface3)}
 .btn.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
@@ -10,12 +10,12 @@
 .btn.danger:hover{border-color:var(--danger);background:rgba(239,68,68,.1)}
 
 /* ── 消息气泡 ── */
-.msg{max-width:85%;margin-bottom:8px;animation:fadeIn .2s}
-@keyframes fadeIn{from{opacity:0;transform:translateY(3px)}}
+.msg{max-width:85%;margin-bottom:10px;animation:fadeIn var(--transition-normal) ease-out}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}}
 .msg.user{margin-left:auto}
-.msg.user .bubble{background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.2);color:var(--text);border-radius:var(--radius-lg) 4px var(--radius-lg) var(--radius-lg);padding:8px 12px;font-size:12px;line-height:1.5}
-.msg.assistant .bubble{background:var(--surface2);border:1px solid var(--border2);border-radius:4px var(--radius-lg) var(--radius-lg) var(--radius-lg);padding:8px 12px;font-size:12px;line-height:1.5}
-.msg-label{font-size:9px;color:var(--muted);margin-bottom:3px;padding:0 3px}
+.msg.user .bubble{background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.2);color:var(--text);border-radius:var(--radius-lg) var(--radius-sm) var(--radius-lg) var(--radius-lg);padding:9px 13px;font-size:12px;line-height:1.55}
+.msg.assistant .bubble{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm) var(--radius-lg) var(--radius-lg) var(--radius-lg);padding:9px 13px;font-size:12px;line-height:1.55}
+.msg-label{font-size:9px;color:var(--muted);margin-bottom:3px;padding:0 3px;font-weight:500}
 .msg.user .msg-label{text-align:right}
 .msg pre{background:#0d1117;color:#7ee787;padding:10px 12px;border-radius:6px;overflow-x:auto;margin:6px 0;font:11px/1.5 "JetBrains Mono",monospace;border:1px solid var(--border)}
 .msg code{font:11px/1.3 "JetBrains Mono",monospace;background:rgba(255,255,255,.06);padding:1px 4px;border-radius:3px}
@@ -24,11 +24,14 @@
 @keyframes blink{50%{opacity:0}}
 
 /* ── Toast ── */
-.toast{position:fixed;top:16px;right:16px;background:var(--surface2);border:1px solid var(--border2);padding:10px 16px;border-radius:var(--radius);font-size:12px;z-index:9999;animation:fadeIn .2s;max-width:360px;box-shadow:var(--shadow-lg)}
+.toast{position:fixed;bottom:20px;right:20px;top:auto;background:var(--surface2);border:1px solid var(--border2);padding:10px 16px;border-radius:var(--radius);font-size:12px;z-index:9999;animation:toastIn .3s ease-out;max-width:360px;box-shadow:var(--shadow-lg)}
+.toast.removing{animation:toastOut .2s ease-in forwards}
+@keyframes toastIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes toastOut{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(8px)}}
 .toast.error{border-color:var(--danger)}
 .toast.warn{border-color:var(--warn)}
 .toast-acts{display:flex;gap:6px;margin-top:8px}
-.toast-acts button{padding:4px 12px;border-radius:4px;border:none;cursor:pointer;font-size:11px;font-weight:600;transition:all .15s}
+.toast-acts button{padding:4px 12px;border-radius:4px;border:none;cursor:pointer;font-size:11px;font-weight:600;transition:all var(--transition-fast)}
 .toast-acts .allow{background:var(--accent);color:#fff}
 .toast-acts .deny{background:var(--danger);color:#fff}
 .toast-acts .always{background:transparent;border:1px solid var(--accent);color:var(--accent)}
@@ -67,11 +70,12 @@
 .new-chat-btn:active{transform:scale(.97)}
 
 /* ── 输入框焦点发光 ── */
-.panel-inp textarea{transition:border-color .2s,box-shadow .2s}
-.panel-inp textarea:focus{box-shadow:0 0 0 3px rgba(16,185,129,.15)}
-
-/* ── 消息出现动画增强 ── */
-.msg{animation:fadeIn .25s ease-out}
+.panel-inp textarea{transition:border-color var(--transition-fast),box-shadow var(--transition-fast)}
+.panel-inp textarea:focus,
+.agent-search:focus,
+.proj-input:focus,
+.panel-agent-select:focus{box-shadow:0 0 0 3px rgba(16,185,129,.15);border-color:var(--accent)}
+input:not([type="checkbox"]):not([type="radio"]):focus{box-shadow:0 0 0 2px rgba(16,185,129,.12);border-color:var(--accent);outline:none}
 
 /* ══════════════════════════════════════════
    防误触设计
@@ -96,27 +100,27 @@
 .confirm-box .btn-row{display:flex;gap:8px;justify-content:center}
 
 /* ── 帮助/设置标签按钮 ── */
-.help-tab,.harness-overlay-tab{background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;font-weight:600;padding:8px 14px;border-bottom:2px solid transparent;transition:all .2s}
+.help-tab,.harness-overlay-tab{background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;font-weight:600;padding:8px 14px;border-bottom:2px solid transparent;transition:all var(--transition-normal)}
 .help-tab:hover,.harness-overlay-tab:hover{color:var(--text)}
 .help-tab.active,.harness-overlay-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
 
 /* ══════════════════════════════════════════
    空状态引导
    ══════════════════════════════════════════ */
-.empty-state{text-align:center;padding:24px 16px;color:var(--muted)}
-.empty-state .es-icon{font-size:28px;margin-bottom:8px;opacity:.5}
+.empty-state{text-align:center;padding:28px 20px;color:var(--muted);background:var(--surface2);border:1px dashed var(--border);border-radius:var(--radius-lg);margin:8px 0}
+.empty-state .es-icon{font-size:32px;margin-bottom:10px;opacity:.6}
 .empty-state .es-text{font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.6}
 .empty-state .es-actions{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
 .empty-state .es-actions .btn{font-size:11px;padding:6px 12px}
 .empty-panel .empty-state-actions{display:flex;gap:6px;margin-top:12px;justify-content:center;flex-wrap:wrap}
-.empty-panel .empty-state-actions .btn{font-size:10px;padding:5px 10px;transition:all .15s}
+.empty-panel .empty-state-actions .btn{font-size:10px;padding:5px 10px;transition:all var(--transition-fast)}
 .empty-panel .empty-state-actions .btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
 
 /* ══════════════════════════════════════════
    撤销 Toast + 进度条
    ══════════════════════════════════════════ */
 .undo-toast{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px 12px}
-.undo-toast .undo-btn{background:var(--accent);color:#fff;border:none;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;transition:all .15s;margin-left:auto}
+.undo-toast .undo-btn{background:var(--accent);color:#fff;border:none;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;transition:all var(--transition-fast);margin-left:auto}
 .undo-toast .undo-btn:hover{background:var(--accent2)}
 .undo-progress{width:100%;height:2px;background:var(--border);border-radius:1px;overflow:hidden;flex-basis:100%}
 .undo-progress-fill{height:100%;background:var(--accent);border-radius:1px;animation:undoShrink linear forwards}
@@ -177,19 +181,19 @@
 /* ══════════════════════════════════════════
    模板下拉选择器
    ══════════════════════════════════════════ */
-.template-btn{background:var(--surface2);border:1px solid var(--border2);color:var(--text2);padding:7px 8px;border-radius:var(--radius);cursor:pointer;font-size:14px;white-space:nowrap;transition:all .15s;line-height:1}
+.template-btn{background:var(--surface2);border:1px solid var(--border2);color:var(--text2);padding:7px 8px;border-radius:var(--radius);cursor:pointer;font-size:14px;white-space:nowrap;transition:all var(--transition-fast);line-height:1}
 .template-btn:hover{border-color:var(--accent);color:var(--text);background:var(--surface3)}
 .template-dropdown{position:absolute;bottom:calc(100% + 4px);right:0;width:320px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);z-index:300;overflow:hidden;display:none}
 .template-dropdown.on{display:block}
 .template-dropdown-header{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text)}
 .template-dropdown-list{max-height:260px;overflow-y:auto;padding:4px}
-.template-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:11px;transition:all .15s;color:var(--text)}
+.template-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:11px;transition:all var(--transition-fast);color:var(--text)}
 .template-item:hover{background:var(--surface2)}
 .template-item .tpl-icon{font-size:16px;flex-shrink:0}
 .template-item .tpl-label{font-weight:500;flex:1}
-.template-item .tpl-actions{display:flex;gap:2px;opacity:0;transition:opacity .15s}
+.template-item .tpl-actions{display:flex;gap:2px;opacity:0;transition:opacity var(--transition-fast)}
 .template-item:hover .tpl-actions{opacity:1}
-.template-item .tpl-act-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:2px 4px;border-radius:3px;transition:all .15s}
+.template-item .tpl-act-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:2px 4px;border-radius:3px;transition:all var(--transition-fast)}
 .template-item .tpl-act-btn:hover{color:var(--text);background:var(--surface3)}
 .template-item .tpl-act-btn.del:hover{color:var(--danger)}
 .template-item.custom{border-left:2px solid var(--warn)}
@@ -216,7 +220,7 @@
 .config-diff-item .diff-arrow{color:var(--muted)}
 .config-diff-item .diff-new-only{color:var(--accent)}
 .config-diff-item .diff-actions{display:flex;gap:4px;margin-top:6px}
-.config-diff-item .diff-actions button{padding:3px 10px;border-radius:4px;border:1px solid var(--border2);background:var(--surface3);color:var(--text2);cursor:pointer;font-size:10px;transition:all .15s}
+.config-diff-item .diff-actions button{padding:3px 10px;border-radius:4px;border:1px solid var(--border2);background:var(--surface3);color:var(--text2);cursor:pointer;font-size:10px;transition:all var(--transition-fast)}
 .config-diff-item .diff-actions button:hover{border-color:var(--accent);color:var(--text)}
 .config-diff-item .diff-actions button.replace{background:rgba(16,185,129,.12);border-color:var(--accent);color:var(--accent)}
 .config-diff-item .diff-actions button.replace:hover{background:var(--accent);color:#fff}
@@ -248,7 +252,7 @@
    主题选择器
    ══════════════════════════════════════════ */
 .theme-selector{display:flex;gap:6px;margin-bottom:8px}
-.theme-opt{flex:1;padding:10px 8px;background:var(--surface2);border:2px solid var(--border2);border-radius:var(--radius);text-align:center;cursor:pointer;transition:all .15s;font-size:11px}
+.theme-opt{flex:1;padding:10px 8px;background:var(--surface2);border:2px solid var(--border2);border-radius:var(--radius);text-align:center;cursor:pointer;transition:all var(--transition-fast);font-size:11px}
 .theme-opt:hover{border-color:var(--accent)}
 .theme-opt.active{border-color:var(--accent);background:rgba(16,185,129,.08)}
 .theme-opt .to-icon{font-size:18px;display:block;margin-bottom:4px}
@@ -261,7 +265,7 @@
 /* ══════════════════════════════════════════
    Tooltip 系统 (data-tooltip)
    ══════════════════════════════════════════ */
-.agency-tooltip{position:fixed;z-index:9999;background:#333;color:#fff;padding:8px 12px;border-radius:6px;font-size:11px;max-width:280px;line-height:1.5;pointer-events:none;opacity:0;transform:translateY(-4px);transition:opacity .15s,transform .15s;box-shadow:0 4px 12px rgba(0,0,0,.4);word-break:break-word}
+.agency-tooltip{position:fixed;z-index:9999;background:#333;color:#fff;padding:8px 12px;border-radius:6px;font-size:11px;max-width:280px;line-height:1.5;pointer-events:none;opacity:0;transform:translateY(-4px);transition:opacity var(--transition-fast),transform .15s;box-shadow:0 4px 12px rgba(0,0,0,.4);word-break:break-word}
 .agency-tooltip::after{content:'';position:absolute;top:100%;left:var(--tip-x,50%);transform:translateX(-50%);border:6px solid transparent;border-top-color:#333}
 .agency-tooltip.tip-above::after{top:auto;bottom:100%;border-top-color:transparent;border-bottom-color:#333}
 
@@ -284,7 +288,7 @@
 /* ══════════════════════════════════════════
    快捷键编辑器
    ══════════════════════════════════════════ */
-.shortcut-row code.shortcut-keys{cursor:pointer;transition:all .15s}
+.shortcut-row code.shortcut-keys{cursor:pointer;transition:all var(--transition-fast)}
 .shortcut-row code.shortcut-keys:hover{background:var(--surface3)!important}
 
 /* ══════════════════════════════════════════
@@ -303,21 +307,27 @@
 .dash-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:16px}
 @media(max-width:900px){.dash-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:500px){.dash-grid{grid-template-columns:1fr}}
-.dash-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;cursor:pointer;transition:all .2s}
-.dash-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 4px 20px rgba(0,0,0,.2)}
-.dash-card-icon{font-size:24px;margin-bottom:8px}
-.dash-card-title{font-size:13px;color:var(--muted);margin-bottom:6px}
-.dash-stat{font-size:22px;font-weight:700;color:var(--text)}
-.dash-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.dash-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;cursor:pointer;transition:border-color var(--transition-normal),transform var(--transition-normal),box-shadow var(--transition-normal);min-height:110px;display:flex;flex-direction:column}
+.dash-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.dash-card-icon{font-size:24px;margin-bottom:8px;flex-shrink:0}
+.dash-card-title{font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:500}
+.dash-card-body{flex:1;display:flex;flex-direction:column;justify-content:center;min-height:40px}
+.dash-stat{font-size:24px;font-weight:700;color:var(--text);line-height:1.2}
+.dash-sub{font-size:11px;color:var(--muted);margin-top:3px}
+/* 仪表盘卡片骨架加载态 */
+.dash-card-body .skel-row{height:14px;background:var(--surface3);border-radius:4px;margin:3px 0;animation:shimmer 1.5s infinite;background-size:200% 100%;background-image:linear-gradient(90deg,var(--surface3) 25%,var(--surface2) 50%,var(--surface3) 75%)}
+.dash-card-body .skel-row.wide{width:80%}
+.dash-card-body .skel-row.narrow{width:50%}
 
 /* ══════════════════════════════════════════
    设置面板折叠分组
    ══════════════════════════════════════════ */
 .settings-group{margin-bottom:2px;border:1px solid var(--border);border-radius:8px;overflow:hidden}
-.settings-group-header{padding:10px 14px;background:var(--surface2);font-size:13px;font-weight:600;cursor:pointer;user-select:none;display:flex;align-items:center;gap:8px}
+.settings-group-header{padding:10px 14px;background:var(--surface2);font-size:13px;font-weight:600;cursor:pointer;user-select:none;display:flex;align-items:center;gap:8px;transition:background var(--transition-fast)}
 .settings-group-header:hover{background:var(--surface3)}
-.settings-group-icon{font-size:10px;color:var(--muted);flex-shrink:0;transition:transform .2s}
+.settings-group-icon{font-size:10px;color:var(--muted);flex-shrink:0;transition:transform var(--transition-normal);display:inline-block}
 .settings-group.collapsed .settings-group-icon{transform:rotate(-90deg)}
-.settings-group-body{padding:8px 14px 12px}
+.settings-group-body{padding:8px 14px 12px;max-height:4000px;overflow:hidden;transition:max-height var(--transition-normal),padding var(--transition-normal),opacity var(--transition-fast)}
+.settings-group.collapsed .settings-group-body{max-height:0;padding-top:0;padding-bottom:0;opacity:0}
 .settings-group-body .settings-section{margin-top:12px}
 .settings-group-body .settings-section:first-child{margin-top:0}

@@ -1,28 +1,24 @@
-"""Claude 进程池 — stdin/stdout 长连接复用
+"""Claude 进程池 — 并发控制 + 子进程生命周期管理
 
 设计思路：
-- 每个 worker 是一个持久化的 claude 子进程，通过 stdin/stdout 管道通信
-- 进程启动时注入完整环境（CLAUDE.md + rules + agent 定义）
-- 任务以 JSON 格式通过 stdin 发送，stdout 读取 SSE 格式输出
-- claude CLI 本身是一次性的（-p 模式），但我们在 Python 层做持久化：
-  通过多轮交互保持进程存活，预加载环境减少重复开销
+- 每个 worker 是一个可复用的执行槽位，控制最大并发数
+- 任务执行时启动新的 claude 子进程（claude -p 为单次执行模式）
+- 池管理并发上限、健康检查、空闲回收
 - 如果 claude CLI 不可用，返回 None，调用方回退到传统 subprocess.Popen
 
 架构：
     ClaudeProcessPool
-    ├── Worker 1: claude subprocess (stdin/stdout pipes)
-    ├── Worker 2: claude subprocess (stdin/stdout pipes)
-    └── Worker N: claude subprocess (stdin/stdout pipes)
+    ├── Worker 1: 执行槽位（按需启动子进程）
+    ├── Worker 2: 执行槽位（按需启动子进程）
+    └── Worker N: 执行槽位（按需启动子进程）
 
 协议：
     输入: {"task": "...", "agent": "...", "model": "...", "session_id": "...", ...}
-    输出: SSE 行流，以 {"type":"done"} 或 {"type":"error"} 结束
+    输出: stdout 文本字符串，失败返回 None
 """
 
-import json
 import os
 import shutil
-import signal
 import subprocess
 import threading
 import time
@@ -67,238 +63,119 @@ class PoolWorker:
         self._lock = threading.Lock()
 
     def start(self, env: dict | None = None) -> bool:
-        """启动 claude 子进程，建立 stdin/stdout 管道"""
+        """初始化 worker 执行槽位（不启动持久进程，按需创建子进程）"""
         with self._lock:
-            if self.proc is not None and self.proc.poll() is None:
-                return True  # 已经在运行
-
-            try:
-                iso_env = (env or os.environ).copy()
-                iso_env["CLAUDE_CODE_CONFIG_DIR"] = self.isolated_config
-
-                # 使用 claude -p 进入非交互模式，但通过 stdin 持续发送任务
-                # 注意：claude CLI 的 -p 模式是单次执行，完成后进程退出
-                # 我们用 "--resume" 模式配合 session 来模拟持久化：
-                # 进程启动后等待 stdin 输入，执行完一个任务后等待下一个
-                cmd = [
-                    _CLAUDE_BIN,
-                    "-p",
-                    "",  # 初始空任务，等待 stdin 输入真正的任务
-                    "--bare",
-                    "--permission-mode", "auto",
-                ]
-                self.proc = subprocess.Popen(
-                    cmd,
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    encoding="utf-8",
-                    errors="replace",
-                    bufsize=1,
-                    cwd=self.project_root,
-                    env=iso_env,
-                )
-                self.state = WorkerState.IDLE
-                self.last_active = time.time()
-                self.restart_count = 0
-                log.info(f"POOL worker-{self.worker_id} started PID={self.proc.pid}")
-                return True
-            except Exception as e:
-                log.error(f"POOL worker-{self.worker_id} start failed: {e}")
-                self.proc = None
-                self.state = WorkerState.DEAD
-                return False
+            self._pool_env = (env or os.environ).copy()
+            self.state = WorkerState.IDLE
+            self.last_active = time.time()
+            self.restart_count = 0
+            log.info(f"POOL worker-{self.worker_id} slot ready")
+            return True
 
     def execute(self, task_payload: dict, timeout: float = 300) -> str | None:
-        """通过 stdin 发送任务 JSON，从 stdout 读取 SSE 直到结束标记
+        """执行一次任务：启动新的 claude 子进程，等待完成，返回输出
 
         返回完整的输出文本，或 None 表示失败
         """
         with self._lock:
-            if self.proc is None or self.proc.poll() is not None:
-                log.warning(f"POOL worker-{self.worker_id} dead, attempting restart")
-                if not self._restart():
-                    return None
-
             self.state = WorkerState.BUSY
             self.last_active = time.time()
 
+        task = task_payload.get("task", "")
+        if not task:
+            self.state = WorkerState.IDLE
+            return None
+
         try:
-            # 发送任务 JSON 到 stdin
-            task_json = json.dumps(task_payload, ensure_ascii=False) + "\n"
-            try:
-                self.proc.stdin.write(task_json)
-                self.proc.stdin.flush()
-            except (BrokenPipeError, OSError) as e:
-                log.error(f"POOL worker-{self.worker_id} stdin write failed: {e}")
-                self._mark_dead()
-                if self._restart():
-                    # 重试一次
-                    try:
-                        self.proc.stdin.write(task_json)
-                        self.proc.stdin.flush()
-                    except Exception:
-                        return None
-                else:
-                    return None
+            # 构建 claude 命令行
+            cmd = [
+                _CLAUDE_BIN, "-p", task,
+                "--bare", "--permission-mode", "auto",
+            ]
+            agent = task_payload.get("agent", "")
+            if agent:
+                cmd += ["--agent", agent]
+            model = task_payload.get("model", "")
+            if model:
+                cmd += ["--model", model]
+            proj_dir = task_payload.get("proj_dir", "")
+            if proj_dir and os.path.isdir(proj_dir):
+                cmd += ["--add-dir", proj_dir]
 
-            # 读取 stdout 直到结束标记
-            output_lines = []
-            deadline = time.time() + timeout
-            done_marker = '{"type":"done"}'
-            error_marker = '{"type":"error"}'
+            env = (self._pool_env or os.environ).copy()
+            env["CLAUDE_CODE_CONFIG_DIR"] = self.isolated_config
 
-            while time.time() < deadline:
-                # 检查进程是否存活
-                if self.proc.poll() is not None:
-                    log.warning(f"POOL worker-{self.worker_id} exited prematurely (rc={self.proc.returncode})")
-                    self._mark_dead()
-                    return None
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                cwd=self.project_root,
+                env=env,
+            )
 
-                try:
-                    line = self._read_line(timeout=1.0)
-                except TimeoutError:
-                    continue
-
-                if line is None:
-                    # 进程 stdout 关闭
-                    break
-
-                stripped = line.rstrip("\n\r")
-                if not stripped:
-                    continue
-
-                output_lines.append(stripped)
-
-                # 检查结束标记
-                if stripped == done_marker or stripped == error_marker:
-                    break
-
-            else:
-                # 超时
-                log.warning(f"POOL worker-{self.worker_id} task timeout {timeout}s")
-                self._kill()
-                self._mark_dead()
-                return None
-
-            # 归还到空闲状态
             with self._lock:
                 self.state = WorkerState.IDLE
                 self.last_active = time.time()
 
-            return "\n".join(output_lines)
+            output = result.stdout or ""
+            if result.returncode != 0 and result.stderr:
+                output = output + "\n" + result.stderr
+            return output
 
+        except subprocess.TimeoutExpired:
+            log.warning(f"POOL worker-{self.worker_id} task timeout {timeout}s")
+            self._mark_dead()
+            return None
         except Exception as e:
             log.error(f"POOL worker-{self.worker_id} execute failed: {e}")
             self._mark_dead()
             return None
 
     def health_check(self) -> bool:
-        """心跳检测：进程是否存活且响应"""
+        """心跳检测：检查槽位是否卡死在 BUSY 状态"""
         with self._lock:
-            if self.proc is None:
-                return False
-            rc = self.proc.poll()
-            if rc is not None:
-                log.warning(f"POOL worker-{self.worker_id} died (rc={rc})")
-                self._mark_dead()
+            if self.state == WorkerState.DEAD:
                 return False
             # 检查空闲超时
             idle_time = time.time() - self.last_active
-            if idle_time > 30 and self.state == WorkerState.BUSY:
-                log.warning(f"POOL worker-{self.worker_id} stuck for {idle_time:.0f}s, killing")
-                self._kill()
+            if idle_time > 300 and self.state == WorkerState.BUSY:
+                log.warning(f"POOL worker-{self.worker_id} stuck for {idle_time:.0f}s, marking dead")
                 self._mark_dead()
                 return False
             return True
 
     def is_idle(self) -> bool:
-        return self.state == WorkerState.IDLE and self.proc is not None and self.proc.poll() is None
+        return self.state == WorkerState.IDLE
 
     def is_alive(self) -> bool:
-        return self.proc is not None and self.proc.poll() is None
+        return self.state != WorkerState.DEAD
 
     def idle_seconds(self) -> float:
         return time.time() - self.last_active
 
     def shutdown(self):
-        """优雅关闭"""
+        """标记槽位为停止状态"""
         with self._lock:
-            if self.proc:
-                try:
-                    # 发送关闭信号
-                    try:
-                        self.proc.stdin.write('{"type":"shutdown"}\n')
-                        self.proc.stdin.flush()
-                    except Exception:
-                        pass
-                    # 给进程时间优雅退出
-                    try:
-                        self.proc.wait(timeout=3)
-                    except subprocess.TimeoutExpired:
-                        pass
-                except Exception:
-                    pass
-                self._kill()
-                self.proc = None
-                self.state = WorkerState.DEAD
+            self.state = WorkerState.DEAD
 
     def _restart(self) -> bool:
-        """自动重启（最多 max_restarts 次）"""
+        """重置槽位状态"""
         if self.restart_count >= self.max_restarts:
             log.error(f"POOL worker-{self.worker_id} exceeded max restarts ({self.max_restarts})")
             return False
-        self._kill()
         self.restart_count += 1
         log.info(f"POOL worker-{self.worker_id} restart attempt {self.restart_count}/{self.max_restarts}")
-        time.sleep(0.5)  # 短暂等待后重启
-        return self.start()
+        self.state = WorkerState.IDLE
+        self.last_active = time.time()
+        return True
 
     def _kill(self):
-        """强制终止"""
-        if self.proc:
-            try:
-                if self.proc.poll() is None:
-                    self.proc.kill()
-                    self.proc.wait(timeout=5)
-            except Exception:
-                try:
-                    self.proc.kill()
-                except Exception:
-                    pass
-            self.proc = None
+        """标记槽位为死亡"""
+        self._mark_dead()
 
     def _mark_dead(self):
         self.state = WorkerState.DEAD
-
-    def _read_line(self, timeout: float = 1.0) -> str | None:
-        """从 stdout 读取一行，带超时"""
-        if self.proc is None or self.proc.stdout is None:
-            return None
-
-        import select
-        if hasattr(select, "select"):
-            ready, _, _ = select.select([self.proc.stdout], [], [], timeout)
-            if not ready:
-                raise TimeoutError()
-        else:
-            # Windows fallback: 轮询
-            deadline = time.time() + timeout
-            while time.time() < deadline:
-                import msvcrt
-                if msvcrt.kbhit():
-                    break
-                time.sleep(0.05)
-            else:
-                raise TimeoutError()
-
-        try:
-            line = self.proc.stdout.readline()
-            if not line:
-                return None  # EOF
-            return line
-        except Exception:
-            return None
 
 
 class ClaudeProcessPool:

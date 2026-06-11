@@ -2,6 +2,7 @@
 import json
 import os
 import re
+import sys
 import time
 import subprocess
 import logging
@@ -141,7 +142,8 @@ def handle_orchestrate(handler, body):
     start_time = time.time()
     try:
         safe_task = task.replace('\n', ' ').replace('\r', ' ')
-        cmd = ["cmd", "/c", CLAUDE_BIN, "-p", safe_task, "--bare", "--permission-mode", "auto", "--agent", "orchestrator"]
+        shell_prefix = ["cmd", "/c"] if sys.platform == "win32" else []
+        cmd = shell_prefix + [CLAUDE_BIN, "-p", safe_task, "--bare", "--permission-mode", "auto", "--agent", "orchestrator"]
         if proj_dir and os.path.isdir(proj_dir):
             cmd += ["--add-dir", proj_dir]
 
@@ -252,8 +254,9 @@ def _run_pipeline_orchestrate(handler, body) -> bool:
         safe_prompt = prompt.replace('\n', ' ').replace('\r', ' ')
         iso_env = build_isolated_env(api_key, api_provider)
         iso_env["ANTHROPIC_MODEL"] = model_name
-        cmd = [
-            "cmd", "/c", CLAUDE_BIN, "-p", safe_prompt,
+        shell_prefix = ["cmd", "/c"] if sys.platform == "win32" else []
+        cmd = shell_prefix + [
+            CLAUDE_BIN, "-p", safe_prompt,
             "--bare", "--permission-mode", perm_mode,
             "--model", model_name,
         ]

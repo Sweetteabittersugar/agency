@@ -8,10 +8,19 @@ body{font:14px/1.55 "DM Sans","Segoe UI",system-ui,sans-serif;background:var(--b
 :focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px;border-radius:2px}
 button:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px solid var(--focus-ring);outline-offset:1px}
 
-/* ── 自定义滚动条（消息区和侧边栏面板）hover 时显示 ── */
-.sidebar-panel::-webkit-scrollbar,.panel-msgs::-webkit-scrollbar{width:0;transition:width .3s}
-.sidebar-panel:hover::-webkit-scrollbar,.panel-msgs:hover::-webkit-scrollbar{width:3px}
-.sidebar-panel:hover::-webkit-scrollbar-thumb,.panel-msgs:hover::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+/* ── 自定义滚动条 hover 时显示 ── */
+.sidebar-panel::-webkit-scrollbar,.panel-msgs::-webkit-scrollbar,
+.harness-overlay-content::-webkit-scrollbar,
+.agent-list::-webkit-scrollbar,#sidebar-content::-webkit-scrollbar,
+.settings-group-body::-webkit-scrollbar,#history-list::-webkit-scrollbar{width:0;transition:width .3s}
+.sidebar-panel:hover::-webkit-scrollbar,.panel-msgs:hover::-webkit-scrollbar,
+.harness-overlay-content:hover::-webkit-scrollbar,
+.agent-list:hover::-webkit-scrollbar,#sidebar-content:hover::-webkit-scrollbar,
+.settings-group-body:hover::-webkit-scrollbar,#history-list:hover::-webkit-scrollbar{width:4px}
+.sidebar-panel:hover::-webkit-scrollbar-thumb,.panel-msgs:hover::-webkit-scrollbar-thumb,
+.harness-overlay-content:hover::-webkit-scrollbar-thumb,
+.agent-list:hover::-webkit-scrollbar-thumb,#sidebar-content:hover::-webkit-scrollbar-thumb,
+.settings-group-body:hover::-webkit-scrollbar-thumb,#history-list:hover::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 
 /* ══════════════════════════════════════════
    状态颜色 (WCAG AA)

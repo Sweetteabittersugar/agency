@@ -64,12 +64,7 @@ def _try_pool_execute(actual_task, agent_name, model, session_id, is_new,
 
     _POOL_FAILURES = 0  # 成功后重置
     lines = raw.split("\n")
-    output_lines = []
-    for line in lines:
-        s = line.rstrip("\r")
-        if s == '{"type":"done"}' or s == '{"type":"error"}':
-            break
-        output_lines.append(s)
+    output_lines = [s.rstrip("\r") for s in lines if s.rstrip("\r")]
     return output_lines, None
 
 
