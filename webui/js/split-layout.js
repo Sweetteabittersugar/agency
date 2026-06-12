@@ -7,66 +7,20 @@
   window.setLayout = function(n) {
     _currentLayout = n;
     perPage = n;
-
-    // 确保面板足够
-    while (panels.length < n) { addPanel(); }
-
-    // 清除旧分割条
-    grid.querySelectorAll('.split-gutter').forEach(function(g) { g.remove(); });
-
-    if (n === 4) {
-      // 田字格: CSS grid 2x2
-      grid.style.display = '';
-      grid.style.flexWrap = '';
-      grid.className = 'grid g4';
-      panels.forEach(function(p, i) {
-        var w = p.dom.wrapper;
-        w.style.width = ''; w.style.height = ''; w.style.flex = '';
-        w.style.borderRight = (i % 2 === 0) ? '' : 'none';
-        w.classList.toggle('on', i < 4);
-      });
-    } else if (n === 2) {
-      // 双分屏: flex + 分割条
-      grid.style.display = 'flex';
-      grid.style.flexWrap = 'nowrap';
-      grid.className = 'grid';
-      panels.forEach(function(p, i) {
-        var w = p.dom.wrapper;
-        w.style.flex = 'none';
-        w.style.width = 'calc(50% - 2px)';
-        w.style.height = '';
-        w.style.borderRight = 'none';
-        w.classList.toggle('on', i < 2);
-      });
-      // 插入分割条
-      var p0 = panels[0] && panels[0].dom.wrapper;
-      if (p0 && p0.nextSibling) {
-        var g = document.createElement('div');
-        g.className = 'split-gutter';
-        g.style.display = 'block';
-        p0.parentNode.insertBefore(g, p0.nextSibling);
-      }
-    } else {
-      // 单面板
-      grid.style.display = 'flex';
-      grid.style.flexWrap = 'nowrap';
-      grid.className = 'grid';
-      panels.forEach(function(p, i) {
-        var w = p.dom.wrapper;
-        w.style.flex = i === 0 ? '1' : 'none';
-        w.style.width = ''; w.style.height = ''; w.style.borderRight = '';
-        w.classList.toggle('on', i === 0);
-      });
-    }
-
-    pageBar.style.display = 'flex';
     curPage = 0;
-    updateLayoutButtons(n);
-    // 隐藏旧分页按钮（如果还有的话）
-    var pgPrev = document.getElementById('pgPrev');
-    var pgNext = document.getElementById('pgNext');
-    if (pgPrev) pgPrev.style.display = 'none';
-    if (pgNext) pgNext.style.display = 'none';
+
+    // 清除旧分割条 + 内联样式，统一用 CSS Grid 管理布局
+    grid.querySelectorAll('.split-gutter').forEach(function(g) { g.remove(); });
+    grid.style.display = '';
+    grid.style.flexWrap = '';
+    grid.className = 'grid g' + n;
+    panels.forEach(function(p) {
+      var w = p.dom.wrapper;
+      w.style.flex = ''; w.style.width = ''; w.style.height = ''; w.style.borderRight = '';
+    });
+
+    // 面板可见性统一由 refreshUI 管理
+    if (typeof refreshUI === 'function') refreshUI();
     try { localStorage.setItem('agency_layout', n); } catch(e) {}
   };
 
@@ -164,11 +118,9 @@
       }
     }, 800);
 
-    // 恢复上次布局
-    var saved = parseInt(localStorage.getItem('agency_layout'));
-    if (saved >= 1 && saved <= 4) {
-      setLayout(saved);
-    }
+    // 布局偏好暂存，等 app.js 会话恢复完成后再应用
+    // 直接恢复布局会与会话恢复冲突，导致多面板内容丢失
+    window._pendingLayout = parseInt(localStorage.getItem('agency_layout')) || 1;
 
     // 首次使用多面板提示（仅提示一次）
     var hintShown = localStorage.getItem('split-hint-shown');
@@ -188,40 +140,6 @@
     return p;
   };
 
-  // 扩展 refreshUI — 不再分页，清理残留分割条，重排面板
-  var _origRefreshUI = window.refreshUI;
-  window.refreshUI = function() {
-    // 面板不足时降级布局
-    if (panels.length < _currentLayout && _currentLayout > 1) {
-      var fallback = panels.length >= 4 ? 4 : panels.length >= 2 ? 2 : 1;
-      _currentLayout = fallback;
-      perPage = fallback;
-      updateLayoutButtons(fallback);
-    }
-    // 清理所有分割条，重新应用布局（处理面板增删后的 DOM 残留）
-    grid.querySelectorAll('.split-gutter').forEach(function(g) { g.remove(); });
-    if (_currentLayout === 2 && panels.length >= 2) {
-      var p0w = panels[0] && panels[0].dom.wrapper;
-      if (p0w && p0w.parentNode) {
-        var gutter = document.createElement('div');
-        gutter.className = 'split-gutter';
-        gutter.style.display = 'block';
-        p0w.parentNode.insertBefore(gutter, p0w.nextSibling);
-      }
-    }
-
-    pageBar.style.display = 'flex';
-    var gb2 = document.getElementById('gridBtn');
-    if (gb2) gb2.textContent = '⊞';
-    var sumEl = document.getElementById('summary');
-    if (sumEl) sumEl.textContent = panels.length + '窗';
-    var pgPrev = document.getElementById('pgPrev');
-    var pgNext = document.getElementById('pgNext');
-    var pgNum = document.getElementById('pgNum');
-    if (pgPrev) pgPrev.style.display = 'none';
-    if (pgNext) pgNext.style.display = 'none';
-    if (pgNum) pgNum.style.display = 'none';
-  };
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);

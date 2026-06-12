@@ -1,6 +1,7 @@
 """Agency 记忆文件管理"""
 import json
 import logging
+import urllib.parse
 from pathlib import Path
 
 log = logging.getLogger(__name__)
@@ -44,6 +45,7 @@ def list_memory_files(project_root):
 
 def get_memory_file(project_root, rel):
     """读取单个记忆文件。返回 (data_dict, http_status)"""
+    rel = urllib.parse.unquote(rel)
     fpath = (project_root / rel).resolve()
     allowed_dirs = [project_root.resolve(), (Path.home() / ".claude").resolve()]
     in_allowed = False
@@ -67,6 +69,7 @@ def get_memory_file(project_root, rel):
 
 def save_memory_file(project_root, rel, content):
     """编辑记忆文件。返回 (data_dict, http_status)"""
+    rel = urllib.parse.unquote(rel)
     fpath = (project_root / rel).resolve()
     allowed_mem_dirs = [project_root.resolve(), (Path.home() / ".claude").resolve()]
     in_allowed = False

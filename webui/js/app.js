@@ -2,7 +2,7 @@
 
 // ── 全局变量 ──
 var panels=[],pidSeq=0,perPage=1,curPage=0,focusedPid=null,orchMode=!1,devMode=!1;
-var conversations=[],agents=[];try{conversations=JSON.parse(localStorage.getItem('agency_convos')||'[]')}catch(_){}
+var conversations=[],agents=[];try{conversations=JSON.parse(localStorage.getItem('agency_convos')||'[]');var _seen={};conversations=conversations.filter(function(c){if(!c.id||_seen[c.id])return!1;_seen[c.id]=!0;return c.messages&&c.messages.length>0});localStorage.setItem('agency_convos',JSON.stringify(conversations))}catch(_){}
 var projDir='',apiKey='',apiProvider='deepseek',authToken='';
 try{projDir=localStorage.getItem('agency_proj_dir')||''}catch(_){}
 // 注意：API Key 明文存 localStorage 有 XSS 泄漏风险
@@ -32,9 +32,8 @@ function offDrag(){dragTarget=null;document.removeEventListener('mousemove',onDr
   tab.addEventListener('mousedown',function(e){if(e.target.tagName==='BUTTON')return;dragTarget=domEl;dragOX=e.clientX-domEl.offsetLeft;dragOY=e.clientY-domEl.offsetTop;document.addEventListener('mousemove',onDrag);document.addEventListener('mouseup',offDrag);e.preventDefault()})
 });
 
-// ── API Key 状态显示（仅内存，本地存储已清除）──
-localStorage.removeItem('apiKey');localStorage.removeItem('agency_api_key');
-if(apiKey){var ak=$('api-key');if(ak)ak.value=apiKey;var ap=$('api-provider');if(ap)ap.value=apiProvider;$('api-status').textContent='已配置（仅内存，刷新后需重输）'}
+// ── API Key 状态显示 ──
+if(apiKey){var ak=$('api-key');if(ak)ak.value=apiKey;var ap=$('api-provider');if(ap)ap.value=apiProvider;$('api-status').textContent='已配置'}
 // ── 输出目录 ──
 var outputDir='';try{outputDir=localStorage.getItem('agency_output_dir')||''}catch(_){}
 var odInput=$('output-dir');if(odInput)odInput.value=outputDir;
@@ -120,30 +119,33 @@ function loadProfileDescriptions(){
 // ── 初始加载 ──
 loadAgents();
 renderHistory();
-addPanel();
-// 从 localStorage 恢复上次会话
-setTimeout(function(){
-  var saved = conversations;
-  if (saved && saved.length > 0) {
-    var last = saved[0];
-    var p = panels[0];
-    if (p && last.messages && last.messages.length > 0) {
-      if (p.dom.empty) p.dom.empty.style.display = 'none';
-      p.currentConvo = {id: last.id, title: last.title || '', messages: [], sessionId: last.sessionId || ''};
-      last.messages.forEach(function(m) {
-        p.currentConvo.messages.push(m);
-        if (m.role === 'user') {
-          addMsg(p, 'user', m.content);
-        } else if (m.role === 'assistant') {
-          var bubble = addMsg(p, 'assistant', typeof renderMD === 'function' ? renderMD(m.content) : m.content);
-          if (typeof highlightCode === 'function') highlightCode(bubble);
-        }
-      });
-      var agent = last.sessionId ? localStorage.getItem('sticky_agent') : '';
-      if (agent) { p._lastAgent = agent; p.dom.route.innerHTML = '<span style="color:var(--accent);font-size:9px">📌 ' + escHtml(agent) + '</span>'; }
-    }
-  }
-}, 500);
+// 从 localStorage 恢复上次会话（先判断再建面板，避免空面板残留）
+var validConvos = (conversations||[]).filter(function(c){return c.messages&&c.messages.length>0});
+if(validConvos.length>0){
+  validConvos.forEach(function(conv,i){
+    var p=addPanel(i===0);
+    if(p.dom.empty)p.dom.empty.style.display='none';
+    p.currentConvo={id:conv.id,title:conv.title||'',messages:[],sessionId:''};
+    conv.messages.forEach(function(m){
+      p.currentConvo.messages.push(m);
+      if(m.role==='user'){addMsg(p,'user',m.content)}
+      else if(m.role==='assistant'){var bubble=addMsg(p,'assistant',typeof renderMD==='function'?renderMD(m.content):m.content);if(typeof highlightCode==='function')highlightCode(bubble)}
+    });
+    var agent=conv.sessionId?localStorage.getItem('sticky_agent'):'';
+    if(agent){p._lastAgent=agent;p.dom.route.innerHTML='<span style="color:var(--accent);font-size:9px">📌 '+escHtml(agent)+'</span>'}
+  });
+}else{
+  // 无保存会话→首次访问，创建一个总调度面板
+  addPanel(true);
+}
+// 恢复布局偏好（只改每页窗数，不补面板）
+var savedLayout = parseInt(localStorage.getItem('agency_layout')) || 1;
+if (savedLayout >= 1 && savedLayout <= 4 && savedLayout !== perPage) {
+  perPage = savedLayout;
+  curPage = 0;
+  grid.className = 'grid g' + perPage;
+}
+if (typeof refreshUI === 'function') setTimeout(refreshUI, 100);
 updateProfileUI();
 loadProfileDescriptions();
 initTheme();

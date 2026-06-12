@@ -1,5 +1,5 @@
 /* Agency — 开发者设置面板 */
-function saveApiKey(){var newKey=$('api-key').value.trim();var newProvider=$('api-provider').value;var oldKey=apiKey;var oldProvider=apiProvider;apiKey=newKey;apiProvider=newProvider;localStorage.setItem('agency_api_provider',apiProvider);$('api-status').textContent=apiKey?'已保存（仅内存，刷新后需重输）':'已清除';if(!apiKey){localStorage.removeItem('agency_api_key')}showUndoableToast(t('configSaved'),function(){apiKey=oldKey;apiProvider=oldProvider;localStorage.setItem('agency_api_provider',oldProvider);$('api-key').value=oldKey;$('api-provider').value=oldProvider;$('api-status').textContent=oldKey?'已保存（仅内存，刷新后需重输）':'已清除';if(!oldKey){localStorage.removeItem('agency_api_key')}},5000)}
+function saveApiKey(){var newKey=$('api-key').value.trim();var newProvider=$('api-provider').value;var oldKey=apiKey;var oldProvider=apiProvider;apiKey=newKey;apiProvider=newProvider;localStorage.setItem('agency_api_provider',apiProvider);if(apiKey){localStorage.setItem('agency_api_key',apiKey)}else{localStorage.removeItem('agency_api_key')}$('api-status').textContent=apiKey?'已保存':'已清除';showUndoableToast(t('configSaved'),function(){apiKey=oldKey;apiProvider=oldProvider;localStorage.setItem('agency_api_provider',oldProvider);$('api-key').value=oldKey;$('api-provider').value=oldProvider;if(oldKey){localStorage.setItem('agency_api_key',oldKey)}else{localStorage.removeItem('agency_api_key')}$('api-status').textContent=oldKey?'已保存':'已清除'},5000)}
 function toggleDevOverlay(){devMode=!devMode;var ov=$('devOverlay'),btn=$('devBtn');ov.classList.toggle('on',devMode);btn.classList.toggle('on',devMode);if(devMode){var ak=$('api-key');if(ak&&apiKey)ak.value=apiKey;var ap=$('api-provider');if(ap&&apiProvider)ap.value=apiProvider;loadMemList();loadRemotePanel();loadIntegrationPanel();loadMCPConfig();setTimeout(initSettingsAccordion,200)}}
 
 /* ── 设置面板折叠分组 ── */
@@ -134,11 +134,12 @@ function loadIntegrationPanel(){
   }).catch(function(){domEl.innerHTML='无法加载集成面板数据。服务可能未启动，请刷新页面重试'});
 }
 function openMemEditor(path,name){
-  var fname=name.split('\\').pop().split('/').pop();
-  fetch('/api/memory/'+encodeURIComponent(fname)).then(function(r){return r.json()}).then(function(d){
+  var p=path||name;
+  if(!p){ showToast('无法打开：缺少文件路径','error'); return; }
+  fetch('/api/memory/'+encodeURIComponent(p)).then(function(r){return r.json()}).then(function(d){
     if(d.error){showToast(d.error,!0);return}
     var ed=$('mem-editor');
-    ed.innerHTML='<div style="margin-bottom:4px;font-size:11px;color:var(--text2)">编辑: '+escHtml(d.name)+'</div><textarea class="mem-editor" id="mem-edit-area">'+escHtml(d.content)+'</textarea><div style="margin-top:6px;display:flex;gap:6px"><button class="btn" onclick="saveMemFile(\''+escHtml(fname)+'\')">💾 保存</button><button class="btn" onclick="document.getElementById(\'mem-editor\').innerHTML=\'\';loadMemList()">取消</button></div>';
+    ed.innerHTML='<div style="margin-bottom:4px;font-size:11px;color:var(--text2)">编辑: '+escHtml(d.name)+'</div><textarea class="mem-editor" id="mem-edit-area">'+escHtml(d.content)+'</textarea><div style="margin-top:6px;display:flex;gap:6px"><button class="btn" onclick="saveMemFile(\''+escHtml(p)+'\')">💾 保存</button><button class="btn" onclick="document.getElementById(\'mem-editor\').innerHTML=\'\';loadMemList()">取消</button></div>';
   }).catch(function(e){showToast('无法加载文件: '+(e.message||'请检查网络连接后刷新重试'),!0)});
 }
 function saveMemFile(name){

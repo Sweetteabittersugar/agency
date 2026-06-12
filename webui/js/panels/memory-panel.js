@@ -117,3 +117,55 @@ window.openMemoryFile = function(path, name) {
 };
 
 window.openMemoryFile = openMemoryFile;
+
+/* ── 侧边栏记忆入口 ── */
+function sidebarSearchMemory(){
+  var q = (document.getElementById('sidebar-mem-search') || {}).value || '';
+  if (!q.trim()) { sidebarLoadMemoryTimeline(); return; }
+  var content = document.getElementById('sidebar-mem-content');
+  if (!content) return;
+  content.innerHTML = '<span style="color:var(--muted)">搜索中…</span>';
+  api.get('/api/memory/search?q=' + encodeURIComponent(q.trim())).then(function(d) {
+    var results = d.results || [];
+    if (!results.length) { content.innerHTML = '<span style="color:var(--muted)">无匹配结果</span>'; return; }
+    var html = '';
+    results.forEach(function(r) {
+      html += '<div style="padding:4px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:11px" onclick="openMemoryFile(\'' + (r.path||r.file||'') + '\',\'' + (r.name||r.path||'') + '\')">📄 ' + escHtml(r.name||r.path||'?') + '<br><span style="color:var(--muted);font-size:10px">' + escHtml((r.snippet||r.preview||'').slice(0,60)) + '</span></div>';
+    });
+    content.innerHTML = html;
+  }).catch(function(e) { content.innerHTML = '<span style="color:var(--danger)">搜索失败</span>'; });
+}
+function sidebarLoadMemoryTimeline(){
+  var content = document.getElementById('sidebar-mem-content');
+  if (!content) return;
+  content.innerHTML = '<span style="color:var(--muted)">加载中…</span>';
+  api.get('/api/memory/timeline').then(function(d) {
+    var entries = d.entries || d.timeline || [];
+    if (!entries.length) { content.innerHTML = '<span style="color:var(--muted)">暂无记忆记录</span>'; return; }
+    var html = '';
+    entries.slice(0, 20).forEach(function(e) {
+      var time = (e.time||e.timestamp||'').slice(0,16) || '?';
+      html += '<div style="padding:3px 0;border-bottom:1px solid var(--border);font-size:10px"><span style="color:var(--muted)">' + escHtml(time) + '</span> ' + escHtml(e.msg||e.event||e.summary||'?') + '</div>';
+    });
+    content.innerHTML = html;
+  }).catch(function(e) { content.innerHTML = '<span style="color:var(--danger)">加载失败</span>'; });
+}
+function sidebarLoadMemoryFiles(){
+  var content = document.getElementById('sidebar-mem-content');
+  if (!content) return;
+  content.innerHTML = '<span style="color:var(--muted)">加载中…</span>';
+  api.get('/api/memory').then(function(d) {
+    var files = d.files || d.memories || [];
+    if (!files.length) { content.innerHTML = '<span style="color:var(--muted)">暂无记忆文件</span>'; return; }
+    var html = '';
+    files.forEach(function(f) {
+      var name = f.name || f.path || f;
+      if (typeof f === 'string') name = f;
+      html += '<div style="padding:3px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:11px" onclick="openMemoryFile(\'' + (f.path||f) + '\',\'' + name + '\')">📄 ' + escHtml(name) + '</div>';
+    });
+    content.innerHTML = html;
+  }).catch(function(e) { content.innerHTML = '<span style="color:var(--danger)">加载失败</span>'; });
+}
+window.sidebarSearchMemory = sidebarSearchMemory;
+window.sidebarLoadMemoryTimeline = sidebarLoadMemoryTimeline;
+window.sidebarLoadMemoryFiles = sidebarLoadMemoryFiles;

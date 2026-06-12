@@ -25,7 +25,8 @@ def handle_status(handler, parsed):
         "bot_id": bot.bot_id,
         "running": bot._running,
         "login_state": _login_status["state"],
-        "login_message": _login_status["message"]
+        "login_message": _login_status["message"],
+        "qrcode_img_content": _login_status.get("qrcode_img_content", "")
     })
 
 

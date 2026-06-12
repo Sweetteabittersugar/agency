@@ -370,7 +370,8 @@ function renderHistory(){historyList.innerHTML=conversations.slice(0,30).map(fun
 window.searchHistory=function(q){if(!q||!q.trim()){renderHistory();return}api.get('/api/sessions/search?q='+encodeURIComponent(q.trim())).then(function(d){var results=d.results||[];if(!results.length){historyList.innerHTML='<div class="empty-state"><div class="es-icon">🔍</div><div class="es-text">未找到匹配的对话</div></div>';return}var html='';results.forEach(function(r){var ts=new Date(r.ts*1000).toLocaleString('zh-CN');html+='<div class="history-item" onclick="loadSessionSearch(\''+r.session_id+'\')" style="cursor:pointer"><div style="display:flex;align-items:center"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">📄 '+escHtml(r.session_id)+'</span></div><div class="time">'+escHtml(ts)+' · '+escHtml(r.type)+'</div><div class="preview">'+escHtml(r.snippet)+'</div></div>'});historyList.innerHTML=html}).catch(function(){historyList.innerHTML='<div class="empty-state"><div class="es-icon">⚠</div><div class="es-text">搜索失败</div></div>'})}
 window.loadSessionSearch=function(sessionId){api.get('/api/sessions/'+sessionId).then(function(data){if(!data.events||!data.events.length){showToast('会话为空');return}var p=getFocusedPanel();p.currentConvo={id:Date.now(),title:'搜索: '+sessionId.slice(0,8),messages:[],sessionId:sessionId};p.dom.messages.innerHTML='';p.dom.route.innerHTML='';data.events.forEach(function(evt){if(evt.type==='user_message'){var task=evt.data.task||'';addMsg(p,'user',task);p.currentConvo.messages.push({role:'user',content:task})}else if(evt.type==='agent_response'){var resp=evt.data.response||'';var b=addMsg(p,'assistant',typeof renderMD==='function'?renderMD(resp):resp);if(typeof renderMD==='function')highlightCode(b);p.currentConvo.messages.push({role:'assistant',content:resp})}else if(evt.type==='route_decision'){if(evt.data.agent){p._lastAgent=evt.data.agent;p.dom.route.innerHTML='<span style="color:var(--accent);font-size:9px">📌 '+escHtml(evt.data.agent)+'</span>'}}});p.dom.messages.scrollTop=p.dom.messages.scrollHeight}).catch(function(){showToast('加载会话失败')})}
 function loadConvo(id){var c=conversations.find(function(x){return x.id===Number(id)});if(!c)return;var p=getFocusedPanel();p.currentConvo={id:c.id,title:c.title,messages:c.messages.slice(),sessionId:c.sessionId||''};p.dom.messages.innerHTML='';p.dom.route.innerHTML='';c.messages.forEach(function(m){addMsg(p,m.role,m.content)});p.dom.messages.scrollTop=p.dom.messages.scrollHeight;setTimeout(function(){p.dom.messages.querySelectorAll('.bubble').forEach(highlightCode)},100)}
-function delConvo(id,e){e.stopPropagation();var convo=conversations.find(function(c){return c.id===Number(id)});if(!convo)return;showDeleteConfirm(t('confirmDelete'),function(){var idx=conversations.indexOf(convo);conversations.splice(idx,1);localStorage.setItem('agency_convos',JSON.stringify(conversations));renderHistory();showUndoableToast(t('convDeleted'),function(){conversations.splice(idx,0,convo);localStorage.setItem('agency_convos',JSON.stringify(conversations));renderHistory()},5000)})}
+function delConvo(id,e){e.stopPropagation();var convo=conversations.find(function(c){return c.id===Number(id)});if(!convo)return;showDeleteConfirm(t('confirmDelete'),function(){var idx=conversations.indexOf(convo);conversations.splice(idx,1);localStorage.setItem('agency_convos',JSON.stringify(conversations));// 如果该对话已加载到某个面板，清空该面板避免 saveAllConvos 重新写回
+panels.forEach(function(p){if(p.currentConvo.id===Number(id)){p.currentConvo={id:Date.now(),title:'',messages:[],sessionId:''};p.dom.messages.innerHTML='<div class="empty-panel"><div class="logo">👋</div><h3>'+t('chatEmptyTitle')+'</h3></div>';p.dom.route.innerHTML='<span style="color:var(--muted);font-size:9px">'+t('routeEmpty')+'</span>'}});renderHistory();showUndoableToast(t('convDeleted'),function(){conversations.splice(idx,0,convo);localStorage.setItem('agency_convos',JSON.stringify(conversations));renderHistory()},5000)})}
 function viewSkillDetail(name){
   var skill=allSkills.find(function(s){return s.name===name});
   if(!skill)return;
@@ -526,7 +527,17 @@ function pickAgentForRoute(agentName, pid) {
 /* ── 侧边栏折叠 (v3) ── */
 window.toggleSidebarSection = function(header) {
   var section = header.closest('.sidebar-section');
-  if (section) section.classList.toggle('collapsed');
+  if (!section) return;
+  section.classList.toggle('collapsed');
+  // 用 section 内第一个 span 文本作为标识
+  var span = header.querySelector('span');
+  var id = span ? span.textContent.trim() : '';
+  if (!id) return;
+  try {
+    var collapsed = JSON.parse(localStorage.getItem('sidebar-collapsed') || '{}');
+    collapsed[id] = section.classList.contains('collapsed');
+    localStorage.setItem('sidebar-collapsed', JSON.stringify(collapsed));
+  } catch(e) {}
 };
 
 window.toggleSidebarSub = function(id) {
@@ -556,9 +567,18 @@ window.updateTrustBadge = function() {
   badge.className = mode;
 };
 
-// 页面加载时初始化信任徽章 + 预加载 Agent/Skill 列表
+// 页面加载时初始化信任徽章 + 预加载 Agent/Skill 列表 + 恢复侧边栏折叠状态
 document.addEventListener('DOMContentLoaded', function() {
   updateTrustBadge();
+  // 恢复侧边栏折叠状态
+  try {
+    var collapsed = JSON.parse(localStorage.getItem('sidebar-collapsed') || '{}');
+    document.querySelectorAll('.sidebar-section').forEach(function(sec) {
+      var span = sec.querySelector('.sidebar-section-header span');
+      var id = span ? span.textContent.trim() : '';
+      if (id && collapsed[id]) sec.classList.add('collapsed');
+    });
+  } catch(e) {}
   // 延迟加载 Agent 和 Skill，确保 API 就绪
   setTimeout(function() {
     if (typeof loadAgents === 'function' && (!window.agents || !window.agents.length)) {

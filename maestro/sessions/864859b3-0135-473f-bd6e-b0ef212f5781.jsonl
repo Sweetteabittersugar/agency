@@ -1,0 +1,3 @@
+{"ts": 1781261009.6716905, "type": "user_message", "data": {"task": "你好", "agent": "general-worker"}}
+{"ts": 1781261009.6726928, "type": "route_decision", "data": {"agent": "general-worker", "source": "fallback"}}
+{"ts": 1781261013.141013, "type": "agent_response", "data": {"agent": "general-worker", "response": "你好！有什么我可以帮你的吗？\n"}}

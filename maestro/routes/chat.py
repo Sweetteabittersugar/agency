@@ -249,8 +249,7 @@ def handle_chat(handler, body):
                 t0 = time.time()
                 cmd = [CLAUDE_BIN, "-p", actual_task, "--bare", "--permission-mode", "auto"]
                 if session_id:
-                    if is_new: cmd += ["--session-id", session_id]
-                    else: cmd += ["--resume", session_id]
+                    cmd += ["--session-id", session_id]
                 if agent_name: cmd += ["--agent", agent_name]
                 if model: cmd += ["--model", model]
                 if agent_tools_override: cmd += ["--tools", ",".join(agent_tools_override)]
@@ -380,7 +379,7 @@ def handle_chat(handler, body):
 
     except Exception as e:
         try:
-            handler.wfile.write(f"data: {json.dumps({'error': str(e)})}\n\n".encode())
+            handler.wfile.write(f"event: done\ndata: {json.dumps({'error': str(e), 'elapsed': 0})}\n\n".encode())
             handler.wfile.flush()
         except Exception:
             pass

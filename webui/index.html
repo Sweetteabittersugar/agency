@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<link rel="stylesheet" href="vendor/github-dark.min.css">
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/layout.css">
@@ -57,6 +57,21 @@
       <div style="padding:0 8px;font-size:11px" id="sidebar-skills-list">点击 Agent 标签以加载...</div>
     </div>
   </div>
+  <!-- 🧠 记忆 — 可折叠 -->
+  <div class="sidebar-section collapsed">
+    <div class="sidebar-section-header" onclick="toggleSidebarSection(this)">
+      <span>🧠 记忆</span>
+      <span class="section-toggle">▼</span>
+    </div>
+    <div class="sidebar-section-body" id="sb-memory">
+      <div style="padding:0 8px 4px"><input id="sidebar-mem-search" placeholder="搜索记忆…" style="width:100%;padding:6px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:11px;box-sizing:border-box" onkeyup="if(event.key==='Enter')sidebarSearchMemory()"></div>
+      <div style="padding:0 8px 4px;display:flex;gap:4px">
+        <button onclick="sidebarLoadMemoryTimeline()" style="flex:1;padding:4px 6px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:10px">时间线</button>
+        <button onclick="sidebarLoadMemoryFiles()" style="flex:1;padding:4px 6px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:10px">文件</button>
+      </div>
+      <div id="sidebar-mem-content" style="overflow-y:auto;max-height:250px;font-size:11px;padding:0 8px"><span style="color:var(--muted)">点击按钮加载</span></div>
+    </div>
+  </div>
 </div>
 </nav>
 <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar()"></div>
@@ -82,11 +97,9 @@
 <div class="mobile-tab" data-mtab="agents" onclick="switchMobileTab('agents')">👤 Agent</div>
 </div>
 <div class="page-bar layout-toolbar" id="pageBar">
-<button class="layout-btn active" data-layout="1" onclick="setLayout(1)" title="单面板">⬜</button>
-<button class="layout-btn" data-layout="2" onclick="setLayout(2)" title="双分屏">⬜⬜</button>
-<button class="layout-btn" data-layout="4" onclick="setLayout(4)" title="田字格">🪟</button>
-<span style="flex:1"></span>
-<span style="font-size:9px;color:var(--muted)">拖拽分割条调整大小</span>
+<button class="layout-btn" id="pgPrev" onclick="prevPage()" title="上一页">◀</button>
+<span id="pgNum" style="font-size:10px;color:var(--muted);min-width:40px;text-align:center">1/1</span>
+<button class="layout-btn" id="pgNext" onclick="nextPage()" title="下一页">▶</button>
 </div>
 <div class="grid g1" id="grid"></div>
 <div class="harness-overlay" id="harnessOverlay">
@@ -272,7 +285,7 @@ t<select id="profile-select" style="display:none" aria-hidden="true"><option val
 </div>
 </div>
 </div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="vendor/highlight.min.js"></script>
 <script src="js/utils.js"></script>
 <script src="js/api.js"></script>
 <script src="js/state.js"></script>

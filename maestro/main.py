@@ -326,7 +326,7 @@ def route_with_fallback(task, force_agent=None):
     else:
         kw_agent, kw_raw_score, kw_confidence, kw_matches = "general-worker", 0, 0.0, 0
 
-    keyword_score = min(1.0, kw_raw_score / 30.0)
+    keyword_score = min(1.0, kw_raw_score / 20.0)
 
     # ── Layer 2: Embedding 语义检索 ──
     from maestro.embedding import get_embedding_router
@@ -394,6 +394,20 @@ def route_with_fallback(task, force_agent=None):
                         keys = sorted(_fallback_cache.keys())
                         for k in keys[:100]:
                             del _fallback_cache[k]
+            elif emb_results:
+                # TF-IDF 规则兜底：LLM 失败但有语义检索结果时，取最高分 agent
+                tfidf_agent, tfidf_score = emb_results[0]
+                hybrid_confidence = max(0.2, (keyword_score + tfidf_score) * 0.5)
+                best_agent = tfidf_agent
+                source = "tfidf_fallback"
+                llm_used = True
+
+                with _fallback_cache_lock:
+                    _fallback_cache[task_hash] = (best_agent, time.time())
+                    if len(_fallback_cache) > 500:
+                        keys = sorted(_fallback_cache.keys())
+                        for k in keys[:100]:
+                            del _fallback_cache[k]
 
         with _fallback_cache_lock:
             _fallback_stats["fallback_count"] += 1
@@ -409,7 +423,10 @@ def route_with_fallback(task, force_agent=None):
 
     # ── Gate 5: 构建最终返回 ──
     if llm_used:
-        llm_confidence = 0.6
+        if source == "tfidf_fallback":
+            llm_confidence = hybrid_confidence
+        else:
+            llm_confidence = 0.6
         return _make_result(best_agent, llm_confidence, source,
                           fallback_chain=["keyword", "semantic", "llm"])
 
@@ -422,8 +439,8 @@ def route_with_fallback(task, force_agent=None):
         return _make_result(sem_agent, sem_score * 0.7, "semantic_fallback",
                           low_confidence=True, fallback_chain=["semantic"])
 
-    # 完全无匹配
-    return _make_result("general-worker", 0.0, "fallback",
+    # 完全无匹配 → 不指定 Agent，让 Claude 以默认身份回复
+    return _make_result("", 0.0, "fallback",
                       low_confidence=True, reason="no_match")
 
 

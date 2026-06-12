@@ -20,7 +20,8 @@ from maestro.routes import (
     agents, chat, cost, config, harness, memory, files,
     orchestrate, agent_factory, remote, setup, restart,
     webhook, health, test_api, routing_feedback,
-    sessions, operations, weixin_api, reset, static as static_routes
+    sessions, operations, weixin_api, reset, static as static_routes,
+    session_fork
 )
 from maestro import worktree_manager
 
@@ -100,6 +101,7 @@ app.add_url_rule("/api/worktrees/create", "wt_create", adapt_handler(worktree_ma
 app.add_url_rule("/api/worktrees/remove", "wt_remove", adapt_handler(worktree_manager.worktree_handle_remove), methods=["POST"])
 app.add_url_rule("/api/worktrees/cleanup", "wt_clean", adapt_handler(worktree_manager.worktree_handle_cleanup), methods=["POST"])
 app.add_url_rule("/api/sessions/append", "sessions_append", adapt_handler(sessions.handle_append), methods=["POST"])
+app.add_url_rule("/api/sessions/fork", "sessions_fork", adapt_handler(session_fork.handle_fork), methods=["POST"])
 app.add_url_rule("/api/weixin/login/start", "wx_login", adapt_handler(weixin_api.handle_login_start), methods=["POST"])
 app.add_url_rule("/api/weixin/start", "wx_start", adapt_handler(weixin_api.handle_start), methods=["POST"])
 app.add_url_rule("/api/weixin/stop", "wx_stop", adapt_handler(weixin_api.handle_stop), methods=["POST"])

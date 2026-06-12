@@ -1,0 +1,5 @@
+{"ts": 1781196275.3427656, "type": "user_message", "data": {"task": "你好", "agent": "general-worker"}}
+{"ts": 1781196275.3447366, "type": "route_decision", "data": {"agent": "general-worker", "source": "force"}}
+{"ts": 1781196277.2507472, "type": "agent_response", "data": {"agent": "general-worker", "response": "No conversation found with session ID: 3d43435d-8b9e-4bd0-a1ce-9a0ae5d20a58\n"}}
+{"ts": 1781196320.1655092, "type": "user_message", "data": {"task": "[上文摘要]\n【turn_1781196277】\n{\"q\": \"你好\", \"a\": \"No conversation found with session ID: 3d43435d-8b9e-4bd0-a1ce-9a0ae5d20a58\\n\"}\n\n【last_turn】\nturn_1781196277\n\n[当前问题]\n你好", "agent": "general-worker"}}
+{"ts": 1781196320.1766675, "type": "route_decision", "data": {"agent": "general-worker", "source": "force"}}

@@ -54,7 +54,7 @@ def handle_webhook(handler, body):
     try:
         cmd = [CLAUDE_BIN, "-p", message, "--bare", "--permission-mode", "auto"]
         if session_id:
-            cmd += ["--resume", session_id]
+            cmd += ["--session-id", session_id]
 
         handler.wfile.write(f"event: meta\ndata: {json.dumps({'channel': channel, 'session': session_id[:8] if session_id else 'new'})}\n\n".encode())
         handler.wfile.flush()

@@ -19,7 +19,7 @@ DEFAULT_TRUST_MODE: str = "normal"
 # --- 路由 ---
 CONFIDENCE_HIGH: float = float(os.environ.get("AGENCY_ROUTE_CONFIDENCE_HIGH", "0.7"))
 CONFIDENCE_MEDIUM: float = float(os.environ.get("AGENCY_ROUTE_CONFIDENCE_MEDIUM", "0.4"))
-SEMANTIC_THRESHOLD: float = float(os.environ.get("AGENCY_SEMANTIC_THRESHOLD", "0.6"))
+SEMANTIC_THRESHOLD: float = float(os.environ.get("AGENCY_SEMANTIC_THRESHOLD", "0.15"))
 
 # --- 进程池 ---
 POOL_MAX_WORKERS: int = int(os.environ.get("AGENCY_POOL_WORKERS", "4"))
