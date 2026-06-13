@@ -7,9 +7,8 @@ Test 4: 文件编码检查
 - 所有 JS/JSON/YAML 文件必须为 UTF-8
 - 检查 BOM 头和不可见字符
 """
-import os
+
 import sys
-import re
 import unittest
 from pathlib import Path
 
@@ -18,7 +17,19 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 # 要检查的目录（相对于项目根）
 CHECK_DIRS = ["maestro", "agents", "rules", "hooks", "scripts", "tests", "commands", "skills"]
 # 检查的文件扩展名
-CHECK_EXTENSIONS = {".py", ".md", ".js", ".json", ".yaml", ".yml", ".sh", ".toml", ".txt", ".html", ".css"}
+CHECK_EXTENSIONS = {
+    ".py",
+    ".md",
+    ".js",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".sh",
+    ".toml",
+    ".txt",
+    ".html",
+    ".css",
+}
 # 排除目录
 EXCLUDE_DIRS = {"__pycache__", ".git", "node_modules", ".venv", "venv", "__pycache__"}
 # 排除文件
@@ -45,16 +56,23 @@ class TestFileEncoding(unittest.TestCase):
                     cls.files_found.append(f)
 
         # 额外检查根目录关键文件
-        for extra in ["CLAUDE.md", "AGENTS.md", "CHANGELOG.md", "README.md",
-                       "VERSION", "package.json", "pyproject.toml", "agent.yaml"]:
+        for extra in [
+            "CLAUDE.md",
+            "AGENTS.md",
+            "CHANGELOG.md",
+            "README.md",
+            "VERSION",
+            "package.json",
+            "pyproject.toml",
+            "agent.yaml",
+        ]:
             f = PROJECT_ROOT / extra
             if f.exists():
                 cls.files_found.append(f)
 
     def test_01_files_found(self):
         """找到至少 20 个需检查的文件"""
-        self.assertGreaterEqual(len(self.files_found), 20,
-                                f"只找到 {len(self.files_found)} 个文件")
+        self.assertGreaterEqual(len(self.files_found), 20, f"只找到 {len(self.files_found)} 个文件")
 
     def test_02_all_utf8_decode(self):
         """所有关键文件能用 UTF-8 解码"""
@@ -100,8 +118,11 @@ class TestFileEncoding(unittest.TestCase):
             first_line = content.split(b"\n")[0].strip()
             if first_line.startswith(b"# -*- coding:"):
                 enc = first_line.decode("ascii", errors="ignore")
-                self.assertIn("utf-8", enc.lower(),
-                              f"{f.relative_to(PROJECT_ROOT)} 的编码声明不是 UTF-8: {enc}")
+                self.assertIn(
+                    "utf-8",
+                    enc.lower(),
+                    f"{f.relative_to(PROJECT_ROOT)} 的编码声明不是 UTF-8: {enc}",
+                )
 
     def test_06_mixed_newlines(self):
         """检查文件换行符一致性（项目中应统一使用 LF 或 CRLF）"""
@@ -150,6 +171,7 @@ class TestFileEncoding(unittest.TestCase):
         """Agent .md 文件的 YAML frontmatter 无编码问题"""
         agent_files = list((PROJECT_ROOT / "agents").glob("*.md"))
         import yaml
+
         for f in agent_files:
             try:
                 content = f.read_text(encoding="utf-8")
@@ -157,12 +179,9 @@ class TestFileEncoding(unittest.TestCase):
                     parts = content.split("---", 2)
                     if len(parts) >= 3:
                         fm = yaml.safe_load(parts[1])
-                        self.assertIsNotNone(fm,
-                                             f"{f.name}: YAML frontmatter 解析失败")
-                        self.assertIn("name", fm,
-                                      f"{f.name}: frontmatter 缺少 name")
-                        self.assertIn("description", fm,
-                                      f"{f.name}: frontmatter 缺少 description")
+                        self.assertIsNotNone(fm, f"{f.name}: YAML frontmatter 解析失败")
+                        self.assertIn("name", fm, f"{f.name}: frontmatter 缺少 name")
+                        self.assertIn("description", fm, f"{f.name}: frontmatter 缺少 description")
             except Exception as e:
                 self.fail(f"{f.name}: 解析失败: {e}")
 
@@ -215,8 +234,7 @@ class TestFileStructure(unittest.TestCase):
     def test_02_agent_count(self):
         """Agent 文件数量不少于 9 个"""
         agents = list((PROJECT_ROOT / "agents").glob("*.md"))
-        self.assertGreaterEqual(len(agents), 9,
-                                f"Agent 文件数不足 ({len(agents)}，期望 >=9)")
+        self.assertGreaterEqual(len(agents), 9, f"Agent 文件数不足 ({len(agents)}，期望 >=9)")
 
     def test_03_hooks_exist(self):
         """Hook 文件存在"""
@@ -231,8 +249,11 @@ class TestFileStructure(unittest.TestCase):
         hooks_dir = PROJECT_ROOT / "hooks"
         for f in hooks_dir.glob("*.sh"):
             first_line = f.read_text(encoding="utf-8").split("\n")[0].strip()
-            self.assertEqual(first_line, "#!/usr/bin/env bash",
-                             f"{f.name}: shebang 不正确 (实际: '{first_line}')")
+            self.assertEqual(
+                first_line,
+                "#!/usr/bin/env bash",
+                f"{f.name}: shebang 不正确 (实际: '{first_line}')",
+            )
 
 
 if __name__ == "__main__":

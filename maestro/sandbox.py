@@ -26,14 +26,19 @@ def check_docker_available() -> bool:
     """检测 Docker 是否可用。"""
     try:
         result = subprocess.run(
-            ["docker", "info"], capture_output=True, timeout=5,
+            ["docker", "info"],
+            capture_output=True,
+            timeout=5,
             creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
         )
         return result.returncode == 0
     except Exception:
         return False
 
-PROJECT_ROOT = os.environ.get("CLAUDE_PROJECT_DIR", os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+PROJECT_ROOT = os.environ.get(
+    "CLAUDE_PROJECT_DIR", os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 
 MAESTRO_DIR = Path(__file__).resolve().parent
 TASKS_DIR = MAESTRO_DIR / "tasks"
@@ -44,7 +49,7 @@ PROMPTS_DIR = MAESTRO_DIR / "_prompts"  # temp prompt files (avoids shell inject
 MCP_STATE_FILE = MAESTRO_DIR / "mcp_state.json"
 
 # ── DAG 依赖追踪 ──
-_dag_registry: dict[str, dict] = {}       # task_id -> {status, depends_on, blocked_by, batch_id, ...}
+_dag_registry: dict[str, dict] = {}  # task_id -> {status, depends_on, blocked_by, batch_id, ...}
 _dag_lock = threading.Lock()
 
 
@@ -53,8 +58,8 @@ def _load_mcp_state() -> dict:
     try:
         if MCP_STATE_FILE.exists():
             return json.loads(MCP_STATE_FILE.read_text(encoding="utf-8"))
-    except Exception:
-        pass
+    except Exception as _e:
+            import logging; logging.getLogger(__name__).warning("JSON parse failed: %s", _e)
     return {}
 
 
@@ -139,11 +144,13 @@ def _get_mcp_tool_descriptions(project_root: str | None = None) -> str:
 
 # ── DAG 依赖解析 ──
 
+
 @dataclass
 class DAGNode:
     """DAG 任务节点。"""
+
     task_id: str
-    status: str = "pending"       # pending | running | done | failed
+    status: str = "pending"  # pending | running | done | failed
     depends_on: list[str] = field(default_factory=list)
     blocked_by: list[str] = field(default_factory=list)
     batch_id: str | None = None
@@ -163,7 +170,9 @@ def register_dag_task(
         node = DAGNode(
             task_id=task_id,
             depends_on=list(deps),
-            blocked_by=[d for d in deps if d in _dag_registry and _dag_registry[d].get("status") != "done"],
+            blocked_by=[
+                d for d in deps if d in _dag_registry and _dag_registry[d].get("status") != "done"
+            ],
             batch_id=batch_id,
             submitted_at=time.time(),
         )
@@ -200,7 +209,8 @@ def mark_dag_done(task_id: str, status: str = "done") -> None:
             if task_id in entry.get("depends_on", []):
                 # 重新计算 blocked_by
                 entry["blocked_by"] = [
-                    d for d in entry.get("depends_on", [])
+                    d
+                    for d in entry.get("depends_on", [])
                     if d in _dag_registry and _dag_registry[d].get("status") != "done"
                 ]
 
@@ -256,11 +266,13 @@ def submit_file_batch(files: list[str], task_desc: str) -> str:
 
 # ── Sandbox 执行 ──
 
+
 @dataclass
 class SandboxResult:
     """Result from sandbox execution."""
-    status: str       # "DISPATCHED" | "FAILED" | "TIMEOUT" | "CANCELLED"
-    output: str       # agent's output text (first 5000 chars)
+
+    status: str  # "DISPATCHED" | "FAILED" | "TIMEOUT" | "CANCELLED"
+    output: str  # agent's output text (first 5000 chars)
     task_id: str
     elapsed_ms: float
     dag_info: dict | None = None  # DAG 依赖信息
@@ -322,15 +334,18 @@ def execute_in_sandbox(
     # Build full task prompt
     full_task = f"你是执行者，直接完成任务，不转派不反问。\n\n{task_desc}"
     if context:
-        full_task = f"{context}\n\n---\n\n你是执行者，直接完成任务，不转派不反问。\n\n任务: {task_desc}"
+        full_task = (
+            f"{context}\n\n---\n\n你是执行者，直接完成任务，不转派不反问。\n\n任务: {task_desc}"
+        )
 
     # Result output instruction
     result_path = str(RESULTS_DIR / f"{task_id}.txt").replace("\\", "/")
     result_instruction = (
-        "完成后将结果写入 " + result_path +
-        " -- 第一行写 STATUS: DONE 或 STATUS: FAILED，" +
-        "然后写 ## 详细结果（包含完整执行过程），" +
-        "然后写 ## 用户摘要（面向 boss 的精简结果，无内部过程，无原始数据）"
+        "完成后将结果写入 "
+        + result_path
+        + " -- 第一行写 STATUS: DONE 或 STATUS: FAILED，"
+        + "然后写 ## 详细结果（包含完整执行过程），"
+        + "然后写 ## 用户摘要（面向 boss 的精简结果，无内部过程，无原始数据）"
     )
 
     # 注入 MCP 工具发现
@@ -354,34 +369,36 @@ def execute_in_sandbox(
     lines = [
         f'Write-Host "Maestro Agent: {agent_name} | Task: {launch_id} | Model: {model}"',
         f'Write-Host "Working dir: {work_dir}"',
-        f'Write-Host "---"',
+        'Write-Host "---"',
         f'cd "{work_dir}"',
         # 从临时文件读取 prompt（避免 shell 注入）
         f'$taskPrompt = Get-Content -Path "{task_file_escaped}" -Raw -Encoding UTF8',
         f'$resultPrompt = Get-Content -Path "{result_file_escaped}" -Raw -Encoding UTF8',
         # 使用列表形式传参给 claude
-        f'$claudeArgs = @(',
-        f'  "-p", $taskPrompt,',
+        "$claudeArgs = @(",
+        '  "-p", $taskPrompt,',
         f'  "--name", "{agent_name}",',
     ]
     if prompt_file:
         lines.append(f'  "--system-prompt-file", "{prompt_file}",')
-    lines.extend([
-        f'  "--append-system-prompt", $resultPrompt,',
-        f'  "--model", "{model}",',
-        f'  "--allowedTools", "{allowed_tools}",',
-        f'  "--output-format", "stream-json",',
-        f'  "--max-turns", "50",',
-        f'  "--max-budget-usd", "0.50",',
-        f'  "--permission-mode", "acceptEdits"',
-        f')',
-        f'& claude @claudeArgs',
-        f'Write-Host ""',
-        f'Write-Host "=== Agent finished. You can close this window. ==="',
-        # 清理临时 prompt 文件
-        f'Remove-Item -Path "{task_file_escaped}" -ErrorAction SilentlyContinue',
-        f'Remove-Item -Path "{result_file_escaped}" -ErrorAction SilentlyContinue',
-    ])
+    lines.extend(
+        [
+            '  "--append-system-prompt", $resultPrompt,',
+            f'  "--model", "{model}",',
+            f'  "--allowedTools", "{allowed_tools}",',
+            '  "--output-format", "stream-json",',
+            '  "--max-turns", "50",',
+            '  "--max-budget-usd", "0.50",',
+            '  "--permission-mode", "acceptEdits"',
+            ")",
+            "& claude @claudeArgs",
+            'Write-Host ""',
+            'Write-Host "=== Agent finished. You can close this window. ==="',
+            # 清理临时 prompt 文件
+            f'Remove-Item -Path "{task_file_escaped}" -ErrorAction SilentlyContinue',
+            f'Remove-Item -Path "{result_file_escaped}" -ErrorAction SilentlyContinue',
+        ]
+    )
     script_path.write_text("\n".join(lines), encoding="utf-8-sig")
 
     # Launch in new terminal window (safe: Start-Process args are all controlled)
@@ -399,7 +416,9 @@ def execute_in_sandbox(
         # subprocess.Popen with list args — no shell parsing of user input
         subprocess.run(
             [
-                "powershell", "-NoProfile", "-Command",
+                "powershell",
+                "-NoProfile",
+                "-Command",
                 f'Start-Process powershell -ArgumentList "-NoProfile","-File","{script_path}"',
             ],
             cwd=work_dir,

@@ -12,11 +12,12 @@
 import argparse
 import json
 import os
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-PROJECT_ROOT = os.environ.get("CLAUDE_PROJECT_DIR", os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+PROJECT_ROOT = os.environ.get(
+    "CLAUDE_PROJECT_DIR", os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 
 MAESTRO_DIR = Path(PROJECT_ROOT) / "maestro"
 BOARD_FILE = MAESTRO_DIR / "task-board.json"
@@ -58,8 +59,9 @@ def sync_board():
                             completed_at = datetime.fromtimestamp(
                                 result_file.stat().st_mtime, tz=timezone.utc
                             ).isoformat()
-                except Exception:
-                    pass
+                except Exception as _e:
+                    # log corrupted result files instead of silently skipping them
+                    print(f"[task-tracker] result read failed: {_e}", file=__import__('sys').stderr)
             elif status == "done" or status == "failed":
                 # 结果文件已被删除但状态还标记为完成
                 status = "dispatched"
@@ -95,8 +97,9 @@ def sync_board():
                             summary_lines.append(line)
                     if summary_lines:
                         task_entry["summary"] = "\n".join(summary_lines).strip()[:120]
-                except Exception:
-                    pass
+                except Exception as _e:
+                    # log corrupted result files instead of silently skipping them
+                    print(f"[task-tracker] result read failed: {_e}", file=__import__('sys').stderr)
 
             tasks.append(task_entry)
 
@@ -138,8 +141,10 @@ def list_tasks(show_all=False, agent_filter=None):
     tasks = tasks[-limit:] if limit else tasks
 
     stats = board.get("stats", {})
-    print(f"=== 任务看板 ===")
-    print(f"总计:{stats.get('total','?')} 完成:{stats.get('done','?')} 失败:{stats.get('failed','?')} 进行中:{stats.get('in_progress','?')} 待处理:{stats.get('dispatched','?')}")
+    print("=== 任务看板 ===")
+    print(
+        f"总计:{stats.get('total', '?')} 完成:{stats.get('done', '?')} 失败:{stats.get('failed', '?')} 进行中:{stats.get('in_progress', '?')} 待处理:{stats.get('dispatched', '?')}"
+    )
     print()
 
     status_icon = {
@@ -188,7 +193,7 @@ def show_progress():
     completed = done + failed
     pct = (completed / total * 100) if total > 0 else 0
 
-    print(f"=== 总体进度 ===")
+    print("=== 总体进度 ===")
     print(f"  总任务数:   {total}")
     print(f"  已完成:     {done}  (成功)")
     print(f"  已失败:     {failed}")
@@ -198,7 +203,7 @@ def show_progress():
 
     # 按 agent 分布
     print()
-    print(f"=== 按 Agent 分布 ===")
+    print("=== 按 Agent 分布 ===")
     agents = {}
     for t in board["tasks"]:
         a = t["agent"]
@@ -220,7 +225,7 @@ def show_progress():
 
     # 最近完成
     print()
-    print(f"=== 最近完成 (最多5条) ===")
+    print("=== 最近完成 (最多5条) ===")
     done_tasks = [t for t in board["tasks"] if t["status"] == "done"]
     for t in sorted(done_tasks, key=lambda x: x.get("completed_at") or "", reverse=True)[:5]:
         print(f"  {t['task_id']}  {t['agent']:10s}  {t['task'][:45]}")

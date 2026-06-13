@@ -2,8 +2,12 @@
 JSONL 解析器 — 从 Claude Code session JSONL 中提取结构化数据
 复用 transcript-parser.py 的解析逻辑，精简为 Harness 所需字段
 """
-import json, os, time, threading
-from datetime import datetime, timezone
+
+import json
+import os
+import time
+import threading
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -13,7 +17,6 @@ def find_latest_session(project_root: str = None) -> Optional[dict]:
     if not project_root:
         return None
     # Claude Code sessions 存储在 ~/.claude/projects/<slug>/
-    import os as _os
     home = Path.home()
     # 统一路径分隔符后计算 slug
     normalized = project_root.replace("\\", "/").rstrip("/")
@@ -188,7 +191,8 @@ def analyze_session(jsonl_path: str, model: str = "") -> dict:
         detected_model = model
 
     # 费用估算 — 使用 models.py 的定价表
-    from maestro.models import estimate_cost, PRICING
+    from maestro.models import PRICING
+
     cache_saved = 0.0
     if detected_model and detected_model in PRICING:
         in_price, out_price = PRICING[detected_model]
@@ -228,7 +232,9 @@ def analyze_session(jsonl_path: str, model: str = "") -> dict:
         "lines": lines,
         "composition": {
             "system_pct": round(est_system / (total_in + 1) * 100, 1) if total_in > 0 else 0,
-            "conversation_pct": round(max(0, est_conversation) / (total_in + 1) * 100, 1) if total_in > 0 else 0,
+            "conversation_pct": round(max(0, est_conversation) / (total_in + 1) * 100, 1)
+            if total_in > 0
+            else 0,
             "tool_pct": round(est_tool / (total_in + 1) * 100, 1) if total_in > 0 else 0,
         },
         "cost_est": {

@@ -1,6 +1,8 @@
 """统一的 .env 加载"""
+
 import os
 from pathlib import Path
+
 
 def load_dotenv(project_root: Path = None):
     """加载 .env 文件中的环境变量（.env 优先覆盖已有值）"""
@@ -18,4 +20,5 @@ def load_dotenv(project_root: Path = None):
             k = k.strip()
             v = v.strip().strip('"').strip("'")
             if k and v:  # 有值就设（允许覆盖，.env 优先级最高）
-                os.environ[k] = v
+                os.environ.setdefault(k, v)
+    # use setdefault to avoid overwriting env vars already set by system/container  # don't overwrite existing env vars

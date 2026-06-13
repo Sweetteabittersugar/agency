@@ -1,6 +1,12 @@
 """测试 models.py — 模型管理"""
-import pytest
-from maestro.models import resolve_model, get_default_model, PROVIDER_MAP, estimate_cost, get_provider_config
+
+from maestro.models import (
+    resolve_model,
+    get_default_model,
+    PROVIDER_MAP,
+    estimate_cost,
+    get_provider_config,
+)
 
 
 class TestModels:

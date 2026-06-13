@@ -1,6 +1,6 @@
 /* Agency — 开发者设置面板 */
 function saveApiKey(){var newKey=$('api-key').value.trim();var newProvider=$('api-provider').value;var oldKey=apiKey;var oldProvider=apiProvider;apiKey=newKey;apiProvider=newProvider;localStorage.setItem('agency_api_provider',apiProvider);if(apiKey){localStorage.setItem('agency_api_key',apiKey)}else{localStorage.removeItem('agency_api_key')}$('api-status').textContent=apiKey?'已保存':'已清除';showUndoableToast(t('configSaved'),function(){apiKey=oldKey;apiProvider=oldProvider;localStorage.setItem('agency_api_provider',oldProvider);$('api-key').value=oldKey;$('api-provider').value=oldProvider;if(oldKey){localStorage.setItem('agency_api_key',oldKey)}else{localStorage.removeItem('agency_api_key')}$('api-status').textContent=oldKey?'已保存':'已清除'},5000)}
-function toggleDevOverlay(){devMode=!devMode;var ov=$('devOverlay'),btn=$('devBtn');ov.classList.toggle('on',devMode);btn.classList.toggle('on',devMode);if(devMode){var ak=$('api-key');if(ak&&apiKey)ak.value=apiKey;var ap=$('api-provider');if(ap&&apiProvider)ap.value=apiProvider;loadMemList();loadRemotePanel();loadIntegrationPanel();loadMCPConfig();setTimeout(initSettingsAccordion,200)}}
+function toggleDevOverlay(){devMode=!devMode;var ov=$('devOverlay'),btn=$('devBtn');ov.classList.toggle('on',devMode);btn.classList.toggle('on',devMode);if(devMode){var ak=$('api-key');if(ak&&apiKey)ak.value=apiKey;var ap=$('api-provider');if(ap&&apiProvider)ap.value=apiProvider;loadMemList();loadRemotePanel();loadIntegrationPanel();loadMCPConfig();loadCompactionConfig();setTimeout(initSettingsAccordion,200)}}
 
 /* ── 设置面板折叠分组 ── */
 var _settingsAccordionDone=false;
@@ -62,7 +62,7 @@ function initSettingsAccordion(){
 }
 
 function loadMemList(){var domEl=$('mem-list');if(!domEl)return;fetch('/api/memory').then(function(r){return r.json()}).then(function(d){var files=d.files||[];domEl.innerHTML=files.length?files.map(function(f){return'<div class="mem-file" onclick="openMemEditor(\''+escHtml(f.path)+'\',\''+escHtml(f.name)+'\')"><span class="icon">📄</span><span>'+escHtml(f.name)+'</span><span style="color:var(--muted);font-size:10px;margin-left:auto">'+(f.size||0)+'B</span></div>'}).join(''):'暂无记忆文件'}).catch(function(){domEl.innerHTML='无法加载记忆文件列表。服务可能未启动，请刷新页面重试'})}
-function generateAgent(){var input=$('agent-factory-input'),output=$('agent-factory-output');var req=input.value.trim();if(!req)return;output.innerHTML='生成中…';fetch('/api/agent-generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requirement:req,api_key:apiKey||undefined,api_provider:apiProvider||undefined})}).then(function(resp){var reader=resp.body.getReader(),decoder=new TextDecoder(),buf='',txt='';function read(){reader.read().then(function(result){if(result.done){finish();return}buf+=decoder.decode(result.value,{stream:!0});buf=buf.replace(/\r\n/g,'\n');var lines=buf.split('\n');buf=lines.pop()||'';for(var i=0;i<lines.length;i++){if(lines[i].indexOf('data: ')!==0)continue;try{var d=JSON.parse(lines[i].slice(6));if(d.content)txt+=d.content;if(d.error){output.innerHTML='<span style=color:var(--danger)>'+escHtml(d.error)+'</span>';return}}catch(_){}}read()})}function finish(){output.innerHTML='<pre style=\"font-size:10px;max-height:200px;overflow:auto;background:var(--bg);padding:8px;border-radius:4px\">'+escHtml(txt)+'</pre><button class=\"new-chat-btn\" style=\"margin-top:4px\" onclick=\"saveAgent()\">保存此 Agent</button>';output._agentContent=txt}read()}).catch(function(){output.innerHTML='AI 生成中断。可能是网络问题或 API Key 无效，请检查后重试'})}
+function generateAgent(){var input=$('agent-factory-input'),output=$('agent-factory-output');var req=input.value.trim();if(!req)return;output.innerHTML='<span class="spinner" style="display:inline-block;width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-right:6px;vertical-align:middle"></span>生成中…';fetch('/api/agent-generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requirement:req,api_key:apiKey||undefined,api_provider:apiProvider||undefined})}).then(function(resp){var reader=resp.body.getReader(),decoder=new TextDecoder(),buf='',txt='';function read(){reader.read().then(function(result){if(result.done){finish();return}buf+=decoder.decode(result.value,{stream:!0});buf=buf.replace(/\r\n/g,'\n');var lines=buf.split('\n');buf=lines.pop()||'';for(var i=0;i<lines.length;i++){if(lines[i].indexOf('data: ')!==0)continue;try{var d=JSON.parse(lines[i].slice(6));if(d.content)txt+=d.content;if(d.error){output.innerHTML='<span style=color:var(--danger)>'+escHtml(d.error)+'</span>';return}}catch(_){}}read()})}function finish(){output.innerHTML='<pre style=\"font-size:10px;max-height:200px;overflow:auto;background:var(--bg);padding:8px;border-radius:4px\">'+escHtml(txt)+'</pre><button class=\"new-chat-btn\" style=\"margin-top:4px\" onclick=\"saveAgent()\">保存此 Agent</button>';output._agentContent=txt}read()}).catch(function(){output.innerHTML='AI 生成中断。可能是网络问题或 API Key 无效，请检查后重试'})}
 function saveAgent(){var txt=$('agent-factory-output')._agentContent;if(!txt)return;var m=txt.match(/name:\s*"?([a-z0-9-]+)"?/i);var name=m?m[1]:('agent-'+Date.now().toString(36));fetch('/api/agent-create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,content:txt})}).then(function(r){return r.json()}).then(function(d){if(d.ok){showToast('Agent 已保存: '+name);loadAgents()}else{showToast(d.error||'保存失败，请检查文件权限或磁盘空间后重试',!0)}}).catch(function(e){showToast('保存失败: '+(e.message||'请检查网络连接后重试'),!0)})}
 function loadRemotePanel(){
   var domEl=$('remote-panel');if(!domEl){console.debug('remote-panel not found');return}
@@ -261,9 +261,9 @@ function showLockedHint(el, featureName){
 function clearAllHistory(){
   showDeleteConfirm(t('clearAllHistoryConfirm'), function(){
     var savedConvos = conversations.slice();
-    var savedLocal = localStorage.getItem('agency_convos');
+    // 服务端删除全部
+    savedConvos.forEach(function(c){ api.del('/api/conversations/'+c.id).catch(function(){}) });
     conversations = [];
-    localStorage.setItem('agency_convos', '[]');
     // 清空所有面板
     panels.forEach(function(p){
       if(p.isStreaming && p.abortController) p.abortController.abort();
@@ -275,7 +275,7 @@ function clearAllHistory(){
     if(typeof renderHistory === 'function') renderHistory();
     showUndoableToast(t('clearAllHistoryDone'), function(){
       conversations = savedConvos;
-      localStorage.setItem('agency_convos', savedLocal || '[]');
+      savedConvos.forEach(function(c){ api.post('/api/conversations/save',c).catch(function(){}) });
       renderHistory();
     }, 5000);
   });
@@ -533,4 +533,88 @@ window.fullReset = function() {
         alert('恢复失败: ' + (data.error || '未知'));
       }
     });
+};
+
+/* ── 压缩比例配置 ── */
+/* 10 个常用模型列表，与 saveCompactionConfig 共享 */
+var COMPACTION_MODELS=["deepseek-v4-pro","deepseek-v4-flash","claude-opus-4-8","claude-sonnet-4-6","claude-haiku-4-5","gpt-5","gpt-5-mini","gpt-5-nano","gemini-2.5-pro","gemini-2.5-flash","grok-4.3","qwen3-max","GLM-5.1"]; // 2026.06 更新
+
+/* 加载压缩配置并填充 UI */
+function loadCompactionConfig(){
+  var list=document.getElementById("cmp-model-list");
+  // 首先生成模型输入框（避免重复生成）
+  if(list&&!list._generated){
+    list._generated=true;
+    var html='';
+    COMPACTION_MODELS.forEach(function(m){
+      var key=m.replace(/[^a-z0-9-]/g,"");
+      html+='<div style="font-size:10px;padding-top:2px">'+escHtml(m)+'</div>';
+      html+='<div style="display:flex;gap:4px">';
+      // 暗色主题：动态生成的模型压缩比例输入框
+      html+='<input id="cmp-w-'+key+'" type="number" step="0.05" min="0.1" max="0.99" style="width:60px;font-size:10px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px" placeholder="0.70">';
+      html+='<input id="cmp-f-'+key+'" type="number" step="0.05" min="0.1" max="0.99" style="width:60px;font-size:10px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px" placeholder="0.85">';
+      html+='</div>';
+    });
+    list.innerHTML=html;
+  }
+  // 从服务端加载当前配置
+  fetch('/api/settings/compaction').then(function(r){return r.json()}).then(function(d){
+    var dw=document.getElementById("cmp-d-warn"),df=document.getElementById("cmp-d-force");
+    if(dw&&df){
+      // 输入为小数（如 0.70），直接用 parseFloat
+      dw.value=(d.defaults&&typeof d.defaults.warn==='number')?d.defaults.warn:0.70;
+      df.value=(d.defaults&&typeof d.defaults.force==='number')?d.defaults.force:0.85;
+    }
+    var models=d.models||{};
+    COMPACTION_MODELS.forEach(function(m){
+      var key=m.replace(/[^a-z0-9-]/g,"");
+      var wk=document.getElementById("cmp-w-"+key),fk=document.getElementById("cmp-f-"+key);
+      if(wk&&fk){
+        var cfg=models[m]||{};
+        // 留空表示跟随全局，不填默认值
+        wk.value=typeof cfg.warn==='number'?cfg.warn:'';
+        fk.value=typeof cfg.force==='number'?cfg.force:'';
+      }
+    });
+  }).catch(function(){
+    // 服务端不可用时填入默认值
+    var dw=document.getElementById("cmp-d-warn"),df=document.getElementById("cmp-d-force");
+    if(dw&&!dw.value)dw.value=0.70;
+    if(df&&!df.value)df.value=0.85;
+  });
+}
+
+window.saveCompactionConfig = function(){
+  var dw=document.getElementById("cmp-d-warn"),df=document.getElementById("cmp-d-force");
+  if(!dw||!df)return;
+  // 输入值已经是小数（如 0.70），直接用 parseFloat，不再 /100
+  var defs={warn:parseFloat(dw.value)||0.70,force:parseFloat(df.value)||0.85};
+  var models={};
+  COMPACTION_MODELS.forEach(function(m){
+    var wid="cmp-w-"+m.replace(/[^a-z0-9-]/g,""),fid="cmp-f-"+m.replace(/[^a-z0-9-]/g,"");
+    var wk=document.getElementById(wid),fk=document.getElementById(fid);
+    if(!wk||!fk)return;
+    var wv=wk.value.trim(),fv=fk.value.trim();
+    // 空值表示跟随全局，不纳入 models
+    if(!wv&&!fv)return;
+    var w=wv?parseFloat(wv):defs.warn;
+    var f=fv?parseFloat(fv):defs.force;
+    if(w!==defs.warn||f!==defs.force)models[m]={warn:w,force:f};
+  });
+  fetch("/api/settings/compaction",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({defaults:defs,models:models})})
+  .then(function(r){return r.json()}).then(function(d){
+    var msg=document.getElementById("cmp-save-msg");
+    if(d.ok){
+      if(msg)msg.textContent="已保存";
+      showToast("压缩配置已保存");
+    }else{
+      if(msg)msg.textContent="保存失败";
+      showToast("保存失败",!0);
+    }
+  })
+  .catch(function(){
+    var msg=document.getElementById("cmp-save-msg");
+    if(msg)msg.textContent="保存失败";
+    showToast("保存失败",!0);
+  });
 };

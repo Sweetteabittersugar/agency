@@ -1,4 +1,5 @@
 """Git Worktree 管理器 — Agent 工作目录隔离"""
+
 import subprocess
 import shutil
 from pathlib import Path
@@ -10,11 +11,13 @@ WORKTREE_BASE = PROJECT_ROOT / "maestro" / "worktrees"
 def _run_git(args, cwd=None):
     try:
         result = subprocess.run(
-            ["git"] + args,
-            capture_output=True, text=True, timeout=30,
-            cwd=cwd or PROJECT_ROOT
+            ["git"] + args, capture_output=True, text=True, timeout=30, cwd=cwd or PROJECT_ROOT
         )
-        return {"ok": result.returncode == 0, "stdout": result.stdout.strip(), "stderr": result.stderr.strip()}
+        return {
+            "ok": result.returncode == 0,
+            "stdout": result.stdout.strip(),
+            "stderr": result.stderr.strip(),
+        }
     except Exception as e:
         return {"ok": False, "stderr": str(e)}
 
@@ -87,7 +90,9 @@ def cleanup_stale_worktrees():
         p = Path(t["path"])
         if p.resolve() == PROJECT_ROOT.resolve():
             continue
-        if WORKTREE_BASE.resolve() not in p.resolve().parents and str(p.resolve()) != str(PROJECT_ROOT.resolve()):
+        if WORKTREE_BASE.resolve() not in p.resolve().parents and str(p.resolve()) != str(
+            PROJECT_ROOT.resolve()
+        ):
             continue
         if not p.exists():
             _run_git(["worktree", "prune"])
@@ -107,20 +112,22 @@ def get_worktree_status():
             main_tree = {"path": str(p), "branch": t.get("branch", ""), "head": t.get("head", "")}
         elif WORKTREE_BASE.resolve() in p.resolve().parents:
             exists = p.exists()
-            agent_trees.append({
-                "name": p.name,
-                "path": str(p),
-                "branch": t.get("branch", ""),
-                "head": t.get("head", ""),
-                "exists": exists,
-                "size_mb": _dir_size(p) if exists else 0
-            })
+            agent_trees.append(
+                {
+                    "name": p.name,
+                    "path": str(p),
+                    "branch": t.get("branch", ""),
+                    "head": t.get("head", ""),
+                    "exists": exists,
+                    "size_mb": _dir_size(p) if exists else 0,
+                }
+            )
 
     return {
         "main": main_tree,
         "agents": agent_trees,
         "count": len(agent_trees),
-        "base_path": str(WORKTREE_BASE)
+        "base_path": str(WORKTREE_BASE),
     }
 
 
@@ -139,6 +146,7 @@ def _dir_size(path):
 
 
 # ── HTTP 处理函数 ──
+
 
 def worktree_handle_list(handler, parsed):
     """GET /api/worktrees"""

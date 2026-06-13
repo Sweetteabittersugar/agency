@@ -1,4 +1,5 @@
 """隔离配置同步 — settings.json 合并 + agents/skills 复制到 .claude-isolated/"""
+
 import json
 import shutil
 import logging
@@ -28,8 +29,12 @@ def sync_isolated_config(project_root: Path):
                 log.warning(f"Failed to merge settings from {src}")
 
     # 安全：剥离 API key — build_isolated_env() 会在运行时通过环境变量注入
-    _SENSITIVE_ENV_KEYS = {"ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_API_KEY",
-                            "OPENAI_API_KEY", "DEEPSEEK_API_KEY"}
+    _SENSITIVE_ENV_KEYS = {
+        "ANTHROPIC_AUTH_TOKEN",
+        "ANTHROPIC_API_KEY",
+        "OPENAI_API_KEY",
+        "DEEPSEEK_API_KEY",
+    }
     if "env" in merged and isinstance(merged["env"], dict):
         for k in _SENSITIVE_ENV_KEYS:
             merged["env"].pop(k, None)

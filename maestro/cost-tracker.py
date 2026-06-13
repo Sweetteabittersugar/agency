@@ -14,17 +14,18 @@ import os
 import sqlite3
 import sys
 import time
-import textwrap
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-PROJECT_ROOT = os.environ.get("CLAUDE_PROJECT_DIR", os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+PROJECT_ROOT = os.environ.get(
+    "CLAUDE_PROJECT_DIR", os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 
 COST_DB = Path(PROJECT_ROOT) / "maestro" / "cost.db"
 
 # 告警阈值
-DAILY_WARN_USD = 5.0       # 单日超 $5 告警
-ENTRY_RED_USD = 0.50       # 单次超 $0.50 标红
+DAILY_WARN_USD = 5.0  # 单日超 $5 告警
+ENTRY_RED_USD = 0.50  # 单次超 $0.50 标红
 
 # ── ANSI 颜色 ──────────────────────────────────────────────────────────────
 
@@ -49,6 +50,7 @@ def bold(s: str) -> str:
 
 
 # ── 数据库查询 ────────────────────────────────────────────────────────────
+
 
 def get_conn() -> sqlite3.Connection:
     """只读连接，数据库不存在时优雅报错。"""
@@ -97,6 +99,7 @@ def query_all(conn: sqlite3.Connection) -> list[sqlite3.Row]:
 
 
 # ── 聚合计算 ──────────────────────────────────────────────────────────────
+
 
 def aggregate(rows: list[sqlite3.Row]) -> dict:
     """按 agent 聚合费用、token 等。"""
@@ -149,32 +152,37 @@ def anomaly_check(rows: list[sqlite3.Row]) -> list[dict]:
     # 单次费用过高
     for r in rows:
         if r["cost_usd"] > ENTRY_RED_USD:
-            anomalies.append({
-                "type": "single",
-                "level": "red",
-                "id": r["id"],
-                "time": r["time"],
-                "channel": r["agent"] or "unknown",
-                "model": r["model"],
-                "cost": r["cost_usd"],
-                "msg": f"单次 ${r['cost_usd']:.4f} 超过 ${ENTRY_RED_USD:.2f}",
-            })
+            anomalies.append(
+                {
+                    "type": "single",
+                    "level": "red",
+                    "id": r["id"],
+                    "time": r["time"],
+                    "channel": r["agent"] or "unknown",
+                    "model": r["model"],
+                    "cost": r["cost_usd"],
+                    "msg": f"单次 ${r['cost_usd']:.4f} 超过 ${ENTRY_RED_USD:.2f}",
+                }
+            )
     # 单日超过阈值（在所有行中计算）
     daily = daily_aggregate(rows)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     for day, cost in sorted(daily.items()):
         if cost > DAILY_WARN_USD:
-            anomalies.append({
-                "type": "daily",
-                "level": "warn" if day != today else "warn_active",
-                "date": day,
-                "cost": cost,
-                "msg": f"{day} 单日 ${cost:.4f} 超过 ${DAILY_WARN_USD:.2f}",
-            })
+            anomalies.append(
+                {
+                    "type": "daily",
+                    "level": "warn" if day != today else "warn_active",
+                    "date": day,
+                    "cost": cost,
+                    "msg": f"{day} 单日 ${cost:.4f} 超过 ${DAILY_WARN_USD:.2f}",
+                }
+            )
     return anomalies
 
 
 # ── 渲染 ───────────────────────────────────────────────────────────────────
+
 
 def format_tokens(n: int) -> str:
     if n >= 1_000_000:
@@ -268,6 +276,7 @@ def render_summary(rows: list[sqlite3.Row], days: int | None, live: bool = False
 
 
 # ── 主入口 ────────────────────────────────────────────────────────────────
+
 
 def main():
     parser = argparse.ArgumentParser(

@@ -1,4 +1,5 @@
-bind = "127.0.0.1:8800"
+import os; _host = os.environ.get("AGENCY_HOST", "127.0.0.1"); _port = os.environ.get("AGENCY_PORT", "8800")
+bind = f"{_host}:{_port}"
 workers = 2
 threads = 4
 timeout = 300
@@ -15,9 +16,11 @@ preload_app = True
 max_requests = 1000
 max_requests_jitter = 100
 
+
 # 钩子
 def when_ready(server):
     print("🟢 Gunicorn 已就绪")
+
 
 def on_exit(server):
     print("🔴 Gunicorn 已停止")

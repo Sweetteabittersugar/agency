@@ -1,0 +1,2 @@
+{"ts": 1781362906.3806982, "type": "user_message", "data": {"content": "[相关记忆 — 从历史对话中提炼，仅供参考]\n\n• [user-preferences] metadata:: name: user-preferences\ndescription: 小明的工作偏好 — 交流语言、代码风格、格式化工具、目录结构、测试框架\ntype: user\n---\n## 交流\n- 全程用**中文**交流\n\n## 代码风格\n- 代码注释用**英文**\n- Python 用 **b"}}
+{"ts": 1781362917.6349366, "type": "agent_response", "data": {"content_preview": "OK", "elapsed": 0.2, "cost": 0.25813, "tokens_in": 51496, "tokens_out": 26}}

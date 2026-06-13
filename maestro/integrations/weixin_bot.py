@@ -1,4 +1,5 @@
 """微信 iLink Bot 客户端 — 基于 @tencent-weixin/openclaw-weixin v2.4.4 协议"""
+
 import json
 import time
 import uuid
@@ -47,10 +48,7 @@ def _api_post(endpoint: str, body: dict, token: str = None, timeout: int = API_T
     data = json.dumps(body, ensure_ascii=False).encode()
 
     req = urllib.request.Request(
-        f"{ILINK_BASE}/{endpoint}",
-        data=data,
-        headers=_build_headers(token),
-        method="POST"
+        f"{ILINK_BASE}/{endpoint}", data=data, headers=_build_headers(token), method="POST"
     )
 
     try:
@@ -64,11 +62,7 @@ def _api_post(endpoint: str, body: dict, token: str = None, timeout: int = API_T
 
 def _api_get(endpoint: str, timeout: int = LONG_POLL_TIMEOUT) -> dict:
     """GET 请求到 iLink API"""
-    req = urllib.request.Request(
-        f"{ILINK_BASE}/{endpoint}",
-        headers=_build_headers(),
-        method="GET"
-    )
+    req = urllib.request.Request(f"{ILINK_BASE}/{endpoint}", headers=_build_headers(), method="GET")
 
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -95,7 +89,7 @@ class WeixinBot:
     def get_qrcode(self) -> dict:
         """获取登录二维码，返回 {qrcode, qrcode_img_content}"""
         body = {"local_token_list": [self.token] if self.token else []}
-        return _api_post(f"ilink/bot/get_bot_qrcode?bot_type=3", body)
+        return _api_post("ilink/bot/get_bot_qrcode?bot_type=3", body)
 
     def poll_login(self, qrcode: str, timeout: int = 480) -> dict:
         """轮询扫码状态直到完成或超时
@@ -106,8 +100,7 @@ class WeixinBot:
 
         while time.time() < deadline:
             result = _api_get(
-                f"ilink/bot/get_qrcode_status?qrcode={qrcode}",
-                timeout=LONG_POLL_TIMEOUT
+                f"ilink/bot/get_qrcode_status?qrcode={qrcode}", timeout=LONG_POLL_TIMEOUT
             )
 
             status = result.get("status", "wait")
@@ -138,11 +131,12 @@ class WeixinBot:
         """保存登录凭证"""
         CREDENTIALS_DIR.mkdir(parents=True, exist_ok=True)
         cred_file = CREDENTIALS_DIR / f"weixin_{self.bot_id or 'bot'}.json"
-        cred_file.write_text(json.dumps({
-            "token": self.token,
-            "bot_id": self.bot_id,
-            "updated": time.time()
-        }, ensure_ascii=False))
+        cred_file.write_text(
+            json.dumps(
+                {"token": self.token, "bot_id": self.bot_id, "updated": time.time()},
+                ensure_ascii=False,
+            )
+        )
         print(f"✅ 凭证已保存: {cred_file}")
 
     def load_credentials(self, bot_id: str = None) -> bool:
@@ -184,7 +178,7 @@ class WeixinBot:
             "to_user_id": to_user_id,
             "context_token": context_token,
             "content": {"text": text},
-            "client_msg_id": str(uuid.uuid4())
+            "client_msg_id": str(uuid.uuid4()),
         }
         return _api_post("ilink/bot/sendmessage", body, self.token, API_TIMEOUT)
 
@@ -197,11 +191,7 @@ class WeixinBot:
         if not typing_ticket:
             return {"_error": "无法获取 typing_ticket"}
 
-        body = {
-            "to_user_id": to_user_id,
-            "typing_ticket": typing_ticket,
-            "action": action
-        }
+        body = {"to_user_id": to_user_id, "typing_ticket": typing_ticket, "action": action}
         return _api_post("ilink/bot/sendtyping", body, self.token, 10)
 
     # ============ 运行循环 ============
@@ -242,7 +232,7 @@ class WeixinBot:
                         # 发送回复（可能超长，分段）
                         max_len = 2000
                         if len(reply) > max_len:
-                            chunks = [reply[i:i+max_len] for i in range(0, len(reply), max_len)]
+                            chunks = [reply[i : i + max_len] for i in range(0, len(reply), max_len)]
                             for chunk in chunks:
                                 self.send_message(from_user, chunk, ctx_token)
                                 time.sleep(0.5)
@@ -268,6 +258,7 @@ class WeixinBot:
 
 # ============ CLI 入口 ============
 
+
 def cmd_login():
     """命令行: 扫码登录微信"""
     bot = WeixinBot()
@@ -287,10 +278,10 @@ def cmd_login():
     qrcode = qr.get("qrcode")
     qrcode_url = qr.get("qrcode_img_content")
 
-    print(f"\n{'='*40}")
-    print(f"请用微信扫描以下二维码:")
+    print(f"\n{'=' * 40}")
+    print("请用微信扫描以下二维码:")
     print(f"{qrcode_url}")
-    print(f"{'='*40}\n")
+    print(f"{'=' * 40}\n")
 
     result = bot.poll_login(qrcode)
 

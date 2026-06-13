@@ -1,7 +1,7 @@
 """Harness 路由 — 权限 / 上下文 / SubAgent / Hooks / 事件"""
+
 import json
 import time
-import threading
 import logging
 import os
 from urllib.parse import parse_qs, urlparse
@@ -16,6 +16,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 def handle_stream(handler, parsed):
     """GET /api/harness/stream — SSE 长连接"""
     from maestro.harness.watcher import bus
+
     handler.send_response(200)
     handler.send_header("Content-Type", "text/event-stream")
     handler.send_header("Cache-Control", "no-cache")
@@ -54,6 +55,7 @@ def handle_permissions_allowlist(handler, parsed):
 def handle_permissions_history(handler, parsed):
     """GET /api/permissions/history — 权限决策历史"""
     from maestro.web import _permission_log, _permission_log_lock, get_permission_stats
+
     limit = int(parse_qs(parsed.query).get("limit", ["50"])[0])
     with _permission_log_lock:
         hist = _permission_log[-limit:]
@@ -65,6 +67,7 @@ def handle_permissions_history(handler, parsed):
 def handle_permissions_stats(handler, parsed):
     """GET /api/permissions/stats — 权限统计"""
     from maestro.web import get_permission_stats
+
     handler.send_json(get_permission_stats())
     return True
 
@@ -73,22 +76,43 @@ def handle_context(handler, parsed):
     """GET /api/harness/context — Token 窗口分析"""
     import re
     from maestro.harness.jsonl_parser import find_latest_session, analyze_session
+
     try:
         sid = parse_qs(parsed.query).get("session", [""])[0]
-        if sid and not re.match(r'^[a-fA-F0-9\-]+$', sid):
-            handler.send_json({"total_tokens": 0, "session_id": sid, "error": "会话 ID 格式无效。请使用正确的 UUID 格式（如 abc12345-def6-...）", "should_compact": False})
+        if sid and not re.match(r"^[a-fA-F0-9\-]+$", sid):
+            handler.send_json(
+                {
+                    "total_tokens": 0,
+                    "session_id": sid,
+                    "error": "会话 ID 格式无效。请使用正确的 UUID 格式（如 abc12345-def6-...）",
+                    "should_compact": False,
+                }
+            )
             return True
         proj = str(PROJECT_ROOT)
         if sid:
             home = Path.home()
-            slug = proj.replace("\\", "/").rstrip("/").replace(":/", "--").replace("/", "-").lstrip("-")
+            slug = (
+                proj.replace("\\", "/")
+                .rstrip("/")
+                .replace(":/", "--")
+                .replace("/", "-")
+                .lstrip("-")
+            )
             jsonl_path = home / ".claude" / "projects" / slug / f"{sid}.jsonl"
             if jsonl_path.exists():
                 result = analyze_session(str(jsonl_path))
                 result["should_compact"] = result.get("total_tokens", 0) > 300000
                 handler.send_json(result)
             else:
-                handler.send_json({"total_tokens": 0, "session_id": sid, "error": "未找到该会话。可能会话已过期或 ID 输入有误，请检查后重试", "should_compact": False})
+                handler.send_json(
+                    {
+                        "total_tokens": 0,
+                        "session_id": sid,
+                        "error": "未找到该会话。可能会话已过期或 ID 输入有误，请检查后重试",
+                        "should_compact": False,
+                    }
+                )
         else:
             session_info = find_latest_session(proj)
             if session_info and os.path.exists(session_info["path"]):
@@ -96,7 +120,14 @@ def handle_context(handler, parsed):
                 result["should_compact"] = result.get("total_tokens", 0) > 300000
                 handler.send_json(result)
             else:
-                handler.send_json({"total_tokens": 0, "session_id": "", "last_update": time.strftime("%H:%M:%S"), "should_compact": False})
+                handler.send_json(
+                    {
+                        "total_tokens": 0,
+                        "session_id": "",
+                        "last_update": time.strftime("%H:%M:%S"),
+                        "should_compact": False,
+                    }
+                )
     except Exception as e:
         handler.send_json({"total_tokens": 0, "error": str(e)[:100], "should_compact": False})
     return True
@@ -106,6 +137,7 @@ def handle_subagents(handler, parsed):
     """GET /api/harness/subagents — 子 Agent 任务树"""
     from maestro.harness.jsonl_parser import find_latest_session
     from maestro.shared import _scan_subagents
+
     sid = parse_qs(parsed.query).get("session", [""])[0]
     proj = str(PROJECT_ROOT)
     tree = []
@@ -119,13 +151,16 @@ def handle_subagents(handler, parsed):
         user_info = find_latest_session(user_proj)
         if user_info:
             tree += _scan_subagents(user_proj, user_info["session_id"])
-    handler.send_json({"tree": tree, "stats": {"total": len(tree), "running": 0, "done": len(tree), "failed": 0}})
+    handler.send_json(
+        {"tree": tree, "stats": {"total": len(tree), "running": 0, "done": len(tree), "failed": 0}}
+    )
     return True
 
 
 def handle_events(handler, parsed):
     """GET /api/harness/events — 事件日志"""
     from maestro.harness.watcher import bus
+
     evt_type = parse_qs(parsed.query).get("type", [None])[0]
     limit = int(parse_qs(parsed.query).get("limit", ["50"])[0])
     events = bus.recent_events(evt_type, limit)
@@ -136,7 +171,8 @@ def handle_events(handler, parsed):
 def handle_hooks_callback(handler, body):
     """POST /api/hooks/{event} — 接收 Hook 回调"""
     from maestro.harness.hooks_receiver import handle_hook_callback
-    event = urlparse(handler.path).path[len("/api/hooks/"):]
+
+    event = urlparse(handler.path).path[len("/api/hooks/") :]
     result = handle_hook_callback(event, body)
     handler.send_json(result)
     return True
@@ -146,7 +182,9 @@ def handle_permissions_allowlist_post(handler, body):
     """POST /api/permissions/allowlist — 添加 allow 规则"""
     rule = body.get("rule", "")
     if not rule:
-        handler.send_json({"error": "缺少必填字段 rule。请提供要添加的权限规则（如工具名称或匹配模式）"}, 400)
+        handler.send_json(
+            {"error": "缺少必填字段 rule。请提供要添加的权限规则（如工具名称或匹配模式）"}, 400
+        )
         return True
     settings_path = PROJECT_ROOT / ".claude" / "settings.json"
     settings = {}
@@ -168,15 +206,21 @@ def handle_permissions_decision(handler, body):
     """POST /api/permissions/decision — 权限决策回调"""
     from maestro.harness.watcher import bus
     from maestro.web import record_permission
+
     decision = body.get("decision", "deny")
     tool_name = body.get("tool_name", "")
     risk = body.get("risk", {})
     reason = body.get("reason", "")
     record_permission(tool_name, decision, risk, reason)
-    bus.broadcast("permission_decision", {
-        "tool_name": tool_name, "decision": decision, "reason": reason,
-        "timestamp": time.strftime("%H:%M:%S"),
-    })
+    bus.broadcast(
+        "permission_decision",
+        {
+            "tool_name": tool_name,
+            "decision": decision,
+            "reason": reason,
+            "timestamp": time.strftime("%H:%M:%S"),
+        },
+    )
     handler.send_json({"ok": True})
     return True
 
@@ -196,10 +240,7 @@ def handle_hooks_config(handler, parsed):
         try:
             s = json.loads(settings_path.read_text(encoding="utf-8"))
             for event_name, configs in s.get("hooks", {}).items():
-                events.append({
-                    "event": event_name,
-                    "configs": len(configs)
-                })
+                events.append({"event": event_name, "configs": len(configs)})
         except Exception:
             pass
     handler.send_json({"scripts": scripts, "events": events})
@@ -213,6 +254,7 @@ def handle_session_delete(handler, body):
         handler.send_json({"error": "缺少必填字段 session_id。请提供要删除的会话 ID"}, 400)
         return True
     import shutil
+
     home = Path.home()
     deleted = 0
     projects_dir = home / ".claude" / "projects"
@@ -234,6 +276,7 @@ def handle_session_delete(handler, body):
 def handle_permission_audit(handler, parsed):
     """GET /api/permissions/audit — 权限审计日志"""
     from maestro.web_cost import get_permission_audit_log, get_permission_stats as db_stats
+
     limit = int(parse_qs(parsed.query).get("limit", ["100"])[0])
     decision_filter = parse_qs(parsed.query).get("decision", [""])[0]
     logs = get_permission_audit_log(PROJECT_ROOT, limit, decision_filter)
@@ -255,6 +298,7 @@ def handle_permission_confirm(handler, body):
         return True
 
     from maestro.web import _get_permission_engine, record_permission
+
     engine = _get_permission_engine()
 
     if user_choice == "allow":
@@ -262,7 +306,13 @@ def handle_permission_confirm(handler, body):
         engine.remember(tool_name, path_prefix)
         engine.log_audit(tool_name, "allow", "用户确认通过", "medium", user_choice, str(args))
         record_permission(tool_name, "allow", "medium", "用户确认通过")
-        handler.send_json({"ok": True, "decision": "allow", "message": f"已允许 {tool_name}，24h 内同类操作不再询问"})
+        handler.send_json(
+            {
+                "ok": True,
+                "decision": "allow",
+                "message": f"已允许 {tool_name}，24h 内同类操作不再询问",
+            }
+        )
     else:
         engine.log_audit(tool_name, "deny", "用户拒绝", "medium", user_choice, str(args))
         record_permission(tool_name, "deny", "medium", "用户拒绝")
@@ -275,6 +325,7 @@ def handle_permission_memory_clear(handler, body):
     tool_name = body.get("tool_name", "")
     path_prefix = body.get("path_prefix", "")
     from maestro.web import _get_permission_engine
+
     engine = _get_permission_engine()
     if tool_name:
         engine.forget(tool_name, path_prefix)
@@ -301,10 +352,9 @@ def handle_harness_status(handler, parsed):
         try:
             s = json.loads(settings_path.read_text(encoding="utf-8"))
             for event_name in s.get("hooks", {}):
-                hooks_registered.append({
-                    "event": event_name,
-                    "scripts": len(s["hooks"][event_name])
-                })
+                hooks_registered.append(
+                    {"event": event_name, "scripts": len(s["hooks"][event_name])}
+                )
         except Exception:
             pass
     data["hooks_registered"] = hooks_registered

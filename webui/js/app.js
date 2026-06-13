@@ -2,7 +2,7 @@
 
 // ── 全局变量 ──
 var panels=[],pidSeq=0,perPage=1,curPage=0,focusedPid=null,orchMode=!1,devMode=!1;
-var conversations=[],agents=[];try{conversations=JSON.parse(localStorage.getItem('agency_convos')||'[]');var _seen={};conversations=conversations.filter(function(c){if(!c.id||_seen[c.id])return!1;_seen[c.id]=!0;return c.messages&&c.messages.length>0});localStorage.setItem('agency_convos',JSON.stringify(conversations))}catch(_){}
+var conversations=[],agents=[];
 var projDir='',apiKey='',apiProvider='deepseek',authToken='';
 try{projDir=localStorage.getItem('agency_proj_dir')||''}catch(_){}
 // 注意：API Key 明文存 localStorage 有 XSS 泄漏风险
@@ -10,7 +10,6 @@ try{projDir=localStorage.getItem('agency_proj_dir')||''}catch(_){}
 try{apiKey=localStorage.getItem('agency_api_key')||''}catch(_){}
 try{apiProvider=localStorage.getItem('agency_api_provider')||'deepseek'}catch(_){}
 try{authToken=localStorage.getItem('agency_auth_token')||''}catch(_){}
-var _saveTimer=null;
 
 // ── Profile 级别 ──
 var agencyProfile='standard';  // minimal | standard | full
@@ -70,6 +69,7 @@ function setProfile(level){
   localStorage.setItem('agency_profile', level);
   localStorage.setItem('profile_manual', 'true');
   updateProfileUI();
+  if(typeof loadAgents==='function') loadAgents();  // reload agent list with new profile filter
   fetch('/api/profile', {
     method:'POST',
     headers:{'Content-Type':'application/json'},
@@ -118,26 +118,39 @@ function loadProfileDescriptions(){
 
 // ── 初始加载 ──
 loadAgents();
-renderHistory();
-// 从 localStorage 恢复上次会话（先判断再建面板，避免空面板残留）
-var validConvos = (conversations||[]).filter(function(c){return c.messages&&c.messages.length>0});
-if(validConvos.length>0){
-  validConvos.forEach(function(conv,i){
-    var p=addPanel(i===0);
-    if(p.dom.empty)p.dom.empty.style.display='none';
-    p.currentConvo={id:conv.id,title:conv.title||'',messages:[],sessionId:''};
-    conv.messages.forEach(function(m){
-      p.currentConvo.messages.push(m);
-      if(m.role==='user'){addMsg(p,'user',m.content)}
-      else if(m.role==='assistant'){var bubble=addMsg(p,'assistant',typeof renderMD==='function'?renderMD(m.content):m.content);if(typeof highlightCode==='function')highlightCode(bubble)}
+// 从服务端恢复会话
+api.get('/api/conversations').then(function(d){
+  var list=(d&&d.conversations)||[];
+  if(list.length>0){
+    // 只加载最近 4 条到面板
+    list.slice(0,4).forEach(function(summary,i){
+      // 加载完整消息
+      api.get('/api/conversations/'+summary.id).then(function(full){
+        var conv=full.conversation;
+        if(!conv||!conv.messages)return;
+        conversations.push(conv);
+        var p=addPanel(i===0);
+        if(p.dom.empty)p.dom.empty.style.display='none';
+        p.currentConvo={id:conv.id,title:conv.title||'',messages:[],sessionId:conv.sessionId||''};
+        conv.messages.forEach(function(m){
+          p.currentConvo.messages.push(m);
+          if(m.role==='user'){addMsg(p,'user',m.content)}
+          else if(m.role==='assistant'){var bubble=addMsg(p,'assistant',typeof renderMD==='function'?renderMD(m.content):m.content);if(typeof highlightCode==='function')highlightCode(bubble)}
+        });
+        renderHistory();
+      }).catch(function(){});
     });
-    var agent=conv.sessionId?localStorage.getItem('sticky_agent'):'';
-    if(agent){p._lastAgent=agent;p.dom.route.innerHTML='<span style="color:var(--accent);font-size:9px">📌 '+escHtml(agent)+'</span>'}
-  });
-}else{
-  // 无保存会话→首次访问，创建一个总调度面板
-  addPanel(true);
-}
+    if(typeof refreshUI==='function')setTimeout(refreshUI,300);
+  }else{
+    /* 无历史对话时创建单个常规面板，非全屏空窗 */
+    var p=addPanel(false);
+    if(p&&p.dom.empty)p.dom.empty.style.display='block';
+  }
+}).catch(function(){
+  /* API 不可用时仍创建基础面板 */
+  var p=addPanel(false);
+  if(p&&p.dom.empty)p.dom.empty.style.display='block';
+});
 // 恢复布局偏好（只改每页窗数，不补面板）
 var savedLayout = parseInt(localStorage.getItem('agency_layout')) || 1;
 if (savedLayout >= 1 && savedLayout <= 4 && savedLayout !== perPage) {
@@ -434,7 +447,7 @@ window.projDir = projDir;
 window.apiKey = apiKey;
 window.apiProvider = apiProvider;
 window.authToken = authToken;
-window._saveTimer = _saveTimer;
+
 window.agencyProfile = agencyProfile;
 window.grid = grid;
 window.pageBar = pageBar;

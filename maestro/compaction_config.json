@@ -1,0 +1,8 @@
+{
+  "_comment": "模型压缩比例配置",
+  "defaults": {
+    "warn": 0.7,
+    "force": 0.85
+  },
+  "models": {}
+}

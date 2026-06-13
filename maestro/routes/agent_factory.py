@@ -1,8 +1,7 @@
 """Agent 工厂 — AI 生成 + 保存 Agent .md"""
+
 import json
-import os
 import re
-import time
 import subprocess
 import logging
 from pathlib import Path
@@ -14,13 +13,17 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 def handle_generate(handler, body):
     """POST /api/agent-generate — SSE 流式生成 Agent .md"""
-    from maestro.shared import CLAUDE_BIN, ISOLATED_CONFIG, build_isolated_env
+    from maestro.shared import CLAUDE_BIN, build_isolated_env
+
     requirement = body.get("requirement", "")
     api_key = body.get("api_key", "")
     api_provider = body.get("api_provider", "")
 
     if not requirement:
-        handler.send_json({"error": "请描述你想创建的 Agent 功能需求。例如：\"一个擅长写 Python 测试的 Agent\""}, 400)
+        handler.send_json(
+            {"error": '请描述你想创建的 Agent 功能需求。例如："一个擅长写 Python 测试的 Agent"'},
+            400,
+        )
         return True
     if not CLAUDE_BIN:
         handler.send_json({"error": "Claude CLI not found"}, 500)
@@ -51,20 +54,30 @@ tools: <逗号分隔的工具列表，如 Read,Write,Edit,Bash,Grep,Glob>
         cmd = [CLAUDE_BIN, "-p", prompt, "--bare", "--permission-mode", "auto"]
 
         iso_env = build_isolated_env(api_key, api_provider)
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                encoding='utf-8', errors='replace', bufsize=1,
-                                cwd=str(PROJECT_ROOT), env=iso_env)
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            encoding="utf-8",
+            errors="backslashreplace",
+            bufsize=1,
+            cwd=str(PROJECT_ROOT),
+            env=iso_env,
+        )
         from maestro.proc_manager import track_proc
+
         track_proc(proc)
-        for line in iter(proc.stdout.readline, ''):
+        for line in iter(proc.stdout.readline, ""):
             if not line:
                 break
-            stripped = line.rstrip('\n\r')
+            stripped = line.rstrip("\n\r")
             if not stripped:
                 continue
             full_output += stripped + "\n"
             try:
-                handler.wfile.write(f"data: {json.dumps({'content': stripped + chr(10)}, ensure_ascii=False)}\n\n".encode())
+                handler.wfile.write(
+                    f"data: {json.dumps({'content': stripped + chr(10)}, ensure_ascii=False)}\n\n".encode()
+                )
                 handler.wfile.flush()
             except (BrokenPipeError, ConnectionResetError):
                 break
@@ -81,6 +94,7 @@ tools: <逗号分隔的工具列表，如 Read,Write,Edit,Bash,Grep,Glob>
     finally:
         if proc:
             from maestro.proc_manager import kill_proc, untrack_proc
+
             kill_proc(proc)
             untrack_proc(proc)
     return True
@@ -92,9 +106,11 @@ def handle_create(handler, body):
     content = body.get("content", "").strip()
 
     if not name or not content:
-        handler.send_json({"error": "缺少必填字段。请同时提供 name（Agent 名称）和 content（Agent 内容）"}, 400)
+        handler.send_json(
+            {"error": "缺少必填字段。请同时提供 name（Agent 名称）和 content（Agent 内容）"}, 400
+        )
         return True
-    if not re.match(r'^[a-z0-9]([a-z0-9-]*[a-z0-9])?$', name):
+    if not re.match(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$", name):
         handler.send_json({"error": "invalid name: use lowercase letters, digits, hyphens"}, 400)
         return True
 

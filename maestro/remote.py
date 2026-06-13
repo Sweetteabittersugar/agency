@@ -1,4 +1,5 @@
 """远端访问模块 — 认证/IP检测/运行时配置（不重启生效）"""
+
 import os
 import socket
 import secrets
@@ -7,7 +8,10 @@ from pathlib import Path
 
 log = logging.getLogger(__name__)
 
-from maestro.app_config import PORT, BIND_ADDR  # 默认仅本机，远端需设 AGENCY_HOST=0.0.0.0 + AGENCY_TOKEN
+from maestro.app_config import (
+    PORT,
+    BIND_ADDR,
+)  # 默认仅本机，远端需设 AGENCY_HOST=0.0.0.0 + AGENCY_TOKEN
 
 # 内存中的 token（None=未初始化，\"\"=已显式关闭，其他=密码）
 _token = None
@@ -43,7 +47,7 @@ def _load_env_token():
     elif not _token:
         _token = generate_token()
         _save_env_token(_token)
-        log.info(f"Auto-generated remote token (see .env or startup log)")
+        log.info("Auto-generated remote token (see .env or startup log)")
 
     # 统一：None → ""
     if _token is None:
@@ -59,7 +63,11 @@ def _save_env_token(token: str):
         lines = env_file.read_text(encoding="utf-8").split("\n")
         for i, line in enumerate(lines):
             stripped = line.strip()
-            if stripped.startswith("AGENCY_TOKEN=") or stripped.startswith("# AGENCY_TOKEN=") or stripped.startswith("#AGENCY_TOKEN="):
+            if (
+                stripped.startswith("AGENCY_TOKEN=")
+                or stripped.startswith("# AGENCY_TOKEN=")
+                or stripped.startswith("#AGENCY_TOKEN=")
+            ):
                 lines[i] = f"AGENCY_TOKEN={token}"
                 found = True
                 break
@@ -147,7 +155,7 @@ def startup_info():
     lines.append(f"  本地: http://localhost:{PORT}")
     lines.append(f"  远端: http://{local_ip}:{PORT}")
     if token:
-        lines.append(f"  认证: 已启用")
+        lines.append("  认证: 已启用")
     else:
-        lines.append(f"  认证: 关闭")
+        lines.append("  认证: 关闭")
     return "\n".join(lines)

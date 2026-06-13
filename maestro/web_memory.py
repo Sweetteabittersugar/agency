@@ -1,4 +1,5 @@
 """Agency 记忆文件管理"""
+
 import json
 import logging
 import urllib.parse
@@ -31,13 +32,15 @@ def list_memory_files(project_root):
         if f.exists() and f.is_file():
             try:
                 content = f.read_text(encoding="utf-8")
-                files.append({
-                    "path": str(f.resolve()),
-                    "name": f.name,
-                    "size": len(content),
-                    "preview": content[:200],
-                    "type": f.suffix.lstrip("."),
-                })
+                files.append(
+                    {
+                        "path": str(f.resolve()),
+                        "name": f.name,
+                        "size": len(content),
+                        "preview": content[:200],
+                        "type": f.suffix.lstrip("."),
+                    }
+                )
             except Exception:
                 pass
     return files
@@ -58,22 +61,47 @@ def get_memory_file(project_root, rel):
             continue
     if not in_allowed:
         return {"error": "无权访问该文件。只能操作项目目录和 .claude 目录下的文件"}, 403
-    if fpath.exists() and fpath.is_file():
-        try:
-            content = fpath.read_text(encoding="utf-8")
-            return {"path": str(fpath), "name": fpath.name, "content": content, "size": len(content)}, 200
-        except Exception as e:
-            return {"error": str(e)}, 500
+    # 文件查找策略：
+    # 1) 先按完整路径解析（兼容旧调用，传绝对路径或相对路径均可）
+    # 2) 找不到时按文件名在常见目录搜索 — 因为前端为避免 onclick 里
+    #    Windows 路径 \u 被 JS 当成 Unicode 转义，只传文件名不传完整路径
+    candidates = [fpath]
+    if not fpath.exists():
+        search_dirs = [
+            project_root / "memory",
+            project_root / ".claude",
+            project_root / ".claude" / "rules",
+            Path.home() / ".claude" / "projects" / "D--ai" / "memory",
+        ]
+        for d in search_dirs:
+            candidate = d / fpath.name
+            if candidate.exists():
+                candidates.append(candidate)
+
+    for fpath in candidates:
+        if fpath.exists() and fpath.is_file():
+            try:
+                content = fpath.read_text(encoding="utf-8")
+                return {
+                    "path": str(fpath),
+                    "name": fpath.name,
+                    "content": content,
+                    "size": len(content),
+                }, 200
+            except Exception as e:
+                return {"error": str(e)}, 500
     return {"error": "未找到该记忆文件。请检查文件名是否正确"}, 404
 
 
 def save_memory_file(project_root, rel, content):
-    """编辑记忆文件。返回 (data_dict, http_status)"""
+    """编辑记忆文件。只允许写入 memory/ 子目录，防止篡改核心指令文件。"""
     rel = urllib.parse.unquote(rel)
     fpath = (project_root / rel).resolve()
-    allowed_mem_dirs = [project_root.resolve(), (Path.home() / ".claude").resolve()]
+    # 仅允许写入 memory/ 目录下的文件，禁止直接编辑 CLAUDE.md 等核心指令
+    memory_dir = (project_root / "memory").resolve()
+    allowed_dirs = [memory_dir, (Path.home() / ".claude" / "projects").resolve()]
     in_allowed = False
-    for d in allowed_mem_dirs:
+    for d in allowed_dirs:
         try:
             fpath.relative_to(d)
             in_allowed = True
@@ -81,11 +109,11 @@ def save_memory_file(project_root, rel, content):
         except ValueError:
             continue
     if not in_allowed:
-        return {"error": "无权访问该文件。只能操作项目目录和 .claude 目录下的文件"}, 403
-    if not fpath.exists():
-        return {"error": "未找到该记忆文件。请检查文件名是否正确"}, 404
+        return {"error": "仅允许编辑 memory/ 目录下的记忆文件"}, 403
     if not content:
         return {"error": "缺少必填字段 content。请提供要保存的文件内容"}, 400
+    # 目录不存在时自动创建
+    fpath.parent.mkdir(parents=True, exist_ok=True)
     try:
         fpath.write_text(content, encoding="utf-8")
         return {"ok": True, "path": str(fpath), "size": len(content)}, 200
@@ -121,12 +149,14 @@ def search_memory(project_root, query):
                     if query.lower() in line.lower():
                         matches.append({"line": i + 1, "text": line.strip()[:200]})
                 if matches:
-                    results.append({
-                        "name": f.name,
-                        "path": str(f.relative_to(project_root)),
-                        "matches": matches[:10],
-                        "total_matches": len(matches),
-                    })
+                    results.append(
+                        {
+                            "name": f.name,
+                            "path": str(f.relative_to(project_root)),
+                            "matches": matches[:10],
+                            "total_matches": len(matches),
+                        }
+                    )
             except Exception:
                 pass
 
@@ -141,7 +171,9 @@ def get_timeline(project_root):
     # 收集 session 事件中的关键记忆
     sessions_dir = project_root / "maestro" / "sessions"
     if sessions_dir.exists():
-        for f in sorted(sessions_dir.glob("*.jsonl"), key=lambda x: x.stat().st_mtime, reverse=True):
+        for f in sorted(
+            sessions_dir.glob("*.jsonl"), key=lambda x: x.stat().st_mtime, reverse=True
+        ):
             try:
                 lines = []
                 with open(f, "r", encoding="utf-8", errors="ignore") as fp:
@@ -153,13 +185,21 @@ def get_timeline(project_root):
                 for line in lines:
                     try:
                         evt = json.loads(line)
-                        if evt.get("type") in ("user_message", "agent_response", "route_decision", "task_complete", "feedback"):
-                            entries.append({
-                                "ts": evt.get("ts", 0),
-                                "type": evt.get("type"),
-                                "session": f.stem,
-                                "summary": str(evt.get("data", {}))[:300],
-                            })
+                        if evt.get("type") in (
+                            "user_message",
+                            "agent_response",
+                            "route_decision",
+                            "task_complete",
+                            "feedback",
+                        ):
+                            entries.append(
+                                {
+                                    "ts": evt.get("ts", 0),
+                                    "type": evt.get("type"),
+                                    "session": f.stem,
+                                    "summary": str(evt.get("data", {}))[:300],
+                                }
+                            )
                     except Exception:
                         pass
             except Exception:
@@ -173,12 +213,14 @@ def get_timeline(project_root):
                 for line in fp.readlines()[-100:]:
                     if line.strip():
                         evt = json.loads(line)
-                        entries.append({
-                            "ts": evt.get("ts", 0),
-                            "type": "routing_correction",
-                            "session": "",
-                            "summary": f"路由纠正: {evt.get('original_agent')} -> {evt.get('corrected_agent')} | {evt.get('task', '')[:200]}",
-                        })
+                        entries.append(
+                            {
+                                "ts": evt.get("ts", 0),
+                                "type": "routing_correction",
+                                "session": "",
+                                "summary": f"路由纠正: {evt.get('original_agent')} -> {evt.get('corrected_agent')} | {evt.get('task', '')[:200]}",
+                            }
+                        )
         except Exception:
             pass
 
@@ -190,12 +232,14 @@ def get_timeline(project_root):
                 for line in fp.readlines()[-100:]:
                     if line.strip():
                         evt = json.loads(line)
-                        entries.append({
-                            "ts": evt.get("ts", 0),
-                            "type": "operation",
-                            "session": "",
-                            "summary": f"{evt.get('agent','')}: {evt.get('type','')} -> {evt.get('target','')} | {evt.get('detail','')[:200]}",
-                        })
+                        entries.append(
+                            {
+                                "ts": evt.get("ts", 0),
+                                "type": "operation",
+                                "session": "",
+                                "summary": f"{evt.get('agent', '')}: {evt.get('type', '')} -> {evt.get('target', '')} | {evt.get('detail', '')[:200]}",
+                            }
+                        )
         except Exception:
             pass
 

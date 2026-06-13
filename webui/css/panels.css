@@ -34,10 +34,14 @@
 
 /* ── 仪表盘 ── */
 .harness-overlay{position:fixed;top:60px;right:20px;width:520px;height:420px;background:var(--surface);z-index:100;display:none;flex-direction:column;border-radius:var(--radius-lg);border:1px solid var(--border);box-shadow:var(--shadow-lg);resize:both;overflow:auto;min-width:360px;min-height:260px}
+/* 设置面板居中——设置时不需要对话，居中更自然 */
+#devOverlay{right:50%;transform:translateX(50%)}
+#devOverlay.on{display:flex;right:50%;transform:translateX(50%)}
 .harness-overlay.on{display:flex}
 .harness-overlay-tabs{display:flex;border-bottom:1px solid var(--border);background:var(--bg);padding:0 14px;flex-shrink:0;gap:0}
 .harness-overlay-tab{padding:10px 14px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all var(--transition-normal);user-select:none}
 .harness-overlay-tab:hover{color:var(--text2)}
+.harness-overlay-tab:active{transform:scale(.96)}
 .harness-overlay-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
 .harness-overlay-content{flex:1;overflow-y:auto;padding:16px}
 .ctx-gauge{height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:4px}
@@ -61,7 +65,7 @@
 .cost-bar-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .5s}
 
 /* ── 设置面板 ── */
-.proj-input{width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:12px;outline:none;font-family:"JetBrains Mono",monospace;margin-bottom:8px;transition:border-color var(--transition-normal)}
+.proj-input{width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:12px;outline:none;font-family:ui-monospace,"Cascadia Code","Consolas",monospace;margin-bottom:8px;transition:border-color var(--transition-normal)}
 .proj-input:focus{border-color:var(--accent)}
 .settings-section{margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)}
 .settings-section:last-child{border-bottom:none;margin-bottom:0}
@@ -69,7 +73,7 @@
 .mem-file{cursor:pointer;padding:6px 10px;border-radius:4px;font-size:10px;display:flex;align-items:center;gap:6px;transition:all var(--transition-fast)}
 .mem-file:hover{background:rgba(255,255,255,.04)}
 .mem-file .icon{font-size:14px}
-.mem-editor{width:100%;min-height:200px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-size:11px;padding:10px;font-family:"JetBrains Mono",monospace;outline:none;resize:vertical;transition:border-color var(--transition-normal)}
+.mem-editor{width:100%;min-height:200px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-size:11px;padding:10px;font-family:ui-monospace,"Cascadia Code","Consolas",monospace;outline:none;resize:vertical;transition:border-color var(--transition-normal)}
 .mem-editor:focus{border-color:var(--accent)}
 .new-chat-btn{width:100%;padding:8px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-size:12px;margin-bottom:8px;flex-shrink:0;font-weight:600;transition:all var(--transition-fast)}
 .new-chat-btn:hover{background:var(--accent2)}

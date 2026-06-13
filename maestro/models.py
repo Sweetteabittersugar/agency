@@ -17,6 +17,7 @@ from pathlib import Path
 
 # === 主流模型预设（用户只需选 provider） ===
 
+# 2026.06 更新：精简为7大主流Provider，移除moonshot/ollama/minimax/siliconflow/kimi/glm重复项
 PROVIDER_PRESETS = {
     "deepseek": {
         "heavy": "deepseek-v4-pro",
@@ -24,88 +25,47 @@ PROVIDER_PRESETS = {
         "light": "deepseek-v4-flash",
         "base_url": "https://api.deepseek.com",
     },
-    "openai": {
-        "heavy": "gpt-4o",
-        "standard": "gpt-4o-mini",
-        "light": "gpt-4o-mini",
-        "base_url": "https://api.openai.com/v1",
-    },
     "anthropic": {
         "heavy": "claude-opus-4-8",
         "standard": "claude-sonnet-4-6",
         "light": "claude-haiku-4-5",
         "base_url": "https://api.anthropic.com/v1",
     },
-    "gemini": {
+    "openai": {
+        "heavy": "gpt-5",
+        "standard": "gpt-5-mini",
+        "light": "gpt-5-nano",
+        "base_url": "https://api.openai.com/v1",
+    },
+    "google": {
         "heavy": "gemini-2.5-pro",
         "standard": "gemini-2.5-flash",
         "light": "gemini-2.5-flash-lite",
         "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
     },
+    "xai": {
+        "heavy": "grok-4.3",
+        "standard": "grok-4.3",
+        "light": "grok-4-1-fast-reasoning",
+        "base_url": "https://api.x.ai/v1",
+    },
     "qwen": {
-        "heavy": "qwen-max",
-        "standard": "qwen-plus",
-        "light": "qwen-turbo",
+        "heavy": "qwen3-max",
+        "standard": "qwen3-max",
+        "light": "qwen-long",
         "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
     },
     "zhipu": {
-        "heavy": "glm-4-plus",
-        "standard": "glm-4-air",
-        "light": "glm-4-flash",
-        "base_url": "https://open.bigmodel.cn/api/paas/v4",
-    },
-    "moonshot": {
-        "heavy": "moonshot-v1-8k",
-        "standard": "moonshot-v1-8k",
-        "light": "moonshot-v1-8k",
-        "base_url": "https://api.moonshot.cn/v1",
-    },
-    "ollama": {
-        "heavy": "qwen2.5:72b",
-        "standard": "qwen2.5:32b",
-        "light": "qwen2.5:7b",
-        "base_url": "http://localhost:11434/v1",
-    },
-    "google": {
-        "heavy": "gemini-2.5-pro",
-        "standard": "gemini-2.5-pro",
-        "light": "gemini-2.5-flash",
-        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
-    },
-    "xai": {
-        "heavy": "grok-3",
-        "standard": "grok-3",
-        "light": "grok-3-mini",
-        "base_url": "https://api.x.ai/v1",
-    },
-    "minimax": {
-        "heavy": "abab7-chat",
-        "standard": "abab7-chat",
-        "light": "abab6.5s-chat",
-        "base_url": "https://api.minimax.chat/v1",
-    },
-    "siliconflow": {
-        "heavy": "Pro/deepseek-ai/DeepSeek-V3",
-        "standard": "Pro/deepseek-ai/DeepSeek-V3",
-        "light": "Pro/deepseek-ai/DeepSeek-V3",
-        "base_url": "https://api.siliconflow.cn/v1",
-    },
-    "kimi": {
-        "heavy": "moonshot-v1-8k",
-        "standard": "moonshot-v1-8k",
-        "light": "moonshot-v1-8k",
-        "base_url": "https://api.moonshot.cn/v1",
-    },
-    "glm": {
-        "heavy": "glm-4-plus",
-        "standard": "glm-4-plus",
-        "light": "glm-4-flash",
+        "heavy": "GLM-5.1",
+        "standard": "GLM-5.1",
+        "light": "GLM-4-Flash",
         "base_url": "https://open.bigmodel.cn/api/paas/v4",
     },
 }
 
 # === API Provider 映射（chat / orchestrate 共用）===
 
+# 2026.06 更新：与PROVIDER_PRESETS对齐，移除旧provider
 PROVIDER_MAP = {
     "deepseek": {
         "ANTHROPIC_BASE_URL": "https://api.deepseek.com/anthropic",
@@ -119,7 +79,7 @@ PROVIDER_MAP = {
     },
     "openai": {
         "ANTHROPIC_BASE_URL": "https://api.openai.com/v1",
-        "ANTHROPIC_MODEL": "gpt-4o",
+        "ANTHROPIC_MODEL": "gpt-5",
     },
     "google": {
         "ANTHROPIC_BASE_URL": "https://generativelanguage.googleapis.com/v1beta/openai",
@@ -127,27 +87,15 @@ PROVIDER_MAP = {
     },
     "xai": {
         "ANTHROPIC_BASE_URL": "https://api.x.ai/v1",
-        "ANTHROPIC_MODEL": "grok-3",
-    },
-    "siliconflow": {
-        "ANTHROPIC_BASE_URL": "https://api.siliconflow.cn/v1",
-        "ANTHROPIC_MODEL": "Pro/deepseek-ai/DeepSeek-V3",
+        "ANTHROPIC_MODEL": "grok-4.3",
     },
     "qwen": {
         "ANTHROPIC_BASE_URL": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-        "ANTHROPIC_MODEL": "qwen-plus",
+        "ANTHROPIC_MODEL": "qwen3-max",
     },
-    "kimi": {
-        "ANTHROPIC_BASE_URL": "https://api.moonshot.cn/v1",
-        "ANTHROPIC_MODEL": "moonshot-v1-8k",
-    },
-    "glm": {
+    "zhipu": {
         "ANTHROPIC_BASE_URL": "https://open.bigmodel.cn/api/paas/v4",
-        "ANTHROPIC_MODEL": "glm-4-plus",
-    },
-    "minimax": {
-        "ANTHROPIC_BASE_URL": "https://api.minimax.chat/v1",
-        "ANTHROPIC_MODEL": "abab7-chat",
+        "ANTHROPIC_MODEL": "GLM-5.1",
     },
     "custom": {},
 }
@@ -165,6 +113,7 @@ def get_provider_config() -> tuple[str, str, dict[str, str]]:
     preset = PROVIDER_PRESETS.get(provider, {})
 
     # API Key
+    # 2026.06 更新：精简为8个provider，移除moonshot/ollama/minimax/siliconflow/kimi/glm
     key_env_map = {
         "deepseek": "DEEPSEEK_API_KEY",
         "openai": "OPENAI_API_KEY",
@@ -172,14 +121,8 @@ def get_provider_config() -> tuple[str, str, dict[str, str]]:
         "gemini": "GEMINI_API_KEY",
         "qwen": "QWEN_API_KEY",
         "zhipu": "ZHIPU_API_KEY",
-        "moonshot": "MOONSHOT_API_KEY",
-        "ollama": None,
         "google": "GOOGLE_API_KEY",
         "xai": "XAI_API_KEY",
-        "minimax": "MINIMAX_API_KEY",
-        "siliconflow": "SILICONFLOW_API_KEY",
-        "kimi": "MOONSHOT_API_KEY",
-        "glm": "ZHIPU_API_KEY",
     }
 
     api_key = ""
@@ -206,59 +149,74 @@ def get_provider_config() -> tuple[str, str, dict[str, str]]:
     return base_url.rstrip("/"), api_key, headers
 
 
+# 旧 tier 名 → 新 tier 名映射
+_TIER_ALIAS = {
+    "opus": "powerful", "sonnet": "balanced", "haiku": "fast",
+    "heavy": "powerful", "standard": "balanced", "light": "fast",
+}
+
+
 def resolve_model(agent_tier: str | None = None) -> str:
     """
     根据 Agent 的能力级别解析实际模型名。自动降级。
 
-    agent_tier: "haiku" | "sonnet" | "opus" (from agent frontmatter model field)
-    如果传入的不是已知能力级别，原样返回（说明已经是具体模型名）。
+    agent_tier 接受：
+      - 新命名: "fast" | "balanced" | "powerful"
+      - 旧命名（兼容）: "haiku" | "sonnet" | "opus" | "light" | "standard" | "heavy"
+      - 具体模型名: 如 "deepseek-v4-pro" → 原样返回
 
     返回: 实际模型名 (str)
     """
-    # 不是能力级别 → 已解析过的具体模型名，原样返回
-    if agent_tier and agent_tier not in ("haiku", "sonnet", "opus"):
-        return agent_tier
-
     # 空值 → 用默认
     if not agent_tier:
         return get_default_model()
 
+    # 统一为 fast/balanced/powerful
+    tier = _TIER_ALIAS.get(agent_tier, agent_tier)
+
+    # 不是已知 tier → 已解析过的具体模型名，原样返回
+    if tier not in ("fast", "balanced", "powerful"):
+        return tier
+
     provider = os.environ.get("PROVIDER", "deepseek").lower()
 
-    # 用户手动覆盖（最高优先级）
-    provider_upper = provider.upper()
-    env_map_with_provider = {
-        "opus": [f"{provider_upper}_HEAVY_MODEL", "HEAVY_MODEL"],
-        "sonnet": [f"{provider_upper}_STANDARD_MODEL", "STANDARD_MODEL"],
-        "haiku": [f"{provider_upper}_LIGHT_MODEL", "LIGHT_MODEL"],
+    # 1) 用户手动覆盖（最高优先级）—— 环境变量
+    env_keys = {
+        "powerful": [f"{provider.upper()}_HEAVY_MODEL", "HEAVY_MODEL"],
+        "balanced": [f"{provider.upper()}_STANDARD_MODEL", "STANDARD_MODEL"],
+        "fast": [f"{provider.upper()}_LIGHT_MODEL", "LIGHT_MODEL"],
     }
-
-    # 尝试精准匹配
-    for env_name in env_map_with_provider.get(agent_tier, []):
+    for env_name in env_keys.get(tier, []):
         model = os.environ.get(env_name)
         if model:
             return model
 
-    # 没配置 → 自动降级
-    preset = PROVIDER_PRESETS.get(provider, {})
-    tier_fallback = {
-        "opus": ["heavy", "standard", "light", "default"],
-        "sonnet": ["standard", "light", "default"],
-        "haiku": ["light", "default"],
+    # 2) MODEL_TIERS 表查找
+    provider_tiers = MODEL_TIERS.get(provider, {})
+    fallback_order = {
+        "powerful": ["powerful", "balanced", "fast"],
+        "balanced": ["balanced", "fast", "powerful"],
+        "fast": ["fast", "balanced", "powerful"],
     }
+    for fb in fallback_order.get(tier, ["balanced"]):
+        model = provider_tiers.get(fb)
+        if model:
+            return model
 
-    for fallback in tier_fallback.get(agent_tier, ["default"]):
-        if fallback == "default":
-            model = os.environ.get("DEFAULT_MODEL")
-            if model:
-                return model
-        else:
-            model = preset.get(fallback)
-            if model:
-                return model
+    # 3) 旧 PROVIDER_PRESETS fallback
+    preset = PROVIDER_PRESETS.get(provider, {})
+    preset_fallback = {
+        "powerful": ["heavy", "standard", "light"],
+        "balanced": ["standard", "light"],
+        "fast": ["light"],
+    }
+    for fb in preset_fallback.get(tier, ["standard"]):
+        model = preset.get(fb)
+        if model:
+            return model
 
-    # 终极降级
-    return "deepseek-chat"
+    # 4) 终极降级 → deepseek-v4-flash（不再用已废弃的 deepseek-chat）
+    return "deepseek-v4-flash"
 
 
 def get_actual_model(agent_frontmatter_model: str | None = None) -> str:
@@ -266,43 +224,156 @@ def get_actual_model(agent_frontmatter_model: str | None = None) -> str:
     return resolve_model(agent_frontmatter_model)
 
 
+def get_context_limit(model: str) -> int:
+    """查询模型的上下文窗口容量（token），未知模型默认 128K"""
+    return MODEL_CONTEXT_WINDOWS.get(model, 128_000)
+
+
+def get_model_tier(model: str) -> str:
+    """反查具体模型名属于哪个 tier，用于仪表盘展示"""
+    for provider_tiers in MODEL_TIERS.values():
+        for tier, name in provider_tiers.items():
+            if name == model:
+                return tier
+    return "unknown"
+
+
 def get_default_model() -> str:
     """获取默认模型（用于未指定 Agent 的调用）"""
     return os.environ.get("DEFAULT_MODEL") or resolve_model("sonnet")
 
 
-# === 最新模型价格（2026.06） ===
-
+# === 模型定价表（2026.06 WebSearch 核实） ===
+# (input_price, output_price) 单位 USD/百万token
+#
+# DeepSeek 来源: api-docs.deepseek.com/quick_start/pricing
+#   - deepseek-chat/reasoner 将于 2026-07-24 废弃，迁移到 v4-flash
+#   - V4 Pro 75% 永久折扣: $1.74→$0.435, $3.48→$0.87
+# Anthropic 来源: cloudzero.com/blog/claude-api-pricing
+#   - Opus 4.6+ 降价 67%: $15/$75 → $5/$25
+# OpenAI 来源: openai.com/api/pricing (GPT-4.1 取代 GPT-4o)
+# Google 来源: opslyft.com/blog/google-gemini-api-pricing-2026
+#
+# 2026.06 更新：GPT-5系列定价、xAI Grok 4.3、Qwen3/Zhipu GLM-5.1
 PRICING = {
-    # DeepSeek
-    "deepseek-v4-pro": (0.28, 0.28),       # $/1M tokens, input=output after 2026.05 降价
-    "deepseek-v4-flash": (0.07, 0.07),
-    "deepseek-v3": (0.27, 0.27),
-    "deepseek-r1": (0.55, 2.19),
-    "deepseek-chat": (0.27, 1.10),
-    "deepseek-reasoner": (0.55, 2.19),
-    # OpenAI
-    "gpt-4o": (2.50, 10.00),
-    "gpt-4o-mini": (0.15, 0.60),
-    # Anthropic (Claude)
-    "claude-opus-4-8": (15.00, 75.00),
+    # DeepSeek — api-docs.deepseek.com（2026.04 V4 永久促销）
+    "deepseek-v4-pro": (0.435, 0.87),
+    "deepseek-v4-flash": (0.14, 0.28),
+    "deepseek-chat": (0.14, 0.28),      # 2026.07退役→v4-flash，保留兼容
+    "deepseek-reasoner": (0.14, 0.28),  # 同上
+    # Anthropic Claude — platform.claude.com（Opus 4.6+ 降价67%）
+    "claude-opus-4-8": (5.00, 25.00),
     "claude-sonnet-4-6": (3.00, 15.00),
-    "claude-haiku-4-5": (0.80, 4.00),
-    # Google
+    "claude-haiku-4-5": (1.00, 5.00),
+    # OpenAI GPT-5 — developers.openai.com（2025.08）
+    "gpt-5": (1.25, 10.00),
+    "gpt-5-mini": (0.25, 2.00),
+    "gpt-5-nano": (0.05, 0.40),
+    "gpt-4.1": (2.00, 8.00),            # 长上下文1M，保留兼容
+    "gpt-4.1-mini": (0.40, 1.60),
+    "gpt-4.1-nano": (0.10, 0.40),
+    "gpt-4o": (2.50, 10.00),            # 旧版，保留兼容
+    "gpt-4o-mini": (0.15, 0.60),
+    # Google Gemini — opslyft.com
     "gemini-2.5-pro": (1.25, 10.00),
-    "gemini-2.5-flash": (0.15, 0.60),
-    "gemini-2.5-flash-lite": (0.15, 0.60),
-    # Qwen (通义千问)
-    "qwen-max": (2.00, 6.00),
-    "qwen-plus": (1.00, 2.00),
-    "qwen-turbo": (0.30, 0.60),
-    # Zhipu (智谱)
-    "glm-4-plus": (7.00, 7.00),
-    "glm-4-air": (0.35, 0.35),
-    "glm-4-flash": (0.20, 0.20),
-    # Moonshot
-    "moonshot-v1-8k": (2.00, 2.00),
+    "gemini-2.5-flash": (0.30, 2.50),
+    "gemini-2.5-flash-lite": (0.10, 0.40),
+    # xAI Grok — docs.x.ai（2026.05）
+    "grok-4.3": (1.25, 2.50),
+    "grok-4-1-fast-reasoning": (0.20, 0.50),
+    # Qwen 通义千问 — help.aliyun.com（1USD≈7.25CNY）
+    "qwen3-max": (0.34, 1.38),
+    "qwen-long": (0.07, 0.28),
+    # Zhipu 智谱 — cloudprice.net
+    "GLM-5.1": (0.83, 3.31),
+    "GLM-4-Flash": (0, 0),              # 免费
 }
+
+# === 模型分级 ===
+# 替代旧的 haiku/sonnet/opus 命名，统一为三级：
+#   fast:     便宜快响应的日常任务（路由、搜索、简单编辑）
+#   balanced: 性价比主力（代码生成、审查、复杂逻辑）
+#   powerful: 最强推理（架构设计、难题调试、关键决策）
+#
+# 每个 Provider 的 PRESETS 中 heavy/standard/light 对应 powerful/balanced/fast
+# 2026.06 更新：GPT-5系列、xAI/Qwen/Zhipu分级
+MODEL_TIERS = {
+    "deepseek": {"powerful": "deepseek-v4-pro", "balanced": "deepseek-v4-pro", "fast": "deepseek-v4-flash"},
+    "anthropic": {"powerful": "claude-opus-4-8", "balanced": "claude-sonnet-4-6", "fast": "claude-haiku-4-5"},
+    "openai": {"powerful": "gpt-5", "balanced": "gpt-5-mini", "fast": "gpt-5-nano"},
+    "google": {"powerful": "gemini-2.5-pro", "balanced": "gemini-2.5-flash", "fast": "gemini-2.5-flash-lite"},
+    "xai": {"powerful": "grok-4.3", "balanced": "grok-4.3", "fast": "grok-4-1-fast-reasoning"},
+    "qwen": {"powerful": "qwen3-max", "balanced": "qwen3-max", "fast": "qwen-long"},
+    "zhipu": {"powerful": "GLM-5.1", "balanced": "GLM-5.1", "fast": "GLM-4-Flash"},
+}
+
+# === 模型上下文窗口容量（token） ===
+# 用于判断是否需要压缩，不再统一用 300K
+# 2026.06 更新：GPT-5系列400K、xAI Grok 4.3/Qwen3/GLM-5.1上下文窗口
+MODEL_CONTEXT_WINDOWS = {
+    "deepseek-v4-pro": 1_000_000,
+    "deepseek-v4-flash": 1_000_000,
+    "deepseek-chat": 128_000,
+    "deepseek-reasoner": 128_000,
+    "claude-opus-4-8": 1_000_000,
+    "claude-sonnet-4-6": 200_000,
+    "claude-haiku-4-5": 200_000,
+    "gpt-5": 400_000,
+    "gpt-5-mini": 400_000,
+    "gpt-5-nano": 400_000,
+    "gpt-4.1": 1_000_000,
+    "gpt-4.1-mini": 1_000_000,
+    "gpt-4.1-nano": 1_000_000,
+    "gpt-4o": 128_000,
+    "gpt-4o-mini": 128_000,
+    "gemini-2.5-pro": 1_000_000,
+    "gemini-2.5-flash": 1_000_000,
+    "gemini-2.5-flash-lite": 1_000_000,
+    "grok-4.3": 1_000_000,
+    "grok-4-1-fast-reasoning": 2_000_000,
+    "qwen3-max": 262_144,
+    "qwen-long": 1_000_000,
+    "GLM-5.1": 200_000,
+    "GLM-4-Flash": 128_000,
+}
+
+# === 上下文压缩策略 ===
+# 行业惯例：警告 70%，强制压缩 85%。
+# 参考：Claude 建议 75% 时考虑总结，GPT-4 在 80% 触发 truncation，
+# Gemini 推荐 75-85% 区间。取中庸值：70% 提醒 / 85% 自动压缩。
+COMPACTION_WARN_RATIO = 0.70   # 达到此比例时前端/后端触发提醒
+COMPACTION_FORCE_RATIO = 0.85  # 达到此比例时自动触发上下文压缩
+
+
+def _load_compaction_overrides() -> dict:
+    """读取用户自定义的压缩比例覆盖"""
+    cfg_path = Path(__file__).resolve().parent / "compaction_config.json"
+    try:
+        if cfg_path.exists():
+            return _json.loads(cfg_path.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return {}
+
+
+def check_compaction(model: str, used_tokens: int) -> dict:
+    """返回压缩状态: {warn, force, capacity, ratio, model}。
+    先查用户自定义比例，无则用全局默认 70%/85%。"""
+    capacity = MODEL_CONTEXT_WINDOWS.get(model, 128_000)
+    ratio = used_tokens / capacity if capacity > 0 else 0
+    overrides = _load_compaction_overrides()
+    defaults = overrides.get("defaults", {"warn": COMPACTION_WARN_RATIO, "force": COMPACTION_FORCE_RATIO})
+    model_cfg = overrides.get("models", {}).get(model, {})
+    warn_ratio = model_cfg.get("warn", defaults["warn"])
+    force_ratio = model_cfg.get("force", defaults["force"])
+    return {
+        "model": model,
+        "used": used_tokens,
+        "capacity": capacity,
+        "ratio": round(ratio, 3),
+        "warn": ratio >= warn_ratio,
+        "force": ratio >= force_ratio,
+    }
 
 
 # === 定价外部化 ===
@@ -312,11 +383,22 @@ import json as _json
 PRICING_FILE = Path(__file__).resolve().parent.parent / "pricing.json"
 
 
+# Cache: avoid repeated file I/O on every cost estimate call
+_pricing_cache = None
+# Cache pricing file by mtime to avoid repeated disk I/O on every cost estimate call
+_pricing_cache_mtime = 0
+
 def load_pricing_overrides() -> dict:
     """加载用户自定义定价覆盖。"""
     if PRICING_FILE.exists():
         try:
-            return _json.loads(PRICING_FILE.read_text(encoding="utf-8"))
+            global _pricing_cache, _pricing_cache_mtime
+            mtime = PRICING_FILE.stat().st_mtime
+            if _pricing_cache is not None and mtime == _pricing_cache_mtime:
+                return _pricing_cache
+            _pricing_cache = _json.loads(PRICING_FILE.read_text(encoding="utf-8"))
+            _pricing_cache_mtime = mtime
+            return _pricing_cache
         except Exception:
             pass
     return {}

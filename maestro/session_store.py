@@ -1,4 +1,5 @@
 """会话持久化 — 事件溯源模式 (JSONL + 快照压缩)"""
+
 import json
 import time
 import os
@@ -8,7 +9,9 @@ from pathlib import Path
 log = logging.getLogger(__name__)
 
 STORE_DIR = Path(__file__).resolve().parent / "sessions"
-from maestro.app_config import SESSION_SNAPSHOT_THRESHOLD as SNAPSHOT_THRESHOLD  # JSONL 超过 2MB 时压缩快照
+from maestro.app_config import (
+    SESSION_SNAPSHOT_THRESHOLD as SNAPSHOT_THRESHOLD,
+)  # JSONL 超过 2MB 时压缩快照
 
 
 def _ensure_dir():
@@ -28,11 +31,7 @@ def _snapshot_path(session_id: str) -> Path:
 
 def append_event(session_id: str, event_type: str, data: dict) -> dict:
     """追加事件到会话日志"""
-    event = {
-        "ts": time.time(),
-        "type": event_type,
-        "data": data
-    }
+    event = {"ts": time.time(), "type": event_type, "data": data}
     path = _session_path(session_id)
     try:
         with open(path, "a", encoding="utf-8") as f:
@@ -67,20 +66,31 @@ def _compress_snapshot(session_id: str):
         log.debug(f"session_store compress read: {e}")
         return
 
-    keep_types = {"user_message", "agent_selected", "agent_response", "route_decision",
-                  "task_complete", "error", "feedback"}
+    keep_types = {
+        "user_message",
+        "agent_selected",
+        "agent_response",
+        "route_decision",
+        "task_complete",
+        "error",
+        "feedback",
+    }
 
     snapshot = [e for e in events if e.get("type") in keep_types]
 
     snap_path = _snapshot_path(session_id)
     try:
         with open(snap_path, "w", encoding="utf-8") as f:
-            json.dump({
-                "compressed_at": time.time(),
-                "original_count": len(events),
-                "compressed_count": len(snapshot),
-                "events": snapshot
-            }, f, ensure_ascii=False)
+            json.dump(
+                {
+                    "compressed_at": time.time(),
+                    "original_count": len(events),
+                    "compressed_count": len(snapshot),
+                    "events": snapshot,
+                },
+                f,
+                ensure_ascii=False,
+            )
     except Exception as e:
         log.debug(f"session_store compress write: {e}")
         return
@@ -134,13 +144,15 @@ def list_sessions() -> list:
                     if '"user_message"' in line or '"agent_response"' in line:
                         msg_count += 1
 
-            sessions.append({
-                "id": name,
-                "size_kb": round(size / 1024, 1),
-                "events": msg_count,
-                "created": first_ts,
-                "updated": last_ts
-            })
+            sessions.append(
+                {
+                    "id": name,
+                    "size_kb": round(size / 1024, 1),
+                    "events": msg_count,
+                    "created": first_ts,
+                    "updated": last_ts,
+                }
+            )
         except Exception as e:
             log.debug(f"session_store list_sessions: {e}")
             sessions.append({"id": name, "size_kb": 0, "events": 0, "created": 0, "updated": 0})
@@ -173,13 +185,15 @@ def search_sessions(query: str, limit: int = 20) -> list:
                 for line in fp:
                     if q in line.lower():
                         evt = json.loads(line)
-                        results.append({
-                            "session_id": f.stem,
-                            "ts": evt.get("ts", 0),
-                            "type": evt.get("type", "?"),
-                            "snippet": str(evt.get("data", ""))[:200],
-                            "full_event": evt,
-                        })
+                        results.append(
+                            {
+                                "session_id": f.stem,
+                                "ts": evt.get("ts", 0),
+                                "type": evt.get("type", "?"),
+                                "snippet": str(evt.get("data", ""))[:200],
+                                "full_event": evt,
+                            }
+                        )
                         if len(results) >= limit * 5:
                             break
         except Exception as e:

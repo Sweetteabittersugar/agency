@@ -1,4 +1,5 @@
 """操作历史 — 记录 Agent 的文件/命令操作"""
+
 import json
 import time
 from pathlib import Path
@@ -13,7 +14,7 @@ def record_operation(agent: str, op_type: str, target: str, detail: str = ""):
         "agent": agent,
         "type": op_type,  # file_write, file_delete, command_run, etc.
         "target": target,
-        "detail": detail[:500]
+        "detail": detail[:500],
     }
     try:
         with open(OPS_FILE, "a", encoding="utf-8") as f:

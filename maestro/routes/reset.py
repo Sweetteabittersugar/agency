@@ -1,7 +1,6 @@
 """恢复默认 — 逐个/分类/全量重置用户自定义内容"""
-import shutil
+
 import subprocess
-import json as _json
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -15,24 +14,29 @@ SYSTEM_SKILLS_DIR = PROJECT_ROOT / ".claude" / "skills"
 def _list_user_files(directory: Path, suffix: str = ".md") -> list:
     if not directory.exists():
         return []
-    return sorted([
-        {
-            "name": f.stem,
-            "path": str(f.relative_to(PROJECT_ROOT)),
-            "size_kb": round(f.stat().st_size / 1024, 1)
-        }
-        for f in directory.glob(f"*{suffix}")
-        if f.is_file() and f.name != ".gitkeep"
-    ])
+    return sorted(
+        [
+            {
+                "name": f.stem,
+                "path": str(f.relative_to(PROJECT_ROOT)),
+                "size_kb": round(f.stat().st_size / 1024, 1),
+            }
+            for f in directory.glob(f"*{suffix}")
+            if f.is_file() and f.name != ".gitkeep"
+        ]
+    )
 
 
 def _list_system_categories(base_dir: Path) -> list:
     if not base_dir.exists():
         return []
-    return sorted([
-        d.name for d in base_dir.iterdir()
-        if d.is_dir() and not d.name.startswith(".") and d.name != "user"
-    ])
+    return sorted(
+        [
+            d.name
+            for d in base_dir.iterdir()
+            if d.is_dir() and not d.name.startswith(".") and d.name != "user"
+        ]
+    )
 
 
 def handle_reset_status(handler, parsed):
@@ -44,19 +48,18 @@ def handle_reset_status(handler, parsed):
 
     can_reset_system = (PROJECT_ROOT / ".git").exists()
 
-    handler.send_json({
-        "ok": True,
-        "user_customizations": {
-            "agents": user_agents,
-            "skills": user_skills,
-            "total": len(user_agents) + len(user_skills)
-        },
-        "system_categories": {
-            "agents": agent_categories,
-            "skills": skill_categories
-        },
-        "can_reset_system": can_reset_system
-    })
+    handler.send_json(
+        {
+            "ok": True,
+            "user_customizations": {
+                "agents": user_agents,
+                "skills": user_skills,
+                "total": len(user_agents) + len(user_skills),
+            },
+            "system_categories": {"agents": agent_categories, "skills": skill_categories},
+            "can_reset_system": can_reset_system,
+        }
+    )
     return True
 
 
@@ -72,8 +75,10 @@ def handle_reset_user_file(handler, parsed):
     # 安全检查：只允许在 user/ 目录下
     user_agents_resolved = USER_AGENTS_DIR.resolve()
     user_skills_resolved = USER_SKILLS_DIR.resolve()
-    if not (str(full_path).startswith(str(user_agents_resolved)) or
-            str(full_path).startswith(str(user_skills_resolved))):
+    if not (
+        str(full_path).startswith(str(user_agents_resolved))
+        or str(full_path).startswith(str(user_skills_resolved))
+    ):
         handler.send_json({"ok": False, "error": "只能删除 user/ 目录下的文件"}, 403)
         return True
 
@@ -135,8 +140,10 @@ def handle_reset_system_category(handler, parsed):
         rel_path = str(target_dir.relative_to(PROJECT_ROOT))
         result = subprocess.run(
             ["git", "checkout", "--", rel_path],
-            capture_output=True, text=True, timeout=30,
-            cwd=PROJECT_ROOT
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=PROJECT_ROOT,
         )
         if result.returncode == 0:
             handler.send_json({"ok": True, "restored": rel_path, "message": f"已恢复 {category}"})
@@ -153,6 +160,7 @@ def handle_reset_full(handler, parsed):
     """POST /api/reset/full"""
     # 前置检查
     import shutil as _shutil
+
     issues = []
 
     # 检查 git
@@ -189,8 +197,9 @@ def handle_reset_full(handler, parsed):
         for pattern in [".claude/agents/L*/", ".claude/skills/"]:
             subprocess.run(
                 ["git", "checkout", "--", pattern],
-                capture_output=True, timeout=30,
-                cwd=PROJECT_ROOT
+                capture_output=True,
+                timeout=30,
+                cwd=PROJECT_ROOT,
             )
         results.append("系统文件已恢复到默认")
     except FileNotFoundError:

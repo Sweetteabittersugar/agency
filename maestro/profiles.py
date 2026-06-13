@@ -3,6 +3,7 @@
 与 orchestrator 集成：分配 Agent 前调用 estimate_complexity() 选 profile，
 按 profile 过滤可用 Agent 和 Skill。
 """
+
 import json
 import logging
 from pathlib import Path
@@ -16,32 +17,90 @@ AGENT_YAML_PATH = PROJECT_ROOT / "agent.yaml"
 
 # 写入操作关键词（用于检测是否需要写权限）
 _WRITE_KEYWORDS = [
-    "写", "改", "创建", "新建", "生成", "删除", "修改", "编辑",
-    "重构", "实现", "开发", "修复", "更新", "添加", "移除",
-    "write", "create", "delete", "edit", "update", "fix",
-    "refactor", "implement", "generate", "remove", "add",
+    "写",
+    "改",
+    "创建",
+    "新建",
+    "生成",
+    "删除",
+    "修改",
+    "编辑",
+    "重构",
+    "实现",
+    "开发",
+    "修复",
+    "更新",
+    "添加",
+    "移除",
+    "write",
+    "create",
+    "delete",
+    "edit",
+    "update",
+    "fix",
+    "refactor",
+    "implement",
+    "generate",
+    "remove",
+    "add",
 ]
 
 # 多文件操作关键词
 _MULTI_FILE_KEYWORDS = [
-    "多个", "批量", "全部", "整套", "整个项目", "完整",
-    "协调", "编排", "调度", "架构", "重构", "迁移",
-    "all", "batch", "multiple", "orchestrate", "pipeline",
-    "architecture", "refactor", "migrate",
+    "多个",
+    "批量",
+    "全部",
+    "整套",
+    "整个项目",
+    "完整",
+    "协调",
+    "编排",
+    "调度",
+    "架构",
+    "重构",
+    "迁移",
+    "all",
+    "batch",
+    "multiple",
+    "orchestrate",
+    "pipeline",
+    "architecture",
+    "refactor",
+    "migrate",
 ]
 
 # 小型修复关键词 → 覆盖为 minimal
 _SIMPLE_WRITE_KEYWORDS = [
-    "简单", "小修", "改一行", "修改一行", "小改",
-    "简单修复", "小bug", "minor", "trivial",
-    "修typo", "改注释", "加个注释", "补文档",
+    "简单",
+    "小修",
+    "改一行",
+    "修改一行",
+    "小改",
+    "简单修复",
+    "小bug",
+    "minor",
+    "trivial",
+    "修typo",
+    "改注释",
+    "加个注释",
+    "补文档",
 ]
 
 # 复杂操作关键词 → 推定 full
 _COMPLEX_KEYWORDS = [
-    "架构重构", "多Agent", "DAG", "管线", "pipeline",
-    "整套的", "全栈", "端到端", "e2e",
-    "安全审计", "全面扫描", "微服务", "拆分为",
+    "架构重构",
+    "多Agent",
+    "DAG",
+    "管线",
+    "pipeline",
+    "整套的",
+    "全栈",
+    "端到端",
+    "e2e",
+    "安全审计",
+    "全面扫描",
+    "微服务",
+    "拆分为",
 ]
 
 
@@ -93,9 +152,7 @@ def load_profile(task_complexity: str) -> Dict:
 
     profiles = data.get("profiles", {})
     if task_complexity not in profiles:
-        log.warning(
-            "Unknown complexity '%s', falling back to standard", task_complexity
-        )
+        log.warning("Unknown complexity '%s', falling back to standard", task_complexity)
         return profiles.get("standard", _default_profile("standard"))
 
     return profiles[task_complexity]
@@ -229,11 +286,14 @@ def get_agent_profile_skills(agent_name: str) -> Dict:
         }
     """
     bindings = _load_yaml_skills()
-    return bindings.get(agent_name, {
-        "required": [],
-        "optional": [],
-        "excluded": [],
-    })
+    return bindings.get(
+        agent_name,
+        {
+            "required": [],
+            "optional": [],
+            "excluded": [],
+        },
+    )
 
 
 def _default_profile(complexity: str) -> Dict:

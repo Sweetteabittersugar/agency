@@ -1,5 +1,5 @@
 """测试 safety.py — 安全护栏"""
-import pytest
+
 from maestro.safety import check_input, sanitize_output, check_output, check_rate_limit
 
 

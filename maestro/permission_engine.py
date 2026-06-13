@@ -20,7 +20,7 @@ import time
 import threading
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 log = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ AUTO_ALLOW = [
     "Read",
     "Grep",
     "Glob",
-    "Bash",          # Bash 本身不是危险操作，危险的是 Bash 的参数
+    "Bash",  # Bash 本身不是危险操作，危险的是 Bash 的参数
     "TaskList",
     "TaskGet",
     "CronList",
@@ -81,25 +81,37 @@ ALWAYS_DENY_PATTERNS = [
 ]
 
 # ── 信任模式 ──
-TRUST_MODE_CAUTIOUS = "cautious"    # 所有需确认操作都询问
-TRUST_MODE_NORMAL = "normal"        # 同类操作只问一次
-TRUST_MODE_TRUSTED = "trusted"      # 仅拦截高危操作
+TRUST_MODE_CAUTIOUS = "cautious"  # 所有需确认操作都询问
+TRUST_MODE_NORMAL = "normal"  # 同类操作只问一次
+TRUST_MODE_TRUSTED = "trusted"  # 仅拦截高危操作
 
 # ── 策略门常量 ──
 from maestro.app_config import DEFAULT_TOKEN_LIMIT, DEFAULT_DAILY_BUDGET
+
 BATCH_DELETE_THRESHOLD = 5
-SENSITIVE_FILES = [".env", ".env.local", ".gitignore", "settings.json",
-    "*.key", "*.pem", "*.p12", "credentials*", "secret*"]
+SENSITIVE_FILES = [
+    ".env",
+    ".env.local",
+    ".gitignore",
+    "settings.json",
+    "*.key",
+    "*.pem",
+    "*.p12",
+    "credentials*",
+    "secret*",
+]
 SECRET_PATTERNS = [
-    (r'sk-[A-Za-z0-9-_]{20,}', "疑似 API Key"),
+    (r"sk-[A-Za-z0-9-_]{20,}", "疑似 API Key"),
     (r'api_key\s*=\s*["\'][^"\']{10,}', "疑似硬编码 Key"),
     (r'password\s*=\s*["\']', "疑似硬编码密码"),
     (r'token\s*=\s*["\'][A-Za-z0-9-_]{15,}', "疑似硬编码 Token"),
 ]
 _AGENT_BASE_TOOLS = {
     "coder": "Read,Grep,Glob,Write,Edit,Bash,NotebookEdit",
-    "reviewer": "Read,Grep,Glob", "test": "Read,Grep,Glob,Write,Edit,Bash",
-    "writer": "Read,Grep,Glob,Write,Edit", "explorer": "Read,Grep,Glob,WebSearch,WebFetch",
+    "reviewer": "Read,Grep,Glob",
+    "test": "Read,Grep,Glob,Write,Edit,Bash",
+    "writer": "Read,Grep,Glob,Write,Edit",
+    "explorer": "Read,Grep,Glob,WebSearch,WebFetch",
     "reasonix": "Read,Grep,Glob,Write,Edit,Bash,NotebookEdit",
     "general-worker": "Read,Grep,Glob,Write,Edit,Bash",
     "docker_worker": "Read,Grep,Glob,Write,Edit,Bash",
@@ -125,6 +137,7 @@ class PermissionEngine:
     def _ensure_db(self):
         """延迟初始化数据库连接和表结构"""
         import sqlite3
+
         if self._db_path is None:
             return None
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -244,8 +257,9 @@ class PermissionEngine:
         return tool_name
 
     # ── 信任模式处理 ──
-    def apply_trust_mode(self, decision: str, trust_mode: str, tool_name: str,
-                         path_prefix: str = "") -> Tuple[str, str]:
+    def apply_trust_mode(
+        self, decision: str, trust_mode: str, tool_name: str, path_prefix: str = ""
+    ) -> Tuple[str, str]:
         """
         根据信任模式调整决策。
         返回 (adjusted_decision, note)
@@ -268,8 +282,15 @@ class PermissionEngine:
             return decision, ""
 
     # ── 审计日志 ──
-    def log_audit(self, tool: str, decision: str, reason: str = "",
-                  risk: str = "", user_choice: str = "", args: str = ""):
+    def log_audit(
+        self,
+        tool: str,
+        decision: str,
+        reason: str = "",
+        risk: str = "",
+        user_choice: str = "",
+        args: str = "",
+    ):
         """写入审计日志到 cost.db"""
         with self._stats_lock:
             if decision == "allow":
@@ -282,7 +303,6 @@ class PermissionEngine:
         if self._db_path is None:
             return
 
-        import sqlite3
         try:
             conn = self._ensure_db()
             if conn is None:
@@ -290,9 +310,15 @@ class PermissionEngine:
             try:
                 conn.execute(
                     "INSERT INTO permission_audit (time, tool, args, decision, risk, reason, user_choice) VALUES (?,?,?,?,?,?,?)",
-                    (time.strftime("%Y-%m-%d %H:%M:%S"), tool, args[:500] if args else "",
-                     decision, risk, reason[:200] if reason else "",
-                     user_choice[:100] if user_choice else "")
+                    (
+                        time.strftime("%Y-%m-%d %H:%M:%S"),
+                        tool,
+                        args[:500] if args else "",
+                        decision,
+                        risk,
+                        reason[:200] if reason else "",
+                        user_choice[:100] if user_choice else "",
+                    ),
                 )
                 conn.commit()
             finally:
@@ -312,6 +338,7 @@ class PermissionEngine:
             return []
 
         import sqlite3
+
         try:
             conn = sqlite3.connect(str(self._db_path))
             conn.execute("PRAGMA journal_mode=WAL")
@@ -321,12 +348,11 @@ class PermissionEngine:
                 if decision_filter:
                     rows = conn.execute(
                         "SELECT * FROM permission_audit WHERE decision = ? ORDER BY id DESC LIMIT ?",
-                        (decision_filter, limit)
+                        (decision_filter, limit),
                     ).fetchall()
                 else:
                     rows = conn.execute(
-                        "SELECT * FROM permission_audit ORDER BY id DESC LIMIT ?",
-                        (limit,)
+                        "SELECT * FROM permission_audit ORDER BY id DESC LIMIT ?", (limit,)
                     ).fetchall()
                 return [dict(r) for r in rows]
             finally:
@@ -349,8 +375,9 @@ class PermissionEngine:
         return True, ""
 
     # ── b) 权限范围限制 ──
-    def get_effective_permissions(self, agent_name: str, task_category: str = "",
-                                   dry_run: bool = False) -> list[str]:
+    def get_effective_permissions(
+        self, agent_name: str, task_category: str = "", dry_run: bool = False
+    ) -> list[str]:
         base = _AGENT_BASE_TOOLS.get(agent_name, "Read,Grep,Glob").split(",")
         if task_category in ("代码审查", "测试质量"):
             for t in ("WebSearch", "WebFetch"):
@@ -391,8 +418,14 @@ class PermissionEngine:
         return True, ""
 
     # ── 便捷方法 ──
-    def check_and_log(self, tool_name: str, args=None, trust_mode: str = "",
-                      path_prefix: str = "", user_choice: str = "") -> Tuple[str, str, str]:
+    def check_and_log(
+        self,
+        tool_name: str,
+        args=None,
+        trust_mode: str = "",
+        path_prefix: str = "",
+        user_choice: str = "",
+    ) -> Tuple[str, str, str]:
         """
         一站式检查：分类 → 应用信任模式 → 记录审计。
         返回 (decision, risk, reason)

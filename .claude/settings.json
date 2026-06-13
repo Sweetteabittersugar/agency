@@ -71,5 +71,6 @@
     "allow": [
       "test"
     ]
-  }
+  },
+  "test": true
 }

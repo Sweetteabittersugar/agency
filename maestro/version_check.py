@@ -1,7 +1,7 @@
 """启动时版本检查 — 后台静默检查 PyPI 新版本，缓存 24 小时。"""
+
 import json
 import os
-import sys
 import time
 import urllib.request
 from pathlib import Path
@@ -34,6 +34,7 @@ def _write_cache(current: str, latest: str) -> None:
 def _get_installed_version() -> str:
     try:
         from importlib.metadata import version
+
         return version("agency-kit")
     except Exception:
         pass

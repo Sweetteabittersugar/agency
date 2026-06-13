@@ -2,21 +2,33 @@
 """
 Test 3: Error handling checks
 """
-import sys, os, re, json, time, threading, unittest
+
+import sys
+import os
+import re
+import json
+import time
+import threading
+import unittest
 from http.server import HTTPServer
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "maestro"))
-from web import Handler, HTML, AGENCY_VERSION
+from web import Handler
 from main import (
-    route_task, route_with_fallback, route_with_cache,
-    load_agent, get_agent_stats, record_agent_result,
-    ROUTING, semantic_match,
+    route_task,
+    route_with_fallback,
+    route_with_cache,
+    load_agent,
+    get_agent_stats,
+    record_agent_result,
+    semantic_match,
 )
 from models import estimate_cost, get_provider_config, get_actual_model, get_default_model
 
 PORT = 18803
+
 
 class TestServerErrorHandling(unittest.TestCase):
     """Server error handling (runtime)"""
@@ -24,6 +36,7 @@ class TestServerErrorHandling(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         import urllib.request
+
         proxy_handler = urllib.request.ProxyHandler({})
         opener = urllib.request.build_opener(proxy_handler)
         urllib.request.install_opener(opener)
@@ -39,10 +52,14 @@ class TestServerErrorHandling(unittest.TestCase):
 
     def _post(self, path, data=None):
         import urllib.request
+
         body = json.dumps(data or {}).encode("utf-8") if data else b"{}"
         req = urllib.request.Request(
-            f"{self.base}{path}", data=body,
-            headers={"Content-Type": "application/json"}, method="POST")
+            f"{self.base}{path}",
+            data=body,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
         try:
             resp = urllib.request.urlopen(req, timeout=10)
             return resp.status, resp.read()
@@ -53,9 +70,13 @@ class TestServerErrorHandling(unittest.TestCase):
 
     def test_01_empty_body_post(self):
         import urllib.request
+
         req = urllib.request.Request(
-            f"{self.base}/api/route", data=b"",
-            headers={"Content-Type": "application/json"}, method="POST")
+            f"{self.base}/api/route",
+            data=b"",
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
         try:
             resp = urllib.request.urlopen(req, timeout=5)
             data = json.loads(resp.read())
@@ -65,9 +86,13 @@ class TestServerErrorHandling(unittest.TestCase):
 
     def test_02_invalid_json_body(self):
         import urllib.request
+
         req = urllib.request.Request(
-            f"{self.base}/api/route", data=b"this is not json",
-            headers={"Content-Type": "application/json"}, method="POST")
+            f"{self.base}/api/route",
+            data=b"this is not json",
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
         try:
             resp = urllib.request.urlopen(req, timeout=5)
             data = json.loads(resp.read())
@@ -77,10 +102,14 @@ class TestServerErrorHandling(unittest.TestCase):
 
     def test_03_gbk_encoded_body(self):
         import urllib.request
+
         gbk_data = "test task".encode("gbk")
         req = urllib.request.Request(
-            f"{self.base}/api/route", data=gbk_data,
-            headers={"Content-Type": "application/json"}, method="POST")
+            f"{self.base}/api/route",
+            data=gbk_data,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
         try:
             resp = urllib.request.urlopen(req, timeout=5)
             data = json.loads(resp.read())
@@ -90,9 +119,9 @@ class TestServerErrorHandling(unittest.TestCase):
 
     def test_04_missing_content_type(self):
         import urllib.request
+
         body = json.dumps({"task": "test"}).encode("utf-8")
-        req = urllib.request.Request(
-            f"{self.base}/api/route", data=body, method="POST")
+        req = urllib.request.Request(f"{self.base}/api/route", data=body, method="POST")
         try:
             resp = urllib.request.urlopen(req, timeout=5)
             data = json.loads(resp.read())
@@ -104,6 +133,7 @@ class TestServerErrorHandling(unittest.TestCase):
 
     def test_05_unknown_route_returns_404(self):
         import urllib.request
+
         try:
             resp = urllib.request.urlopen(f"{self.base}/api/unknown-route-test", timeout=5)
             self.fail("Should return 404")
@@ -121,7 +151,7 @@ class TestServerErrorHandling(unittest.TestCase):
         self.assertIn("error", result)
 
     def test_08_route_with_special_chars(self):
-        for bad_task in ["", "a" * 10000, "!@#$%^&*()_+{}|:\"<>?", "\x00\x01\x02"]:
+        for bad_task in ["", "a" * 10000, '!@#$%^&*()_+{}|:"<>?', "\x00\x01\x02"]:
             try:
                 self._post("/api/route", {"task": bad_task})
             except Exception:
@@ -129,6 +159,7 @@ class TestServerErrorHandling(unittest.TestCase):
 
     def test_09_agent_detail_empty_name(self):
         import urllib.request
+
         try:
             resp = urllib.request.urlopen(f"{self.base}/api/agents/", timeout=5)
             data = json.loads(resp.read())
@@ -265,8 +296,9 @@ class TestSourceErrorHandling(unittest.TestCase):
     def test_03_web_py_no_bare_except(self):
         src = open(str(PROJECT_ROOT / "maestro" / "web.py"), encoding="utf-8").read()
         bare_excepts = re.findall(r"\bexcept\s*:", src)
-        self.assertLessEqual(len(bare_excepts), 15,
-                             f"Bare except count too high: {len(bare_excepts)}")
+        self.assertLessEqual(
+            len(bare_excepts), 15, f"Bare except count too high: {len(bare_excepts)}"
+        )
 
     def test_04_main_py_no_bare_except(self):
         src = open(str(PROJECT_ROOT / "maestro" / "main.py"), encoding="utf-8").read()
@@ -283,8 +315,9 @@ class TestSourceErrorHandling(unittest.TestCase):
         conn_count = src.count("conn = sqlite3.connect")
         close_count = src.count("conn.close()")
         if conn_count > 0:
-            self.assertEqual(conn_count, close_count,
-                             f"conn open={conn_count} but close={close_count}")
+            self.assertEqual(
+                conn_count, close_count, f"conn open={conn_count} but close={close_count}"
+            )
 
     def test_07_web_py_has_error_handler(self):
         src = open(str(PROJECT_ROOT / "maestro" / "web.py"), encoding="utf-8").read()
@@ -294,6 +327,7 @@ class TestSourceErrorHandling(unittest.TestCase):
         do_post = src.split("def do_POST")[1].split("def do_DELETE")[0]
         self.assertIn("send_json", do_post)
 
+
 if __name__ == "__main__":
     suite = unittest.TestSuite()
     suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestServerErrorHandling))
@@ -302,4 +336,3 @@ if __name__ == "__main__":
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
     sys.exit(0 if result.wasSuccessful() else 1)
-

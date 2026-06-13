@@ -1,7 +1,7 @@
 """pytest 共享 fixtures"""
+
 import pytest
 import tempfile
-import os
 from pathlib import Path
 
 
@@ -36,6 +36,7 @@ maxTurns: 5
 @pytest.fixture
 def mock_handler():
     """模拟 HTTP 请求处理器"""
+
     class MockHandler:
         def __init__(self):
             self.status = 200

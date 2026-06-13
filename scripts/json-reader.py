@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """JSON 文件读取器 — 支持格式化输出、键值提取、管道处理"""
+
 import json
 import sys
 import os
@@ -11,6 +12,7 @@ from typing import Any
 if sys.platform == "win32":
     os.system("chcp 65001 >nul 2>&1")
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 
 def read_json(filepath: str) -> Any:
     """读取并解析 JSON 文件，返回 Python 对象"""

@@ -1,5 +1,29 @@
 """路由注册中心 — 将所有路由绑定到 Handler 类"""
-from maestro.routes import agents, chat, cost, config, harness, memory, files, orchestrate, static, agent_factory, remote, setup, restart, webhook, health, test_api, routing_feedback, sessions, operations, weixin_api, reset, session_fork
+
+from maestro.routes import (
+    agents,
+    chat,
+    cost,
+    config,
+    harness,
+    memory,
+    files,
+    orchestrate,
+    static,
+    agent_factory,
+    remote,
+    setup,
+    restart,
+    webhook,
+    health,
+    test_api,
+    routing_feedback,
+    sessions,
+    operations,
+    weixin_api,
+    reset,
+    session_fork,
+)
 from maestro import worktree_manager
 
 

@@ -1,24 +1,21 @@
 """五阶段管线状态机 + pass@k 验证 + 模型分级硬规则"""
-import json
+
 import logging
 import re
 import subprocess
-import tempfile
 import time
-from pathlib import Path
-from typing import Optional
 
 log = logging.getLogger(__name__)
 
 # ── 阶段定义 ──
 TASK_STATES = {
-    "research":  {"enter": "信息是否充分？>=3个来源", "exit": "需求理解完整"},
-    "plan":      {"enter": "research 通过", "exit": "方案覆盖所有约束"},
-    "dry_run":   {"enter": "plan 通过", "exit": "只读分析完成，输出变更计划"},
-    "gate":      {"enter": "dry_run 通过", "exit": "硬门控检查通过"},
+    "research": {"enter": "信息是否充分？>=3个来源", "exit": "需求理解完整"},
+    "plan": {"enter": "research 通过", "exit": "方案覆盖所有约束"},
+    "dry_run": {"enter": "plan 通过", "exit": "只读分析完成，输出变更计划"},
+    "gate": {"enter": "dry_run 通过", "exit": "硬门控检查通过"},
     "implement": {"enter": "gate 通过", "exit": "代码通过 lint+test"},
-    "review":    {"enter": "implement 通过", "exit": "pass@3 轻量版通过"},
-    "verify":    {"enter": "review 通过", "exit": "原始需求全部满足"},
+    "review": {"enter": "implement 通过", "exit": "pass@3 轻量版通过"},
+    "verify": {"enter": "review 通过", "exit": "原始需求全部满足"},
 }
 
 STAGE_ORDER = ["research", "plan", "dry_run", "gate", "implement", "review", "verify"]
@@ -33,9 +30,22 @@ OPUS_CONDITIONS = [
 
 # 复杂度关键词（用于 select_model 自动判断）
 _HIGH_COMPLEXITY_KW = [
-    "重构", "架构", "多模块", "跨模块", "分布式", "并发", "异步",
-    "数据库迁移", "API设计", "系统设计", "安全审计", "性能优化",
-    "refactor", "architecture", "multi-module", "concurrent",
+    "重构",
+    "架构",
+    "多模块",
+    "跨模块",
+    "分布式",
+    "并发",
+    "异步",
+    "数据库迁移",
+    "API设计",
+    "系统设计",
+    "安全审计",
+    "性能优化",
+    "refactor",
+    "architecture",
+    "multi-module",
+    "concurrent",
 ]
 
 
@@ -69,7 +79,7 @@ class PipelineStateMachine:
             if not output or len(output.strip()) < 50:
                 return False, "研究输出不足（<50字符），信息不充分"
             # 检查是否引用了 >=3 个来源
-            source_count = len(re.findall(r'(?:来源|source|参考|ref|https?://)', output, re.I))
+            source_count = len(re.findall(r"(?:来源|source|参考|ref|https?://)", output, re.I))
             if source_count < 3:
                 return False, f"信息来源不足（需 >=3，当前 {source_count}）"
 
@@ -78,7 +88,7 @@ class PipelineStateMachine:
                 return False, "方案输出不足（<100字符）"
             task_text = self.task.get("task", "")
             if task_text:
-                keywords = re.findall(r'[一-鿿]{2,}', task_text)
+                keywords = re.findall(r"[一-鿿]{2,}", task_text)
                 covered = sum(1 for kw in keywords if kw in output)
                 if covered < len(keywords) * 0.5:
                     return False, f"方案未覆盖足够约束（覆盖 {covered}/{len(keywords)}）"
@@ -111,12 +121,14 @@ class PipelineStateMachine:
     def advance(self, output: str):
         """记录阶段输出并推进到下一阶段"""
         self.stage_outputs[self.current_stage] = output
-        self.stage_history.append({
-            "stage": self.current_stage,
-            "status": "passed",
-            "output_preview": output[:200],
-            "timestamp": time.time(),
-        })
+        self.stage_history.append(
+            {
+                "stage": self.current_stage,
+                "status": "passed",
+                "output_preview": output[:200],
+                "timestamp": time.time(),
+            }
+        )
         current_idx = self.active_stages.index(self.current_stage)
         if current_idx < len(self.active_stages) - 1:
             self.current_stage = self.active_stages[current_idx + 1]
@@ -125,12 +137,14 @@ class PipelineStateMachine:
 
     def fail_stage(self, reason: str):
         """标记当前阶段失败"""
-        self.stage_history.append({
-            "stage": self.current_stage,
-            "status": "failed",
-            "reason": reason,
-            "timestamp": time.time(),
-        })
+        self.stage_history.append(
+            {
+                "stage": self.current_stage,
+                "status": "failed",
+                "reason": reason,
+                "timestamp": time.time(),
+            }
+        )
 
     def rollback(self):
         """退回到上一阶段"""
@@ -141,8 +155,9 @@ class PipelineStateMachine:
         if current_idx > 0:
             self.current_stage = self.active_stages[current_idx - 1]
             # 清除失败阶段记录
-            self.stage_history = [h for h in self.stage_history
-                                  if h["stage"] != self.active_stages[current_idx]]
+            self.stage_history = [
+                h for h in self.stage_history if h["stage"] != self.active_stages[current_idx]
+            ]
 
     def get_current_prompt(self) -> str:
         """获取当前阶段对应的 Agent prompt"""
@@ -236,12 +251,27 @@ class PipelineStateMachine:
 # ── 硬门控检查 ──
 
 SENSITIVE_PATTERNS = [
-    ".env", ".gitignore", "*.pem", "*.key", "credentials.*",
-    "id_rsa", "id_ed25519", "known_hosts", "authorized_keys",
+    ".env",
+    ".gitignore",
+    "*.pem",
+    "*.key",
+    "credentials.*",
+    "id_rsa",
+    "id_ed25519",
+    "known_hosts",
+    "authorized_keys",
 ]
 HIGH_RISK_ACTIONS = [
-    "rm -rf", "rm -r", "chmod 777", "chown", "systemctl",
-    "iptables", "sudo", "mkfs.", "dd if=", ":(){ :|:& };:",
+    "rm -rf",
+    "rm -r",
+    "chmod 777",
+    "chown",
+    "systemctl",
+    "iptables",
+    "sudo",
+    "mkfs.",
+    "dd if=",
+    ":(){ :|:& };:",
 ]
 
 
@@ -327,8 +357,9 @@ PASS_K_PERSPECTIVES = [
 ]
 
 
-def _call_haiku(prompt: str, api_key: str = "", api_provider: str = "deepseek",
-                timeout: int = 30) -> str:
+def _call_haiku(
+    prompt: str, api_key: str = "", api_provider: str = "deepseek", timeout: int = 30
+) -> str:
     """调用轻量模型（haiku 级别）"""
     from maestro.shared import CLAUDE_BIN, build_isolated_env
 
@@ -344,15 +375,26 @@ def _call_haiku(prompt: str, api_key: str = "", api_provider: str = "deepseek",
         )
 
         cmd = [
-            "cmd", "/c", CLAUDE_BIN, "-p", prompt,
-            "--bare", "--permission-mode", "auto",
-            "--max-turns", "1",
-            "--model", iso_env.get("ANTHROPIC_MODEL", "deepseek-v4-flash"),
+            "cmd",
+            "/c",
+            CLAUDE_BIN,
+            "-p",
+            prompt,
+            "--bare",
+            "--permission-mode",
+            "auto",
+            "--max-turns",
+            "1",
+            "--model",
+            iso_env.get("ANTHROPIC_MODEL", "deepseek-v4-flash"),
         ]
 
         proc = subprocess.Popen(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            encoding="utf-8", errors="replace",
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            encoding="utf-8",
+            errors="replace",
             env=iso_env,
         )
         stdout, _ = proc.communicate(timeout=timeout)
@@ -365,8 +407,9 @@ def _call_haiku(prompt: str, api_key: str = "", api_provider: str = "deepseek",
         return "PASS (调用失败，默认放行)"
 
 
-def pass_k_verify(output: str, task: str, k: int = 3,
-                  api_key: str = "", api_provider: str = "deepseek") -> tuple[bool, dict]:
+def pass_k_verify(
+    output: str, task: str, k: int = 3, api_key: str = "", api_provider: str = "deepseek"
+) -> tuple[bool, dict]:
     """k 视角独立验证。返回 (通过?, {各视角结果})"""
     results = {}
     pass_count = 0
@@ -395,6 +438,7 @@ def pass_k_verify(output: str, task: str, k: int = 3,
 
 # ── 模型分级硬规则 ──
 
+
 def _count_opus_conditions(task: dict) -> int:
     """统计满足的 Opus 条件数"""
     task_text = task.get("task", "")
@@ -403,25 +447,52 @@ def _count_opus_conditions(task: dict) -> int:
 
     # 条件1: 5+ 文件跨模块重构
     # 匹配 "N个文件"、"N个模块"、"N处"、"文件：N" 等模式
-    file_patterns = re.findall(r'(\d+)\s*(?:个|处|份)?\s*(?:文件|模块|file|module)', task_text)
+    file_patterns = re.findall(r"(\d+)\s*(?:个|处|份)?\s*(?:文件|模块|file|module)", task_text)
     file_count = sum(int(n) for n in file_patterns)
     if file_count >= 5 or "跨模块" in task_text or "多文件" in task_text or "多模块" in task_text:
         score += 1
 
     # 条件2: 多步骤依赖推理链
     step_indicators = [
-        "步骤", "第一步", "第二步", "然后", "接着", "最后",
-        "依赖", "前置", "后置", "顺序", "流程", "多步骤",
-        "step", "then", "after", "before", "depends",
+        "步骤",
+        "第一步",
+        "第二步",
+        "然后",
+        "接着",
+        "最后",
+        "依赖",
+        "前置",
+        "后置",
+        "顺序",
+        "流程",
+        "多步骤",
+        "step",
+        "then",
+        "after",
+        "before",
+        "depends",
     ]
     if sum(1 for kw in step_indicators if kw in task_text.lower()) >= 3:
         score += 1
 
     # 条件3: 安全/正确性零容忍场景
     safety_kw = [
-        "安全", "漏洞", "注入", "加密", "认证", "授权",
-        "生产", "关键路径", "支付", "交易", "密码", "审计",
-        "security", "auth", "production", "critical",
+        "安全",
+        "漏洞",
+        "注入",
+        "加密",
+        "认证",
+        "授权",
+        "生产",
+        "关键路径",
+        "支付",
+        "交易",
+        "密码",
+        "审计",
+        "security",
+        "auth",
+        "production",
+        "critical",
     ]
     if any(kw in task_text.lower() for kw in safety_kw):
         score += 1
@@ -473,8 +544,9 @@ def resolve_model_name(tier: str, api_provider: str = "deepseek") -> str:
     provider = PROVIDER_MAP.get(api_provider, PROVIDER_MAP["deepseek"])
     tier_map = {
         "opus": provider.get("ANTHROPIC_MODEL", "deepseek-v4-pro"),
-        "sonnet": provider.get("ANTHROPIC_DEFAULT_SONNET_MODEL",
-                               provider.get("ANTHROPIC_MODEL", "deepseek-v4-pro")),
+        "sonnet": provider.get(
+            "ANTHROPIC_DEFAULT_SONNET_MODEL", provider.get("ANTHROPIC_MODEL", "deepseek-v4-pro")
+        ),
         "haiku": provider.get("ANTHROPIC_DEFAULT_HAIKU_MODEL", "deepseek-v4-flash"),
     }
     return tier_map.get(tier, tier_map["haiku"])

@@ -1,4 +1,5 @@
 """集中配置 — 所有硬编码常量的单一来源"""
+
 from __future__ import annotations
 
 import os
@@ -26,7 +27,9 @@ POOL_MAX_WORKERS: int = int(os.environ.get("AGENCY_POOL_WORKERS", "4"))
 POOL_FAILURE_THRESHOLD: int = int(os.environ.get("AGENCY_POOL_FAILURE_THRESHOLD", "3"))
 
 # --- 会话 ---
-SESSION_SNAPSHOT_THRESHOLD: int = int(os.environ.get("AGENCY_SESSION_SNAPSHOT_MB", "2")) * 1024 * 1024
+SESSION_SNAPSHOT_THRESHOLD: int = (
+    int(os.environ.get("AGENCY_SESSION_SNAPSHOT_MB", "2")) * 1024 * 1024
+)
 
 # --- 费用 ---
 DEFAULT_TOKEN_LIMIT: int = int(os.environ.get("AGENCY_TOKEN_LIMIT", "100000"))

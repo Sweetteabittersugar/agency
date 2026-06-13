@@ -1,14 +1,14 @@
 """测试 session_store.py — 会话持久化"""
-import json
-from pathlib import Path
+
 from maestro.session_store import append_event, get_session, list_sessions, delete_session
 
 
 class TestSessionStore:
     def test_append_and_get(self, tmp_path, monkeypatch):
         import maestro.session_store as ss
-        monkeypatch.setattr(ss, 'STORE_DIR', tmp_path)
-        monkeypatch.setattr(ss, 'SNAPSHOT_THRESHOLD', 10 * 1024 * 1024)
+
+        monkeypatch.setattr(ss, "STORE_DIR", tmp_path)
+        monkeypatch.setattr(ss, "SNAPSHOT_THRESHOLD", 10 * 1024 * 1024)
 
         sid = "test-session-1"
         r1 = append_event(sid, "user_message", {"task": "hello"})
@@ -24,8 +24,9 @@ class TestSessionStore:
 
     def test_list_sessions(self, tmp_path, monkeypatch):
         import maestro.session_store as ss
-        monkeypatch.setattr(ss, 'STORE_DIR', tmp_path)
-        monkeypatch.setattr(ss, 'SNAPSHOT_THRESHOLD', 10 * 1024 * 1024)
+
+        monkeypatch.setattr(ss, "STORE_DIR", tmp_path)
+        monkeypatch.setattr(ss, "SNAPSHOT_THRESHOLD", 10 * 1024 * 1024)
 
         append_event("s1", "user_message", {"task": "a"})
         append_event("s2", "user_message", {"task": "b"})
@@ -37,8 +38,9 @@ class TestSessionStore:
 
     def test_delete_session(self, tmp_path, monkeypatch):
         import maestro.session_store as ss
-        monkeypatch.setattr(ss, 'STORE_DIR', tmp_path)
-        monkeypatch.setattr(ss, 'SNAPSHOT_THRESHOLD', 10 * 1024 * 1024)
+
+        monkeypatch.setattr(ss, "STORE_DIR", tmp_path)
+        monkeypatch.setattr(ss, "SNAPSHOT_THRESHOLD", 10 * 1024 * 1024)
 
         append_event("del-test", "user_message", {"task": "x"})
         result = delete_session("del-test")
@@ -51,7 +53,8 @@ class TestSessionStore:
 
     def test_empty_session(self, tmp_path, monkeypatch):
         import maestro.session_store as ss
-        monkeypatch.setattr(ss, 'STORE_DIR', tmp_path)
+
+        monkeypatch.setattr(ss, "STORE_DIR", tmp_path)
 
         result = get_session("nonexistent")
         assert result["count"] == 0
@@ -59,15 +62,17 @@ class TestSessionStore:
 
     def test_delete_nonexistent_returns_error(self, tmp_path, monkeypatch):
         import maestro.session_store as ss
-        monkeypatch.setattr(ss, 'STORE_DIR', tmp_path)
+
+        monkeypatch.setattr(ss, "STORE_DIR", tmp_path)
 
         result = delete_session("does-not-exist")
         assert result["ok"] is False
 
     def test_event_contains_timestamp_and_type(self, tmp_path, monkeypatch):
         import maestro.session_store as ss
-        monkeypatch.setattr(ss, 'STORE_DIR', tmp_path)
-        monkeypatch.setattr(ss, 'SNAPSHOT_THRESHOLD', 10 * 1024 * 1024)
+
+        monkeypatch.setattr(ss, "STORE_DIR", tmp_path)
+        monkeypatch.setattr(ss, "SNAPSHOT_THRESHOLD", 10 * 1024 * 1024)
 
         result = append_event("ts-test", "user_message", {"text": "hi"})
         assert "ts" in result["event"]
@@ -76,7 +81,8 @@ class TestSessionStore:
     def test_safe_id_sanitization(self, tmp_path, monkeypatch):
         """session_id 中的特殊字符应被过滤"""
         import maestro.session_store as ss
-        monkeypatch.setattr(ss, 'STORE_DIR', tmp_path)
+
+        monkeypatch.setattr(ss, "STORE_DIR", tmp_path)
 
         sid = "../../etc/passwd"
         result = append_event(sid, "user_message", {"task": "test"})

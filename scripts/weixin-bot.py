@@ -5,8 +5,10 @@
   python scripts/weixin-bot.py run      # 启动消息循环
   python scripts/weixin-bot.py status   # 查看状态
 """
+
 import sys
 import os
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from maestro.integrations.weixin_bot import WeixinBot, cmd_login
@@ -16,23 +18,32 @@ import subprocess
 def handle_message(from_user_id: str, text: str, context_token: str) -> str:
     """消息处理 — 转发给 Claude Code"""
     try:
-        import urllib.request, json
+        import urllib.request
+        import json
+
         req = urllib.request.Request(
             "http://127.0.0.1:8800/api/chat",
             data=json.dumps({"task": text, "session_id": f"wx_{from_user_id}"}).encode(),
             headers={"Content-Type": "application/json"},
-            method="POST"
+            method="POST",
         )
         with urllib.request.urlopen(req, timeout=120) as resp:
             result = json.loads(resp.read())
             if isinstance(result, dict):
-                return result.get("response") or result.get("message") or json.dumps(result, ensure_ascii=False)
+                return (
+                    result.get("response")
+                    or result.get("message")
+                    or json.dumps(result, ensure_ascii=False)
+                )
             return str(result)
     except Exception as e:
         try:
             result = subprocess.run(
                 ["claude", "-p", text],
-                capture_output=True, text=True, timeout=120, cwd=os.path.expanduser("~")
+                capture_output=True,
+                text=True,
+                timeout=120,
+                cwd=os.path.expanduser("~"),
             )
             return result.stdout.strip() or f"Claude 未返回内容: {result.stderr[:200]}"
         except Exception as e2:

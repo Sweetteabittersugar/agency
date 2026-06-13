@@ -1,4 +1,5 @@
 """Coordinator — 任务协调器：失败重试/回滚/死锁检测/升级策略"""
+
 import json
 import time
 import logging
@@ -21,8 +22,9 @@ class Coordinator:
         self._checkpoints: dict[str, dict] = {}
 
     # ── a) 智能重试（指数退避）──
-    def retry_with_backoff(self, fn: Callable, max_retries: int = 3,
-                           base_delay: float = 2.0) -> tuple[bool, Any]:
+    def retry_with_backoff(
+        self, fn: Callable, max_retries: int = 3, base_delay: float = 2.0
+    ) -> tuple[bool, Any]:
         delays = [base_delay, base_delay * 2.5, base_delay * 5.0]
         last_error = None
         for attempt in range(max_retries + 1):
@@ -32,8 +34,9 @@ class Coordinator:
                 return True, result
             except Exception as e:
                 last_error = e
-                self._log_episodic("retry", {"attempt": attempt, "status": "failed",
-                                             "error": str(e)[:200]})
+                self._log_episodic(
+                    "retry", {"attempt": attempt, "status": "failed", "error": str(e)[:200]}
+                )
                 if attempt < max_retries:
                     wait = delays[min(attempt, len(delays) - 1)]
                     log.warning("重试 %d/%d，等待 %.1fs: %s", attempt + 1, max_retries, wait, e)
@@ -41,8 +44,7 @@ class Coordinator:
         return False, last_error
 
     # ── b) 回滚机制 ──
-    def save_checkpoint(self, task_id: str, checkpoint_name: str,
-                        context_snapshot: dict = None):
+    def save_checkpoint(self, task_id: str, checkpoint_name: str, context_snapshot: dict = None):
         if checkpoint_name not in CHECKPOINTS:
             log.warning("未知 checkpoint: %s (已知: %s)", checkpoint_name, CHECKPOINTS)
         self._checkpoints[task_id] = {
@@ -51,15 +53,17 @@ class Coordinator:
             "timestamp": time.time(),
         }
 
-    def rollback_to_checkpoint(self, task_id: str, checkpoint_name: str,
-                               context_layer=None) -> Optional[dict]:
+    def rollback_to_checkpoint(
+        self, task_id: str, checkpoint_name: str, context_layer=None
+    ) -> Optional[dict]:
         cp = self._checkpoints.get(task_id)
         if not cp:
             log.warning("无 checkpoint: task=%s", task_id)
             return None
         if cp["name"] != checkpoint_name:
-            log.warning("checkpoint 不匹配: task=%s want=%s got=%s",
-                        task_id, checkpoint_name, cp["name"])
+            log.warning(
+                "checkpoint 不匹配: task=%s want=%s got=%s", task_id, checkpoint_name, cp["name"]
+            )
             return None
         if context_layer and cp["snapshot"]:
             try:
@@ -130,5 +134,6 @@ class Coordinator:
         try:
             with open(self._episodic_file, "a", encoding="utf-8") as f:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-        except Exception:
-            pass
+        except Exception as _e:
+            # log failed writes instead of silently dropping episodic events
+            log.debug(f"情景日志写入失败: {_e}")

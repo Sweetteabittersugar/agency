@@ -1,6 +1,6 @@
 """首次配置向导路由"""
+
 import os
-import json
 from pathlib import Path
 
 
@@ -14,7 +14,9 @@ def _find_key():
     if env_file.exists():
         for line in env_file.read_text(encoding="utf-8").split("\n"):
             line = line.strip()
-            if line.startswith(("ANTHROPIC_AUTH_TOKEN=", "ANTHROPIC_API_KEY=", "DEEPSEEK_API_KEY=")):
+            if line.startswith(
+                ("ANTHROPIC_AUTH_TOKEN=", "ANTHROPIC_API_KEY=", "DEEPSEEK_API_KEY=")
+            ):
                 val = line.split("=", 1)[1].strip().strip('"').strip("'")
                 if val:
                     return True
@@ -30,13 +32,16 @@ def handle_status(handler, parsed):
     """GET /api/setup/status — 检查是否需要首次配置"""
     has_key = _find_key()
     from maestro.remote import is_remote_enabled, get_local_ip, PORT
+
     needs_setup = not has_key
-    handler.send_json({
-        "needs_setup": needs_setup,
-        "has_key": has_key,
-        "remote_enabled": is_remote_enabled(),
-        "remote_url": f"http://{get_local_ip()}:{PORT}" if is_remote_enabled() else "",
-    })
+    handler.send_json(
+        {
+            "needs_setup": needs_setup,
+            "has_key": has_key,
+            "remote_enabled": is_remote_enabled(),
+            "remote_url": f"http://{get_local_ip()}:{PORT}" if is_remote_enabled() else "",
+        }
+    )
     return True
 
 
@@ -55,7 +60,11 @@ def handle_save(handler, body):
         for i, line in enumerate(lines):
             stripped = line.strip()
             # 匹配活跃行或注释行（替换而非追加，防止重复）
-            if stripped.startswith(f"{key}=") or stripped.startswith(f"# {key}=") or stripped.startswith(f"#{key}="):
+            if (
+                stripped.startswith(f"{key}=")
+                or stripped.startswith(f"# {key}=")
+                or stripped.startswith(f"#{key}=")
+            ):
                 lines[i] = f"{key}={value}"
                 found = True
                 break
@@ -68,6 +77,7 @@ def handle_save(handler, body):
     if api_key:
         set_env("ANTHROPIC_AUTH_TOKEN", api_key)
         from maestro.shared import PROVIDER_MAP
+
         provider_map = PROVIDER_MAP
         for k, v in provider_map.get(api_provider, provider_map["deepseek"]).items():
             set_env(k, v)
@@ -77,14 +87,17 @@ def handle_save(handler, body):
     remote_token = body.get("remote_token", "")
     if remote_enabled:
         from maestro.remote import set_token, generate_token
+
         token = remote_token or generate_token()
         set_token(token)
     # 不处理 remote_enabled=false，因为默认就是关闭
 
     env_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-    handler.send_json({
-        "ok": True,
-        "restart_needed": api_key and True,  # API key 需要重启才能加载到环境变量
-    })
+    handler.send_json(
+        {
+            "ok": True,
+            "restart_needed": api_key and True,  # API key 需要重启才能加载到环境变量
+        }
+    )
     return True

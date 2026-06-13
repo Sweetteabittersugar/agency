@@ -10,7 +10,6 @@ Agency Run — 独立运行入口
   python maestro/run.py --list          # 列出所有可用 Agent
 """
 
-import os
 import sys
 import json
 import time
@@ -23,6 +22,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # ── 加载 .env ──────────────────────────────────
 from maestro.env_loader import load_dotenv
+
 load_dotenv(PROJECT_ROOT)
 
 sys.path.insert(0, str(PROJECT_ROOT / "maestro"))
@@ -33,6 +33,7 @@ DEFAULT_MODEL = get_default_model()
 
 # ── 加载 Agent ──────────────────────────────────
 from maestro.agent_parser import parse_agent_md
+
 
 def load_agent(name):
     """读 agents/{name}.md（支持子目录递归查找），返回 (system_prompt, model)"""
@@ -76,7 +77,7 @@ def list_agents():
                 except Exception:
                     pass
         print(f"  {name:<25} {desc}")
-    print(f"\n用法: python maestro/run.py <agent名> \"你的任务\"\n")
+    print('\n用法: python maestro/run.py <agent名> "你的任务"\n')
 
 
 # ── DeepSeek API 调用 ────────────────────────────
@@ -170,7 +171,7 @@ def main():
 
     if args[0] == "--model":
         if len(args) < 3:
-            print("用法: python maestro/run.py --model <模型名> <agent名> \"任务\"")
+            print('用法: python maestro/run.py --model <模型名> <agent名> "任务"')
             sys.exit(1)
         model = args[1]
         args = args[2:]

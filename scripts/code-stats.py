@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """简单代码统计器 — 统计项目中各语言代码行数"""
+
 import os
 import sys
 from collections import defaultdict
@@ -28,9 +29,20 @@ EXT_MAP = {
 }
 
 # 要跳过的目录
-SKIP_DIRS = {".git", ".claude", ".codex", ".cursor", ".gemini",
-             ".github", ".pytest_cache", "node_modules", "__pycache__",
-             ".venv", "venv", ".claude-isolated"}
+SKIP_DIRS = {
+    ".git",
+    ".claude",
+    ".codex",
+    ".cursor",
+    ".gemini",
+    ".github",
+    ".pytest_cache",
+    "node_modules",
+    "__pycache__",
+    ".venv",
+    "venv",
+    ".claude-isolated",
+}
 
 
 def count_lines(filepath: str) -> tuple[int, int, int]:
@@ -91,8 +103,9 @@ def print_stats(stats: dict):
 
     for lang, s in sorted(stats.items(), key=lambda x: -x[1]["code"]):
         pct = f"{s['code'] / total_code * 100:.1f}%" if total_code > 0 else "0%"
-        print(f"{lang:<15} {s['files']:>8} {s['total']:>10} {s['code']:>10} "
-              f"{s['blank']:>8}  {pct:>7}")
+        print(
+            f"{lang:<15} {s['files']:>8} {s['total']:>10} {s['code']:>10} {s['blank']:>8}  {pct:>7}"
+        )
 
     print("-" * 65)
     print(f"{'合计':<15} {total_files:>8} {total_lines:>10} {total_code:>10}\n")

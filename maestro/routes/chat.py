@@ -1,84 +1,25 @@
 """POST /api/chat — SSE 流式聊天（最核心路由）"""
+
 import json
 import os
-import re
 import time
-import subprocess
 import logging
 from pathlib import Path
-from maestro.session_store import append_event as save_event
 from maestro.routes.operations import record_operation
 
 log = logging.getLogger(__name__)
 
-# ── 聊天上下文缓存（按 session_id 索引）──
-_chat_contexts: dict[str, "ContextLayer"] = {}
-
-# ── 进程池执行辅助 ──
-_POOL_FAILURES = 0  # 连续失败计数，超过阈值后降级为直接 subprocess
-from maestro.app_config import POOL_FAILURE_THRESHOLD as _POOL_FAILURE_THRESHOLD
-
-
-def _try_pool_execute(actual_task, agent_name, model, session_id, is_new,
-                      proj_dir, iso_env, agent_tools_override, mcp_servers):
-    """尝试通过进程池执行任务，返回 (output_lines_list, None)。
-    池不可用或失败时返回 (None, None)。"""
-    global _POOL_FAILURES
-    if _POOL_FAILURES >= _POOL_FAILURE_THRESHOLD:
-        return None, None
-
-    try:
-        from maestro.process_pool import get_pool
-    except ImportError:
-        return None, None
-
-    pool = get_pool()
-    if pool is None or not pool.available:
-        _POOL_FAILURES += 1
-        return None, None
-
-    payload = {
-        "task": actual_task,
-        "agent": agent_name or "",
-        "model": model or "",
-        "session_id": session_id or "",
-        "is_new_session": is_new,
-        "proj_dir": proj_dir or "",
-        "tools": agent_tools_override,
-        "mcp_servers": mcp_servers if isinstance(mcp_servers, list) else [],
-        "bare": True,
-        "permission_mode": "auto",
-        "env": iso_env,
-    }
-
-    try:
-        raw = pool.execute(payload, timeout=300)
-    except Exception:
-        _POOL_FAILURES += 1
-        log.debug("POOL execute exception, fallback to subprocess", exc_info=True)
-        return None, None
-
-    if raw is None:
-        _POOL_FAILURES += 1
-        return None, None
-
-    _POOL_FAILURES = 0  # 成功后重置
-    lines = raw.split("\n")
-    output_lines = [s.rstrip("\r") for s in lines if s.rstrip("\r")]
-    return output_lines, None
-
 
 def handle_chat(handler, body):
     from maestro.shared import (
-        PROJECT_ROOT, CLAUDE_BIN, ISOLATED_CONFIG, _claude_dir_path,
-        _scan_subagents, build_isolated_env,
+        PROJECT_ROOT,
+        CLAUDE_BIN,
+        _claude_dir_path,
+        build_isolated_env,
     )
     from maestro.main import simple_route
     from maestro.agent_parser import parse_agent_md
-    from maestro.proc_manager import track_proc, untrack_proc, kill_proc
-    from maestro.models import estimate_cost
     from maestro.web_cost import record_cost
-    from maestro.harness.jsonl_parser import analyze_session
 
     task = body.get("task", "")
     force_agent = body.get("force_agent", "")
@@ -91,13 +32,16 @@ def handle_chat(handler, body):
         return True
 
     if not api_key:
-        handler.send_json({
-            "ok": False,
-            "error": "未配置 API Key",
-            "friendly_message": "还没有配置 API Key，请在设置中添加",
-            "action": "open_settings",
-            "provider_hint": "支持 DeepSeek / Anthropic / OpenAI"
-        }, 400)
+        handler.send_json(
+            {
+                "ok": False,
+                "error": "未配置 API Key",
+                "friendly_message": "还没有配置 API Key，请在设置中添加",
+                "action": "open_settings",
+                "provider_hint": "支持 DeepSeek / Anthropic / OpenAI",
+            },
+            400,
+        )
         return True
 
     # 确定 Agent
@@ -110,27 +54,17 @@ def handle_chat(handler, body):
         if len(m) > 1 and m[0].startswith("@"):
             actual_task = m[1]
 
-    # ── 会话上下文注入 ──
-    session_id = body.get("session_id", "")
-    chat_ctx = None
-    if session_id:
-        from maestro.context_layer import ContextLayer
-        if session_id not in _chat_contexts:
-            _chat_contexts[session_id] = ContextLayer(session_id, PROJECT_ROOT)
-        chat_ctx = _chat_contexts[session_id]
-        ctx_summary = chat_ctx.get_context_for_agent(agent_name or "chat")
-        if ctx_summary:
-            actual_task = f"[上文摘要]\n{ctx_summary}\n\n[当前问题]\n{actual_task}"
+    # ── 会话接续：前端传 Claude 生成的 session_id，后端用 --resume 接续 ──
 
-    # ── 会话持久化：记录用户消息和路由决策 ──
-    if session_id:
-        save_event(session_id, "user_message", {"task": actual_task[:1000], "agent": agent_name or "auto"})
-        route_source = "force" if force_agent else (route_info.get("source", "auto") if route_info else "auto")
-        save_event(session_id, "route_decision", {"agent": agent_name or "auto", "source": route_source})
+    # ── 会话记录 ──
+    route_source = (
+        "force" if force_agent else (route_info.get("source", "auto") if route_info else "auto")
+    )
 
     # ── Agent 注入：显式读取 agent .md，注入 model / tools ──
     agent_model_override = ""
     agent_tools_override = []
+    agent_system_prompt = ""
     if force_agent:
         for search_dir in [
             PROJECT_ROOT / "agents",
@@ -142,19 +76,29 @@ def handle_chat(handler, body):
                 info = parse_agent_md(candidate)
                 agent_model_override = info["model"]
                 agent_tools_override = info["tools"]
-                log.info(f"CHAT agent injection: model={agent_model_override}, tools={agent_tools_override}")
+                agent_system_prompt = info.get("body", "")
+                log.info(
+                    f"CHAT agent injection: model={agent_model_override}, tools={agent_tools_override}, body_len={len(agent_system_prompt)}"
+                )
                 break
     if agent_model_override and not model:
         model = agent_model_override
+    # 注入 agent 系统提示词到任务开头，确保 Claude 获得角色设定
+    if agent_system_prompt:
+        actual_task = (
+            f"[角色设定]\n你是 {force_agent}。{agent_system_prompt}\n\n[用户任务]\n{actual_task}"
+        )
 
     if not CLAUDE_BIN:
-        handler.send_json({
-            "ok": False,
-            "error": "Claude Code CLI 未安装",
-            "friendly_message": "需要安装 Claude Code CLI 才能发送任务",
-            "action": "install_claude",
-            "install_cmd": "npm install -g @anthropic-ai/claude-code"
-        })
+        handler.send_json(
+            {
+                "ok": False,
+                "error": "Claude Code CLI 未安装",
+                "friendly_message": "需要安装 Claude Code CLI 才能发送任务",
+                "action": "install_claude",
+                "install_cmd": "npm install -g @anthropic-ai/claude-code",
+            }
+        )
         return True
 
     # ── 思考/工具输出过滤 ──
@@ -174,13 +118,21 @@ def handle_chat(handler, body):
     try:
         session_id = body.get("session_id", "")
         is_new = body.get("is_new_session", True)
-        meta = json.dumps({"agent": agent_name or "auto", "model": "auto", "session": session_id[:8] if session_id else "new"})
+        meta = json.dumps(
+            {
+                "agent": agent_name or "auto",
+                "model": "auto",
+                "session": session_id[:8] if session_id else "new",
+            }
+        )
         handler.wfile.write(f"event: meta\ndata: {meta}\n\n".encode())
         handler.wfile.flush()
 
         # ── 进度：路由完成 ──
         _agent_display = agent_name or "auto"
-        handler.wfile.write(f"data: {json.dumps({'progress': True, 'stage': 'routing', 'message': f'已匹配 Agent: {_agent_display}', 'agent': _agent_display})}\n\n".encode())
+        handler.wfile.write(
+            f"data: {json.dumps({'progress': True, 'stage': 'routing', 'message': f'已匹配 Agent: {_agent_display}', 'agent': _agent_display})}\n\n".encode()
+        )
         handler.wfile.flush()
 
         # MCP servers 解析（进程池和 fallback 共用）
@@ -189,197 +141,182 @@ def handle_chat(handler, body):
             mcp_servers = [s.strip() for s in mcp_servers.split(",") if s.strip()]
 
         log.info(f'CHAT start agent={agent_name or "auto"} task="{actual_task[:40]}…"')
+        # 会话事件记录：路由决策写入 session_store，供时间线和会话列表使用
+        try:
+            from maestro.session_store import append_event
+            append_event(session_id, "route_decision", {
+                "agent": agent_name or "auto",
+                "model": model or "auto",
+                "source": route_source,
+                "task_preview": actual_task[:100],
+            })
+        except Exception:
+            pass
         start_time = time.time()
         iso_env = build_isolated_env(api_key, api_provider)
         if api_key:
-            log.info(f'CHAT using user API key provider={api_provider}')
+            log.info(f"CHAT using user API key provider={api_provider}")
 
         # ── 进度：正在分配任务 ──
-        handler.wfile.write(f"data: {json.dumps({'progress': True, 'stage': 'dispatching', 'message': '正在分配任务...'})}\n\n".encode())
+        handler.wfile.write(
+            f"data: {json.dumps({'progress': True, 'stage': 'dispatching', 'message': '正在分配任务...'})}\n\n".encode()
+        )
         handler.wfile.flush()
 
-        # ── 优先尝试进程池（长连接复用）──
-        pool_output, _pool_err = _try_pool_execute(
-            actual_task, agent_name, model, session_id, is_new,
-            proj_dir, iso_env, agent_tools_override, mcp_servers,
+        # ── 持久化 Claude 进程：stream-json 双向管道 ──
+        from maestro.claude_session import get_or_create
+
+        # -- persistent Claude process --
+        # Each panel has a session_id (UUID) mapped to an independent Claude process.
+        # session_id is a local panel-to-process route key, NOT passed to Claude --resume.
+        # Same panel reuses same process across turns; different panels get separate processes.
+        session_id = body.get("session_id", "")
+        is_new_session = not bool(session_id)
+        if is_new_session:
+            import uuid
+            session_id = str(uuid.uuid4())
+            # Memory injection: scan memory/ directory for relevant past learnings
+            # and prepend them to the user's task so Claude sees historical context
+            try:
+                from maestro.memory_engine import build_injection_prefix
+                actual_task = build_injection_prefix(actual_task, str(PROJECT_ROOT))
+            except Exception:
+                pass
+
+        handler.wfile.write(
+            f"data: {json.dumps({'progress': True, 'stage': 'executing', 'message': (agent_name or 'auto') + ' 正在执行...'})}\n\n".encode()
         )
+        handler.wfile.flush()
 
-        proc = None
-        out_chars = 0
-        chat_output_text = ""
-        used_pool = False
+        cs = get_or_create(session_id, str(PROJECT_ROOT), iso_env)
+        if cs is None:
+            handler.wfile.write(
+                f"event: done\ndata: {json.dumps({'error': '无法启动 Claude 进程', 'elapsed': 0})}\n\n".encode()
+            )
+            handler.wfile.flush()
+            return True
 
+        # 会话事件：用户消息写入 session_store
         try:
-            if pool_output is not None:
-                # ── 进程池路径：直接流式输出预读结果 ──
-                used_pool = True
-                log.info(f'CHAT using pool ({len(pool_output)} lines)')
-                # ── 进度：Agent 开始执行 ──
-                _exec_msg = f'{agent_name or "auto"} 正在执行...'
-                handler.wfile.write(f"data: {json.dumps({'progress': True, 'stage': 'executing', 'message': _exec_msg})}\n\n".encode())
-                handler.wfile.flush()
-                for stripped in pool_output:
-                    if not stripped:
-                        continue
-                    # 思考/工具过滤
-                    if not show_thinking and (
-                        stripped.startswith("[Thinking]") or stripped.startswith("Thinking:")
-                    ):
-                        continue
-                    if not show_tools and (
-                        stripped.startswith("[Tool:") or stripped.startswith("Tool:")
-                    ):
-                        continue
-                    out_chars += len(stripped)
-                    chat_output_text += stripped + "\n"
-                    display = stripped
-                    if len(stripped) > 500:
-                        display = '<details><summary>📄 展开 (' + str(len(stripped)) + '字符)</summary><pre>' + stripped.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;') + '</pre></details>'
-                    elif stripped.startswith('[Tool:') or stripped.startswith('Tool:'):
-                        display = '<div class="tool-tag">🔧 ' + stripped.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;') + '</div>'
-                    try:
-                        handler.wfile.write(f"data: {json.dumps({'content': display + chr(10)})}\n\n".encode())
-                        handler.wfile.flush()
-                    except (BrokenPipeError, ConnectionResetError):
-                        log.info('CHAT client disconnected (pool)')
-                        break
-            else:
-                # ── 回退路径：传统 subprocess.Popen ──
-                log.info('CHAT falling back to subprocess.Popen')
-                t0 = time.time()
-                cmd = [CLAUDE_BIN, "-p", actual_task, "--bare", "--permission-mode", "auto"]
-                if session_id:
-                    cmd += ["--session-id", session_id]
-                if agent_name: cmd += ["--agent", agent_name]
-                if model: cmd += ["--model", model]
-                if agent_tools_override: cmd += ["--tools", ",".join(agent_tools_override)]
-                if agent_tools_override:
-                    has_mcp = any(t.startswith("mcp__") for t in agent_tools_override)
-                    if not has_mcp and mcp_servers:
-                        cmd += ["--tools", ",".join(agent_tools_override + ["mcp__plugin_" + s + "_" + s + "__*" for s in mcp_servers])]
-                if proj_dir and os.path.isdir(proj_dir): cmd += ["--add-dir", proj_dir]
+            from maestro.session_store import append_event
+            append_event(session_id, "user_message", {"content": actual_task[:200]})
+        except Exception:
+            pass
+        elapsed = time.time() - start_time
 
-                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                        encoding='utf-8', errors='replace', bufsize=1,
-                                        cwd=str(PROJECT_ROOT), env=iso_env)
-                log.info(f'CHAT proc spawn {(time.time()-t0)*1000:.0f}ms PID={proc.pid}')
-                track_proc(proc)
-                # ── 进度：Agent 开始执行 ──
-                _exec_msg = f'{agent_name or "auto"} 正在执行...'
-                handler.wfile.write(f"data: {json.dumps({'progress': True, 'stage': 'executing', 'message': _exec_msg})}\n\n".encode())
-                handler.wfile.flush()
-                first_line = True
-                for line in iter(proc.stdout.readline, ''):
-                    if first_line:
-                        log.info(f'CHAT first output after {(time.time()-start_time)*1000:.0f}ms')
-                        first_line = False
-                    if not line: break
-                    stripped = line.rstrip('\n\r')
-                    if not stripped: continue
-                    # 思考/工具过滤
-                    if not show_thinking and (
-                        stripped.startswith("[Thinking]") or stripped.startswith("Thinking:")
-                    ):
-                        continue
-                    if not show_tools and (
-                        stripped.startswith("[Tool:") or stripped.startswith("Tool:")
-                    ):
-                        continue
-                    out_chars += len(stripped)
-                    chat_output_text += stripped + "\n"
-                    display = stripped
-                    if len(stripped) > 500:
-                        display = '<details><summary>📄 展开 (' + str(len(stripped)) + '字符)</summary><pre>' + stripped.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;') + '</pre></details>'
-                    elif stripped.startswith('[Tool:') or stripped.startswith('Tool:'):
-                        display = '<div class="tool-tag">🔧 ' + stripped.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;') + '</div>'
-                    try:
-                        handler.wfile.write(f"data: {json.dumps({'content': display + chr(10)})}\n\n".encode())
-                        handler.wfile.flush()
-                    except (BrokenPipeError, ConnectionResetError):
-                        log.info('CHAT client disconnected, killing proc')
-                        break
+        # 2026-06 修复：send_and_read 调用曾被误删，导致聊天链路完全断裂
+        # 此行不可移除——它是整个对话管道的核心：发送任务 → 接收 Claude 流式响应
+        events = cs.send_and_read(actual_task)
 
+        # 流式输出事件
+        chat_output_text = ""
+        done_data = {}
+        for evt in events:
+            if "content" in evt:
+                chat_output_text += evt["content"]
                 try:
-                    proc.wait(timeout=15)
-                except subprocess.TimeoutExpired:
+                    handler.wfile.write(
+                        f"data: {json.dumps({'content': evt['content']})}\n\n".encode()
+                    )
+                    handler.wfile.flush()
+                except (BrokenPipeError, ConnectionResetError):
+                    log.info("CHAT client disconnected")
+                    break
+            elif "done" in evt:
+                done_data = evt["done"]
+            elif "error" in evt:
+                try:
+                    handler.wfile.write(
+                        f"event: done\ndata: {json.dumps({'error': evt['error'], 'elapsed': 0})}\n\n".encode()
+                    )
+                    handler.wfile.flush()
+                except Exception:
                     pass
 
-            elapsed = time.time() - start_time
+        # 发送 done 事件——模型名从 Claude result 事件读取，不再硬编码
+        in_tokens = done_data.get("in_tokens", len(task) // 4)
+        out_tokens = done_data.get("out_tokens", 0)
+        cache_read = done_data.get("cache_read", 0)
+        cost = done_data.get("cost", 0)
+        detected_model = done_data.get("model", "") or model or "deepseek-v4-flash"
 
-            # 尝试从 JSONL 获取真实 token 数
-            detected_model = model or "deepseek-v4-pro"
-            is_estimated = True
-            in_tokens = len(task) // 4
-            out_tokens = out_chars // 2
-            cache_read = 0
-            cache_write = 0
-            cache_saved = 0.0
+        done_payload = {
+            "elapsed": round(elapsed, 1),
+            "cost": round(cost, 6),
+            "in_tokens": in_tokens,
+            "out_tokens": out_tokens,
+            "session_id": session_id,
+            "model": detected_model,
+            # 累计统计——前端可按面板展示 token 用量
+            "total_in": done_data.get("total_in", in_tokens),
+            "total_out": done_data.get("total_out", out_tokens),
+            "total_cost": done_data.get("total_cost", cost),
+        }
+        if cache_read:
+            done_payload["cache_read"] = cache_read
+        # 压缩状态：按模型窗口容量判断，70%警告/85%强制压缩
+        try:
+            comp = cs.compaction_status()
+            done_payload["compaction"] = comp
+        except Exception:
+            pass
+        try:
+            handler.wfile.write(f"event: done\ndata: {json.dumps(done_payload)}\n\n".encode())
+            handler.wfile.flush()
+            handler.wfile.write(
+                f"data: {json.dumps({'progress': True, 'stage': 'done', 'message': '执行完成'})}\n\n".encode()
+            )
+            handler.wfile.flush()
+        except Exception:
+            pass
 
-            if session_id:
-                home = Path.home()
-                proj_slug = str(PROJECT_ROOT).replace("\\", "/").rstrip("/").replace(":/", "--").replace("/", "-").lstrip("-")
-                jsonl_path = home / ".claude" / "projects" / proj_slug / f"{session_id}.jsonl"
-                if jsonl_path.exists() and jsonl_path.stat().st_size > 100:
-                    try:
-                        analysis = analyze_session(str(jsonl_path), model or "")
-                        in_tokens = analysis.get("input_tokens", 0) or in_tokens
-                        out_tokens = analysis.get("output_tokens", 0) or out_tokens
-                        cache_read = analysis.get("cache_read_tokens", 0)
-                        cache_write = analysis.get("cache_write_tokens", 0)
-                        cache_saved = analysis.get("cost_est", {}).get("cache_saved", 0.0)
-                        if analysis.get("model"):
-                            detected_model = analysis["model"]
-                        is_estimated = False
-                    except Exception:
-                        log.debug(f"JSONL analysis failed for session {session_id}, using char estimation")
-            cost = estimate_cost(detected_model, in_tokens, out_tokens)
-            try:
-                done_payload = {'elapsed': round(elapsed,1), 'cost': round(cost,6), 'in_tokens': in_tokens, 'out_tokens': out_tokens}
-                if used_pool:
-                    done_payload['via'] = 'pool'
-                handler.wfile.write(f"event: done\ndata: {json.dumps(done_payload)}\n\n".encode())
-                handler.wfile.flush()
-                # ── 进度：执行完成 ──
-                handler.wfile.write(f"data: {json.dumps({'progress': True, 'stage': 'done', 'message': '执行完成'})}\n\n".encode())
-                handler.wfile.flush()
-            except Exception:
-                pass
-            record_cost(PROJECT_ROOT, time.strftime("%Y-%m-%d %H:%M:%S"), detected_model, in_tokens, out_tokens, cost, elapsed, agent_name, proj_dir or "",
-                        cache_read, cache_write, cache_saved, is_estimated, session_id or "")
-            log.info(f'CHAT done elapsed={elapsed:.1f}s cost=${cost:.4f} model={detected_model} estimated={is_estimated} via={"pool" if used_pool else "subprocess"}')
+        record_cost(
+            PROJECT_ROOT,
+            time.strftime("%Y-%m-%d %H:%M:%S"),
+            detected_model,
+            in_tokens,
+            out_tokens,
+            cost,
+            elapsed,
+            agent_name,
+            proj_dir or "",
+            cache_read,
+            0,
+            0,
+            False,
+            session_id or "",
+        )
+        # session event: agent response to session_store for timeline
+        try:
+            from maestro.session_store import append_event
+            append_event(session_id, "agent_response", {
+                "content_preview": chat_output_text[:200],
+                "elapsed": round(elapsed, 1),
+                "cost": round(cost, 6),
+                "tokens_in": in_tokens,
+                "tokens_out": out_tokens,
+            })
+        except Exception:
+            pass
+        log.info(
+            f"CHAT done elapsed={elapsed:.1f}s cost=${cost:.4f} model={detected_model} session={session_id[:8] if session_id else 'new'}"
+        )
 
-            # ── 记录操作历史 ──
-            try:
-                record_operation(agent_name or "auto", "chat_session", actual_task[:200], f"elapsed={elapsed:.1f}s cost=${cost:.4f} tokens={in_tokens}+{out_tokens}")
-            except Exception:
-                pass
-
-            # ── 会话持久化：记录 Agent 回复 ──
-            if session_id and chat_output_text:
-                save_event(session_id, "agent_response", {"agent": agent_name or "auto", "response": chat_output_text[:2000]})
-
-            # ── 保存会话上下文 ──
-            if chat_ctx and chat_output_text:
-                turn_key = f"turn_{int(time.time())}"
-                chat_ctx.set_short_term(turn_key, {
-                    "q": actual_task[:1000],
-                    "a": chat_output_text[:2000],
-                })
-                chat_ctx.set_short_term("last_turn", turn_key)
-                chat_ctx.log_episodic(
-                    agent_name or "chat", "chat_turn",
-                    f"Q: {actual_task[:200]} | A: {chat_output_text[:200]}",
-                    elapsed_ms=elapsed * 1000,
-                )
-        finally:
-            if proc:
-                kill_proc(proc)
-                untrack_proc(proc)
-                log.info('CHAT proc cleaned')
+        try:
+            record_operation(
+                agent_name or "auto",
+                "chat_session",
+                actual_task[:200],
+                f"elapsed={elapsed:.1f}s cost=${cost:.4f} tokens={in_tokens}+{out_tokens}",
+            )
+        except Exception:
+            pass
 
     except Exception as e:
         try:
-            handler.wfile.write(f"event: done\ndata: {json.dumps({'error': str(e), 'elapsed': 0})}\n\n".encode())
+            handler.wfile.write(
+                f"event: done\ndata: {json.dumps({'error': str(e), 'elapsed': 0})}\n\n".encode()
+            )
             handler.wfile.flush()
         except Exception:
             pass

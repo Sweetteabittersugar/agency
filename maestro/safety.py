@@ -54,7 +54,7 @@ def _get_engine():
     global _permission_engine
     if _permission_engine is None:
         from maestro.permission_engine import get_engine
-        from pathlib import Path
+
         _permission_engine = get_engine()
     return _permission_engine
 
@@ -77,8 +77,9 @@ def check_input(text):
     return True, ""
 
 
-def check_tool_permission(tool_name: str, args=None, trust_mode: str = "",
-                           path_prefix: str = "") -> Tuple[str, str, str]:
+def check_tool_permission(
+    tool_name: str, args=None, trust_mode: str = "", path_prefix: str = ""
+) -> Tuple[str, str, str]:
     """
     检查工具权限级别。
     Args:
@@ -103,8 +104,9 @@ def check_tool_permission(tool_name: str, args=None, trust_mode: str = "",
     return decision, risk, reason
 
 
-def check_input_with_permission(text: str, tool_name: str = "",
-                                  trust_mode: str = "") -> Tuple[bool, str, str, str]:
+def check_input_with_permission(
+    text: str, tool_name: str = "", trust_mode: str = ""
+) -> Tuple[bool, str, str, str]:
     """
     增强版 check_input：同时检查内容安全和工具权限。
     Returns:
@@ -117,7 +119,9 @@ def check_input_with_permission(text: str, tool_name: str = "",
 
     # 2. 工具权限检查（如果指定了工具名）
     if tool_name:
-        decision, risk, perm_reason = check_tool_permission(tool_name, args=text, trust_mode=trust_mode)
+        decision, risk, perm_reason = check_tool_permission(
+            tool_name, args=text, trust_mode=trust_mode
+        )
         if decision == "deny":
             return False, perm_reason, "deny", risk
         if decision == "ask":
@@ -144,16 +148,12 @@ def sanitize_output(text):
     清理输出中的敏感信息。
     用 ***REDACTED*** 替换疑似密钥。
     """
+    text = re.sub(r"(sk-[a-zA-Z0-9\-_]{20,})", "***REDACTED***", text)
     text = re.sub(
-        r'(sk-[a-zA-Z0-9\-_]{20,})',
-        '***REDACTED***',
-        text
-    )
-    text = re.sub(
-        r'(api_key|token|secret|password)\s*[=:]\s*[\'\"][^\'\"]+[\'\"]',
-        r'\1=***REDACTED***',
+        r"(api_key|token|secret|password)\s*[=:]\s*[\'\"][^\'\"]+[\'\"]",
+        r"\1=***REDACTED***",
         text,
-        flags=re.IGNORECASE
+        flags=re.IGNORECASE,
     )
     return text
 
@@ -170,8 +170,9 @@ def _persist_counts():
     try:
         import json
         from pathlib import Path
+
         data = {k: [t for t in v if time.time() - t < 60] for k, v in _request_counts.items()}
-        with open(Path(__file__).parent / '.rate_limit_state.json', 'w') as f:
+        with open(Path(__file__).parent / ".rate_limit_state.json", "w") as f:
             json.dump(data, f)
     except Exception:
         pass
@@ -182,7 +183,8 @@ def _load_counts():
     try:
         import json
         from pathlib import Path
-        state_file = Path(__file__).parent / '.rate_limit_state.json'
+
+        state_file = Path(__file__).parent / ".rate_limit_state.json"
         if state_file.exists():
             with open(state_file) as f:
                 data = json.load(f)
@@ -210,8 +212,14 @@ def check_rate_limit(user_id="default"):
         _request_counts[user_id].append(now)
 
         # 定期持久化（每 50 次检查保存一次）
-        _check_count = getattr(check_rate_limit, '_call_count', 0) + 1
-        check_rate_limit._call_count = _check_count
+        _call_data = getattr(check_rate_limit, "_call_data", None)
+        if _call_data is None:
+            import threading
+            check_rate_limit._call_data = threading.local()
+            # thread-local storage for call counter, avoids race on function attribute
+            _call_data = check_rate_limit._call_data
+        _check_count = getattr(_call_data, "count", 0) + 1
+        _call_data.count = _check_count
         if _check_count % 50 == 0:
             _persist_counts()
 

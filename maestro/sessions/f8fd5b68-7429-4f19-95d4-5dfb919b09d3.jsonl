@@ -1,3 +1,0 @@
-{"ts": 1781263744.2929173, "type": "user_message", "data": {"task": "你是谁", "agent": "general-worker"}}
-{"ts": 1781263744.2949166, "type": "route_decision", "data": {"agent": "general-worker", "source": "force"}}
-{"ts": 1781263748.0871427, "type": "agent_response", "data": {"agent": "general-worker", "response": "你好！我是 Claude，由 Anthropic 开发的 AI 助手。我目前在一个项目目录 `D:\\agency` 中工作，可以帮你完成代码编写、调试、文件操作、git 管理等任务。\n有什么我可以帮你的吗？\n"}}

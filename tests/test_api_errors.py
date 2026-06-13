@@ -1,8 +1,12 @@
 """测试统一错误类型"""
-import pytest
+
 from maestro.api_errors import (
-    AppError, bad_request, not_found, permission_denied,
-    invalid_input, internal_error, handle_app_error
+    bad_request,
+    not_found,
+    permission_denied,
+    invalid_input,
+    internal_error,
+    handle_app_error,
 )
 
 

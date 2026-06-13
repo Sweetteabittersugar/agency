@@ -10,7 +10,8 @@ function toggleDashboard(){
   ov.classList.toggle('on',harnessActive);
   btn.classList.toggle('on',harnessActive);
   if(harnessActive){
-    renderDashboardGrid($('harnessContent'));
+    /* 使用 switchHarnessTab 保持标签状态一致 */
+    switchHarnessTab(_lastHarnessTab || 'cost');
   }else{
     [_subTimer,_ctxTimer].forEach(function(t){if(t){clearInterval(t)}});_subTimer=_ctxTimer=null;
   }
@@ -49,7 +50,8 @@ function buildDashCard(icon,title,cardType,loadFn){
 
 function loadCostCard(card){api.get('/api/cost/summary').then(function(d){var total=(d.total_cost||(d.total&&d.total.cost)||0);var calls=(d.total_calls||(d.total&&d.total.calls)||0);card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat">$'+Number(total).toFixed(4)+'</div><div class="dash-sub">'+calls+' 次调用</div>';}).catch(function(){card.querySelector('.dash-card-body').textContent='—';});}
 function loadOpsCard(card){api.get('/api/operations').then(function(d){var count=(d.operations||[]).length;card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat">'+count+'</div><div class="dash-sub">条记录</div>';}).catch(function(){card.querySelector('.dash-card-body').textContent='—';});}
-function loadContextCard(card){api.get('/api/harness/context').then(function(d){card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat">'+(d.token_usage||'—')+'</div><div class="dash-sub">tokens</div>';}).catch(function(){card.querySelector('.dash-card-body').textContent='—';});}
+/* 改用 /api/sessions/processes 内存在线会话，不再读磁盘 JSONL */
+function loadContextCard(card){api.get('/api/sessions/processes').then(function(d){var procs=d.processes||[];if(!procs.length){card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat" style="font-size:12px;color:var(--muted)">无活跃会话</div>';return}var totalTokens=0,totalCost=0,warnCount=0;procs.forEach(function(p){totalTokens+=(p.total_in||0)+(p.total_out||0);totalCost+=p.total_cost||0;if(p.compaction&&(p.compaction.warn||p.compaction.force))warnCount++;});var tokStr=totalTokens>=1e6?(totalTokens/1e6).toFixed(1)+'M':(totalTokens>=1000?Math.round(totalTokens/1000)+'K':String(totalTokens));card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat">'+procs.length+' 会话 · '+tokStr+' tokens · $'+totalCost.toFixed(2)+'</div>'+(warnCount?'<div class="dash-sub" style="color:var(--warn)">⚠ '+warnCount+' 个压缩警告</div>':'<div class="dash-sub">无压缩警告</div>');}).catch(function(){card.querySelector('.dash-card-body').textContent='—';});}
 function loadWorktreeCard(card){api.get('/api/worktrees').then(function(d){card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat">'+(d.count||0)+'</div><div class="dash-sub">活跃 worktree</div>';}).catch(function(){card.querySelector('.dash-card-body').textContent='—';});}
 function loadWeixinCard(card){api.get('/api/weixin/status').then(function(d){var status=d.logged_in?(d.running?'运行中':'已连接'):'未连接';var color=d.logged_in?'#27ae60':'#888';card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat" style="color:'+color+'">'+status+'</div>';}).catch(function(){card.querySelector('.dash-card-body').textContent='—';});}
 function loadTestCard(card){card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat" style="font-size:14px;color:var(--accent);cursor:pointer;" onclick="switchNav(\'dashboard\');toggleDashboard();">▶ 开始测试</div><div class="dash-sub">验证 Agent 功能</div>';}
@@ -57,6 +59,32 @@ function loadMCPCard(card){api.get('/api/mcp/status').then(function(d){var serve
 function loadSubagentsCard(card){api.get('/api/harness/subagents').then(function(d){var tasks=d.tasks||{};var total=0,active=0;for(var k in tasks){total++;if(tasks[k].status==='running')active++;}card.querySelector('.dash-stat').textContent=active+'/'+total;card.querySelector('.dash-sub').textContent='活跃/总数';}).catch(function(e){card.querySelector('.dash-stat').textContent='--';card.querySelector('.dash-sub').textContent='不可用';});}
 function loadHooksCard(card){api.get('/api/hooks/config').then(function(d){var hooks=d.hooks||d.scripts||{};var count=Array.isArray(hooks)?hooks.length:Object.keys(hooks).length;card.querySelector('.dash-stat').textContent=count;card.querySelector('.dash-sub').textContent='已注册Hook';}).catch(function(e){card.querySelector('.dash-stat').textContent='--';card.querySelector('.dash-sub').textContent='不可用';});}
 function loadMemoryCard(card){api.get('/api/memory/timeline').then(function(d){var count=(d.entries||[]).length;card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat">'+count+'</div><div class="dash-sub">条记忆</div>';}).catch(function(){card.querySelector('.dash-card-body').textContent='—';});}
+
+/* ── 仪表盘标签切换 ──
+   横排标签按钮，点击切换内容面板。_lastHarnessTab 跟踪当前标签。
+   每个标签对应已有的 render 函数或卡片网格。 */
+window.switchHarnessTab = function(tabName){
+  _lastHarnessTab = tabName;
+  // 更新标签 active 状态
+  document.querySelectorAll('.harness-overlay-tab').forEach(function(t){
+    t.classList.toggle('active', t.dataset.tab === tabName);
+  });
+  var c = $('harnessContent');
+  if(!c) return;
+  c.innerHTML = '';
+  // 每个标签都是独立功能页，不用总览/记忆（侧边栏已有）
+  var renderers = {
+    cost: function(){ renderCostDetail(c); },
+    context: function(){ renderContextDetail(c); },
+    test: function(){ renderTestDetail(c); },
+    operations: function(){ if(typeof renderOperationsTab==='function') renderOperationsTab(c); else c.innerHTML='<p style="color:var(--muted);text-align:center;padding:20px">操作日志加载中…</p>'; },
+    mcp: function(){ renderMCPDetail(c); },
+    subagents: function(){ renderSubagentsDetail(c); },
+    hooks: function(){ renderHooksDetail(c); },
+  };
+  var fn = renderers[tabName] || renderers.overview;
+  fn();
+};
 
 function openDashDetail(cardType){
   var detail=document.getElementById('dash-detail');
@@ -69,7 +97,8 @@ function renderCostDetail(container){api.get('/api/cost?days=30').then(function(
 function renderMCPDetail(container){api.get('/api/mcp/status').then(function(d){var servers=d.servers||[];if(!servers.length){container.innerHTML='<p style="color:var(--muted);text-align:center;padding:20px">暂无 MCP 服务器</p>';return}container.innerHTML='<h3 style="margin-bottom:8px">🔌 MCP 服务器</h3>'+servers.map(function(s){return'<div style="padding:8px 10px;margin:4px 0;background:var(--bg);border-radius:6px"><div style="font-weight:600;font-size:12px">'+escHtml(s.name)+' <span style="font-size:9px;color:'+(s.running?'var(--accent)':'var(--muted)')+'">● '+(s.running?'活跃':'离线')+'</span></div><div style="font-size:10px;color:var(--muted)">'+escHtml(s.command||'')+'</div></div>'}).join('');}).catch(function(){container.innerHTML='<p style="color:var(--muted);text-align:center;padding:20px">无法加载 MCP 状态</p>';});}
 function renderSubagentsDetail(container){container.innerHTML='<h3>🤖 SubAgent 状态</h3><div id="hsub-tree" class="log-list">加载中...</div>';api.get('/api/harness/subagents').then(function(d){var tasks=d.tasks||{};var html='';for(var k in tasks){var t=tasks[k];html+='<div class="log-entry"><span class="log-time">'+h(t.status||'?')+'</span> '+h(t.name||k)+' <span style="color:#888">'+h(t.model||'')+'</span></div>';}if(!html)html='<div class="log-empty">暂无活跃 SubAgent</div>';document.getElementById('hsub-tree').innerHTML=html;}).catch(function(e){document.getElementById('hsub-tree').innerHTML='<div class="log-empty">加载失败</div>';});}
 function renderHooksDetail(container){container.innerHTML='<h3>🪝 Hook 配置</h3><div id="hhooks-log" class="log-list">加载中...</div>';api.get('/api/hooks/config').then(function(d){var hooks=d.hooks||d.scripts||{};var html='';if(Array.isArray(hooks)){hooks.forEach(function(hk){html+='<div class="log-entry">🪝 '+h(typeof hk==='string'?hk:hk.name||hk.event||'?')+'</div>';});}else{for(var k in hooks){html+='<div class="log-entry">🪝 '+h(k)+'</div>';}}if(!html)html='<div class="log-empty">暂无注册 Hook</div>';document.getElementById('hhooks-log').innerHTML=html;}).catch(function(e){document.getElementById('hhooks-log').innerHTML='<div class="log-empty">加载失败</div>';});}
-function renderContextDetail(container){api.get('/api/harness/context').then(function(d){var ttl=d.total_tokens||0,pct=ttl>0?Math.min(100,Math.round(ttl/500000*100)):0;container.innerHTML='<h3 style="margin-bottom:8px">🧠 上下文窗口</h3><div class="ctx-gauge" style="height:14px;margin-bottom:4px"><div class="ctx-gauge-fill'+(pct>85?' danger':pct>60?' warn':'')+'" style="width:'+pct+'%"></div></div><div style="font-size:13px;display:flex;justify-content:space-between;margin-bottom:12px"><span>'+ttl.toLocaleString()+' / 500K</span><span style="color:var(--muted)">缓存: '+(d.cache_hit_rate||0)+'%</span></div><div style="font-size:11px;color:var(--text2)">输入 '+(d.input_tokens||0).toLocaleString()+' · 输出 '+(d.output_tokens||0).toLocaleString()+' · 费用 $'+(d.cost_est?d.cost_est.total.toFixed(6):'0')+(d.last_update?' · '+d.last_update:'')+'</div>';}).catch(function(){container.innerHTML='<p style="color:var(--muted);text-align:center;padding:20px">无法加载上下文数据</p>';});}
+/* 改用 /api/sessions/processes 逐会话展示实时 token 用量，不再读磁盘 JSONL */
+function renderContextDetail(container){api.get('/api/sessions/processes').then(function(d){var procs=d.processes||[];if(!procs.length){container.innerHTML='<h3 style="margin-bottom:8px">🧠 活跃会话</h3><div style="text-align:center;padding:32px 16px;color:var(--muted)"><div style="font-size:36px;margin-bottom:8px">💤</div><div style="font-size:12px">暂无活跃会话</div><div style="font-size:10px;margin-top:4px;opacity:0.6">打开 Web 终端或启动 Agent 后面板将自动显示</div></div>';return}var totalTokens=0,totalCost=0,warnCount=0;procs.forEach(function(p){totalTokens+=(p.total_in||0)+(p.total_out||0);totalCost+=p.total_cost||0;if(p.compaction&&(p.compaction.warn||p.compaction.force))warnCount++;});var summaryTok=totalTokens>=1e6?(totalTokens/1e6).toFixed(1)+'M':(totalTokens>=1000?Math.round(totalTokens/1000)+'K':String(totalTokens));var html='<h3 style="margin-bottom:8px">🧠 活跃会话 ('+procs.length+')</h3>'+'<div style="font-size:11px;color:var(--text2);margin-bottom:10px;display:flex;gap:16px"><span>合计: '+summaryTok+' tokens</span><span>费用: $'+totalCost.toFixed(3)+'</span>'+(warnCount?'<span style="color:var(--warn)">⚠ '+warnCount+' 个压缩警告</span>':'')+'</div>';procs.forEach(function(p){var c=p.compaction||{};var used=c.used||0,cap=c.capacity||200000;var pct=cap>0?Math.min(100,Math.round(used/cap*100)):0;var barColor=c.force?'var(--danger)':c.warn?'var(--warn)':'var(--accent)';var label=c.force?'强制':c.warn?'⚠ 警告':'正常';var sid=(p.sid||'').slice(0,8);var usedStr=used>=1e6?(used/1e6).toFixed(1)+'M':(used>=1000?Math.round(used/1000)+'K':String(used));var capStr=cap>=1e6?(cap/1e6).toFixed(1)+'M':(cap>=1000?Math.round(cap/1000)+'K':String(cap));html+='<div style="padding:8px 10px;margin:6px 0;background:var(--bg);border-radius:8px;border-left:3px solid '+barColor+'">'+'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+'<span style="font-weight:600;font-size:12px">'+escHtml(p.model||'?')+'</span>'+'<span style="font-size:10px;color:var(--muted)">'+sid+'</span>'+'</div>'+'<div style="margin-bottom:3px"><div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-bottom:1px"><span>'+usedStr+' / '+capStr+'</span><span style="color:'+barColor+'">'+label+'</span></div>'+'<div class="ctx-gauge" style="height:6px"><div class="ctx-gauge-fill" style="width:'+pct+'%;background:'+barColor+'"></div></div>'+'</div>'+'<div style="font-size:10px;color:var(--text2);display:flex;gap:12px"><span>输入: '+(p.total_in||0).toLocaleString()+'</span><span>输出: '+(p.total_out||0).toLocaleString()+'</span><span>费用: $'+(p.total_cost||0).toFixed(4)+'</span></div>'+'</div>';});container.innerHTML=html;}).catch(function(){container.innerHTML='<p style="color:var(--muted);text-align:center;padding:20px">无法加载会话数据</p>';});}
 function renderTestDetail(container){container.innerHTML='<h3 style="margin-bottom:8px">🧪 测试运行器</h3><div style="margin-bottom:8px"><input class="proj-input" id="test-url" type="text" placeholder="输入测试 URL，如 https://example.com" style="width:100%;margin-bottom:4px"><button class="new-chat-btn" onclick="runTest()" style="font-size:11px;padding:6px 16px;width:auto" id="test-run-btn">▶ 开始测试</button><span id="test-status" style="font-size:11px;color:var(--muted);margin-left:8px"></span></div><div id="test-results" style="font-size:11px;color:var(--muted);margin-top:8px"></div><div id="test-screenshot" style="margin-top:8px"></div>';_testPollTimer=null;}
 
 /* —— Demo 仪表盘卡片网格 —— */

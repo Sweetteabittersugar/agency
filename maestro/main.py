@@ -14,6 +14,8 @@ Agency — 主入口
 import os
 import sys
 import json
+import threading
+# threading used by _route_lock (module-level) and route cache
 import yaml
 import time
 import hashlib
@@ -27,6 +29,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # ── 加载 .env ──────────────────────────────────
 from maestro.env_loader import load_dotenv
+
 load_dotenv(PROJECT_ROOT)
 
 sys.path.insert(0, str(PROJECT_ROOT / "maestro"))
@@ -36,6 +39,7 @@ DEFAULT_MODEL = get_default_model()
 
 # ── 日志 ──────────────────────────────────────
 import logging
+
 log = logging.getLogger(__name__)
 
 # ── 路由矩阵（加权关键词）────────────────────────
@@ -114,63 +118,8 @@ def route_task(task, force_agent=None):
     return ranked[0], ranked[1], ranked[2]
 
 
-def semantic_match(task):
-    """基于 Jaccard 2-gram 相似度的语义匹配。零依赖，轻量实现。"""
-    best_agent = "coder"
-    best_score = 0.0
-    task_ngrams = set()
-    for i in range(len(task) - 1):
-        task_ngrams.add(task[i : i + 2])
 
-    if not task_ngrams:
-        return best_agent, 0.0
-
-    agents_dir = PROJECT_ROOT / "agents"
-    if not agents_dir.exists():
-        return best_agent, 0.0
-
-    for f in sorted(agents_dir.glob("*.md")):
-        try:
-            content = f.read_text(encoding="utf-8")
-        except Exception:
-            continue
-        desc = ""
-        if content.startswith("---"):
-            parts = content.split("---", 2)
-            if len(parts) >= 3:
-                try:
-                    fm = yaml.safe_load(parts[1])
-                    desc = fm.get("description", "") if fm else ""
-                except Exception:
-                    pass
-        if not desc:
-            continue
-
-        desc_ngrams = set()
-        for i in range(len(desc) - 1):
-            desc_ngrams.add(desc[i : i + 2])
-        if not desc_ngrams:
-            continue
-
-        intersection = len(task_ngrams & desc_ngrams)
-        union = len(task_ngrams | desc_ngrams)
-        score = intersection / union if union > 0 else 0
-
-        if score > best_score:
-            best_score = score
-            best_agent = f.stem
-
-    return best_agent, best_score
-
-
-# ── LLM 兜底缓存（72h 过期）──
-import threading
-_fallback_cache = {}  # {task_hash: (agent, timestamp)}
-_fallback_cache_lock = threading.Lock()
-_fallback_stats = {"total_routes": 0, "fallback_count": 0}
-
-
-def llm_fallback(task: str, candidates: list[dict], model: str = "deepseek-chat") -> str | None:
+def llm_fallback(task: str, candidates: list[dict], model: str = "deepseek-v4-flash") -> str | None:
     """用轻量模型做路由兜底。返回 agent name 或 None。
 
     Args:
@@ -185,12 +134,13 @@ def llm_fallback(task: str, candidates: list[dict], model: str = "deepseek-chat"
         return None
 
     # 构建 prompt
-    candidate_lines = [f"- {a['name']}: {a.get('description', '无描述')[:80]}" for a in candidates[:15]]
+    candidate_lines = [
+        f"- {a['name']}: {a.get('description', '无描述')[:80]}" for a in candidates[:15]
+    ]
     prompt = (
         f"以下任务该分配给哪个 Agent？只返回 Agent 名称，不要解释。\n\n"
         f"任务：{task}\n\n"
-        f"可选 Agent：\n" + "\n".join(candidate_lines) +
-        f"\n\nAgent 名称："
+        f"可选 Agent：\n" + "\n".join(candidate_lines) + "\n\nAgent 名称："
     )
 
     base_url, api_key, headers = get_provider_config()
@@ -315,8 +265,9 @@ def route_with_fallback(task, force_agent=None):
         sem_score = 0.0
         kw_matches = 0
         emb_results = []
-        return _make_result("general-worker", 0.0, "fallback",
-                          low_confidence=True, reason="empty_task")
+        return _make_result(
+            "general-worker", 0.0, "fallback", low_confidence=True, reason="empty_task"
+        )
 
     # ── Layer 1: 关键词匹配（带匹配计数）──
     kw_scores = _keyword_match(task)
@@ -330,6 +281,7 @@ def route_with_fallback(task, force_agent=None):
 
     # ── Layer 2: Embedding 语义检索 ──
     from maestro.embedding import get_embedding_router
+
     router = get_embedding_router()
     emb_results = router.search(task, top_k=3)
     if emb_results:
@@ -351,8 +303,12 @@ def route_with_fallback(task, force_agent=None):
         cv_attempted = True
         for emb_agent, emb_score in emb_results:
             if emb_agent == kw_agent and emb_score >= 0.5:
-                return _make_result(kw_agent, (keyword_score + emb_score) / 2,
-                                  "cross_validated", fallback_chain=["keyword", "semantic"])
+                return _make_result(
+                    kw_agent,
+                    (keyword_score + emb_score) / 2,
+                    "cross_validated",
+                    fallback_chain=["keyword", "semantic"],
+                )
 
     # ── Gate 4: LLM 兜底（关键词无信号，或关键词有信号但语义交叉验证失败）──
     llm_used = False
@@ -373,12 +329,16 @@ def route_with_fallback(task, force_agent=None):
 
         if not llm_used:
             from maestro.shared import load_agents
+
             all_agents = load_agents()
             candidate_names = {kw_agent, sem_agent}
             for name, _ in router.search(task, top_k=5):
                 candidate_names.add(name)
-            candidates = [{"name": a["name"], "description": a.get("description", "")}
-                          for a in all_agents if a["name"] in candidate_names]
+            candidates = [
+                {"name": a["name"], "description": a.get("description", "")}
+                for a in all_agents
+                if a["name"] in candidate_names
+            ]
             if not candidates and all_agents:
                 candidates = all_agents[:10]
 
@@ -427,22 +387,37 @@ def route_with_fallback(task, force_agent=None):
             llm_confidence = hybrid_confidence
         else:
             llm_confidence = 0.6
-        return _make_result(best_agent, llm_confidence, source,
-                          fallback_chain=["keyword", "semantic", "llm"])
+        return _make_result(
+            best_agent, llm_confidence, source, fallback_chain=["keyword", "semantic", "llm"]
+        )
 
     # 关键词或语义有部分信号 — 降级返回
     if keyword_score >= 0.3:
-        return _make_result(kw_agent, keyword_score * 0.7, "keyword_fallback",
-                          low_confidence=True, fallback_chain=["keyword"])
+        return _make_result(
+            kw_agent,
+            keyword_score * 0.7,
+            "keyword_fallback",
+            low_confidence=True,
+            fallback_chain=["keyword"],
+        )
 
     if sem_score > 0.0:
-        return _make_result(sem_agent, sem_score * 0.7, "semantic_fallback",
-                          low_confidence=True, fallback_chain=["semantic"])
+        return _make_result(
+            sem_agent,
+            sem_score * 0.7,
+            "semantic_fallback",
+            low_confidence=True,
+            fallback_chain=["semantic"],
+        )
 
     # 完全无匹配 → 不指定 Agent，让 Claude 以默认身份回复
-    return _make_result("", 0.0, "fallback",
-                      low_confidence=True, reason="no_match")
+    return _make_result("", 0.0, "fallback", low_confidence=True, reason="no_match")
 
+
+# LLM fallback 缓存 + 统计 + 锁（2026-06 修复：之前被误删导致 NameError）
+_fallback_cache = {}  # {task_hash: (result_dict, timestamp)}
+_fallback_stats = {"total_routes": 0, "fallback_count": 0}
+_fallback_cache_lock = threading.Lock()
 
 # 简单 LRU 缓存：最近 100 条路由结果
 _route_cache = {}  # {task_hash: route_result_dict}
@@ -500,6 +475,7 @@ def simple_route(task):
 
 # ── Agent 加载 ─────────────────────────────────
 from maestro.agent_parser import parse_agent_md
+
 
 def load_agent(name):
     """读 agents/{name}.md（支持子目录递归查找），返回 system_prompt, model"""
@@ -640,7 +616,7 @@ def chat(system_prompt, user_message, model=DEFAULT_MODEL):
 
 
 # ── 成本估算 ───────────────────────────────────
-from models import estimate_cost, PRICING  # noqa: E402
+from models import estimate_cost  # noqa: E402
 
 
 def record_cost(in_tokens, out_tokens, cost, model, elapsed):
@@ -666,6 +642,7 @@ def record_cost(in_tokens, out_tokens, cost, model, elapsed):
         conn.close()
     except Exception as e:
         import logging
+
         logging.warning(f"cost recording failed (non-fatal): {e}")
 
 
@@ -693,7 +670,7 @@ def main():
 
     if args[0] == "--model":
         if len(args) < 3:
-            print("用法: python maestro/main.py --model <模型名> \"任务\"")
+            print('用法: python maestro/main.py --model <模型名> "任务"')
             return
         model = args[1]
         args = args[2:]
@@ -709,7 +686,9 @@ def main():
     route_result = route_with_cache(task)
     current_agent = route_result["agent"]
 
-    print(f"→ 路由: {current_agent} (置信度: {route_result['confidence']:.2f}, 来源: {route_result.get('source', 'N/A')})")
+    print(
+        f"→ 路由: {current_agent} (置信度: {route_result['confidence']:.2f}, 来源: {route_result.get('source', 'N/A')})"
+    )
 
     # 加载 Agent
     system_prompt, agent_model = load_agent(current_agent)
@@ -723,6 +702,7 @@ def main():
 # ── Agent 成功率追踪（Superpowers Compound Learning） ──
 _agent_stats = {}  # {agent: {"success": N, "total": N}}
 
+
 def record_agent_result(agent, success):
     """记录 Agent 执行结果，用于未来路由优化"""
     with _route_lock:
@@ -731,6 +711,7 @@ def record_agent_result(agent, success):
         _agent_stats[agent]["total"] += 1
         if success:
             _agent_stats[agent]["success"] += 1
+
 
 def get_agent_stats():
     """返回 Agent 成功率统计"""

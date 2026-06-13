@@ -105,14 +105,21 @@ function loadMemoryFiles() {
     });
 }
 
-window.openMemoryFile = function(path, name) {
+window.openMemoryFile = function(path, name, targetId) {/*targetId: sidebar=>"sidebar-mem-content", dashboard=>"mem-content"(default)*/
+  targetId = targetId || 'mem-content';
+  var backFn = targetId === 'sidebar-mem-content' ? 'sidebarLoadMemoryFiles' : 'loadMemoryFiles';
   api.get('/api/memory/' + encodeURIComponent(path))
     .then(function(data) {
-      var content = document.getElementById('mem-content');
+      var content = document.getElementById(targetId);
+      if (!content) { console.error('openMemoryFile: #'+targetId+' not found'); return; }
+      if (data.error) { content.innerHTML = '<span style="color:var(--danger)">'+escHtml(data.error)+'</span>'; return; }
       content.innerHTML =
-        '<div style="margin-bottom:8px;"><button onclick="loadMemoryFiles()" style="padding:4px 10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:11px;">← 返回</button></div>' +
+        '<div style="margin-bottom:8px;"><button onclick="'+backFn+'()" style="padding:4px 10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:11px;">← 返回</button></div>' +
         '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">📄 ' + escHtml(name || path) + '</div>' +
         '<pre style="padding:12px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--text);white-space:pre-wrap;max-height:400px;overflow-y:auto;">' + escHtml(data.content || '') + '</pre>';
+    }).catch(function(e) {
+      var content = document.getElementById(targetId);
+      if (content) content.innerHTML = '<span style="color:var(--danger)">加载失败: '+escHtml(e.message||'未知错误')+'</span>';
     });
 };
 
@@ -130,7 +137,7 @@ function sidebarSearchMemory(){
     if (!results.length) { content.innerHTML = '<span style="color:var(--muted)">无匹配结果</span>'; return; }
     var html = '';
     results.forEach(function(r) {
-      html += '<div style="padding:4px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:11px" onclick="openMemoryFile(\'' + (r.path||r.file||'') + '\',\'' + (r.name||r.path||'') + '\')">📄 ' + escHtml(r.name||r.path||'?') + '<br><span style="color:var(--muted);font-size:10px">' + escHtml((r.snippet||r.preview||'').slice(0,60)) + '</span></div>';
+      html += '<div style="padding:4px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:11px" onclick="openMemoryFile(\'' + escAttr(r.name||r.path||r.file||'') + '\',\'' + escAttr(r.name||r.path||'') + '\')">📄 ' + escHtml(r.name||r.path||'?') + '<br><span style="color:var(--muted);font-size:10px">' + escHtml((r.snippet||r.preview||'').slice(0,60)) + '</span></div>';
     });
     content.innerHTML = html;
   }).catch(function(e) { content.innerHTML = '<span style="color:var(--danger)">搜索失败</span>'; });
@@ -161,7 +168,7 @@ function sidebarLoadMemoryFiles(){
     files.forEach(function(f) {
       var name = f.name || f.path || f;
       if (typeof f === 'string') name = f;
-      html += '<div style="padding:3px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:11px" onclick="openMemoryFile(\'' + (f.path||f) + '\',\'' + name + '\')">📄 ' + escHtml(name) + '</div>';
+      html += '<div style="padding:3px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:11px" onclick="openMemoryFile(\'' + escAttr(f.name||f.path||f) + '\',\'' + escAttr(name) + '\',\'sidebar-mem-content\')">📄 ' + escHtml(name) + '</div>';
     });
     content.innerHTML = html;
   }).catch(function(e) { content.innerHTML = '<span style="color:var(--danger)">加载失败</span>'; });

@@ -23,7 +23,9 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-PROJECT_ROOT = os.environ.get("CLAUDE_PROJECT_DIR", os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+PROJECT_ROOT = os.environ.get(
+    "CLAUDE_PROJECT_DIR", os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 
 MAESTRO_DIR = Path(PROJECT_ROOT) / "maestro"
 REGISTRY_FILE = MAESTRO_DIR / "agents.json"
@@ -60,13 +62,14 @@ def sync_task_board():
     """After creating a task, refresh task-board.json from disk."""
     try:
         import subprocess as _sp
+
         _sp.run(
             ["python", str(MAESTRO_DIR / "task-tracker.py"), "--sync"],
             capture_output=True,
             timeout=10,
         )
-    except Exception:
-        pass
+    except Exception as e:
+        log.warning(f"任务看板同步失败: {e}")  # 不静默吞——至少留日志
 
 
 def create_task(agent_name, task_desc, context, model=None):
@@ -90,6 +93,7 @@ def create_task(agent_name, task_desc, context, model=None):
 
 
 # ── Single agent dispatch (delegated to sandbox) ──────────────────
+
 
 def dispatch(agent_name, task_desc, context, model=None):
     """Dispatch a single agent via sandbox isolation."""
@@ -176,12 +180,15 @@ def _dispatch_reasonix(agent_cfg, agent_name, task_desc, context, model):
     # Build full prompt with context
     full_prompt = f"你是执行者，直接完成任务，不转派不反问。\n\n{task_desc}"
     if context:
-        full_prompt = f"{context}\n\n---\n\n你是执行者，直接完成任务，不转派不反问。\n\n任务: {task_desc}"
+        full_prompt = (
+            f"{context}\n\n---\n\n你是执行者，直接完成任务，不转派不反问。\n\n任务: {task_desc}"
+        )
 
     result_path = str(RESULTS_DIR / f"{task['task_id']}.txt")
 
     # Invoke reasonix directly via bash (PowerShell subprocess lacks TTY, bash works)
     import json as _json
+
     api_key = ""
     config_path = Path.home() / ".reasonix" / "config.json"
     if config_path.exists():
@@ -213,21 +220,21 @@ def _dispatch_reasonix(agent_cfg, agent_name, task_desc, context, model):
         returncode = proc.returncode
 
         # Parse v0.53.2 output: "answer\n\n— turns:N ..." — strip stats line
-        lines = raw_out.split('\n')
+        lines = raw_out.split("\n")
         answer_lines = []
         for line in lines:
             clean = line.strip()
             if not clean:
                 continue
-            if clean.startswith('— turns:'):
+            if clean.startswith("— turns:"):
                 break
             answer_lines.append(clean)
-        answer = '\n'.join(answer_lines).strip()
+        answer = "\n".join(answer_lines).strip()
 
         if returncode == 0 and answer:
             with open(result_path, "w", encoding="utf-8") as f:
                 f.write(f"STATUS: DONE\n\n## 详细结果\n{answer}\n\n## 用户摘要\n{answer[:500]}\n")
-            safe = answer[:80].encode('gbk', errors='replace').decode('gbk')
+            safe = answer[:80].encode("gbk", errors="replace").decode("gbk")
             print(f"{agent_name} done (model: {reasonix_model})")
             print(f"task: {task['task_id']}  {safe}")
         else:
@@ -246,7 +253,7 @@ def _dispatch_reasonix(agent_cfg, agent_name, task_desc, context, model):
         with open(result_path, "w", encoding="utf-8") as f:
             f.write("STATUS: FAILED\n")
             f.write(f"## 详细结果\n{str(e)[:1000]}\n")
-            f.write(f"## 用户摘要\n[reasonix] FAILED\n")
+            f.write("## 用户摘要\n[reasonix] FAILED\n")
         print(f"reasonix error: {str(e)[:100]}")
 
 
@@ -262,6 +269,7 @@ def _dispatch_basic(agent_cfg, agent_name, task_desc, context, model, task):
     # ── MCP 权限注入 ──
     try:
         from maestro.sandbox import _get_mcp_permissions, _get_mcp_tool_descriptions
+
         mcp_perms = _get_mcp_permissions(PROJECT_ROOT)
         if mcp_perms:
             tools = tools + "," + ",".join(mcp_perms)
@@ -271,48 +279,46 @@ def _dispatch_basic(agent_cfg, agent_name, task_desc, context, model, task):
 
     full_task = f"你是执行者，直接完成任务，不转派不反问。\\n\\n{task_desc}"
     if context:
-        full_task = f"{context}\\n\\n你是执行者，直接完成任务，不转派不反问。\\n\\n任务: {task_desc}"
+        full_task = (
+            f"{context}\\n\\n你是执行者，直接完成任务，不转派不反问。\\n\\n任务: {task_desc}"
+        )
 
     result_path = str(RESULTS_DIR / f"{task['task_id']}.txt")
     result_instruction = (
-        "完成后将结果写入 " + result_path +
-        " -- 第一行写 STATUS: DONE 或 STATUS: FAILED，" +
-        "然后写 ## 详细结果（包含完整执行过程），" +
-        "然后写 ## 用户摘要（面向 boss 的精简结果，无内部过程）"
+        "完成后将结果写入 "
+        + result_path
+        + " -- 第一行写 STATUS: DONE 或 STATUS: FAILED，"
+        + "然后写 ## 详细结果（包含完整执行过程），"
+        + "然后写 ## 用户摘要（面向 boss 的精简结果，无内部过程）"
     )
     if mcp_tool_desc:
         result_instruction += f"\\n\\n{mcp_tool_desc}"
 
-    claude_cmd = (
-        f'claude -p "{full_task}"'
-        f' --name "{agent_name}"'
-    )
+    claude_cmd = f'claude -p "{full_task}" --name "{agent_name}"'
     if prompt_md:
         claude_cmd += f' --system-prompt-file "{prompt_md}"'
     claude_cmd += (
         f' --append-system-prompt "{result_instruction}"'
         f' --model "{actual_model}"'
         f' --allowedTools "{tools}"'
-        f' --output-format text'
-        f' --permission-mode auto'
+        f" --output-format text"
+        f" --permission-mode auto"
     )
 
     script_path = MAESTRO_DIR / f"_launch_{task['task_id']}.ps1"
     lines = [
         f'Write-Host "Maestro Agent: {agent_name} | Task: {task["task_id"]} | Model: {actual_model}"',
         f'Write-Host "Working dir: {work_dir}"',
-        f'Write-Host "---"',
+        'Write-Host "---"',
         f'cd "{work_dir}"',
         claude_cmd,
-        f'Write-Host ""',
-        f'Write-Host "=== Agent finished. You can close this window. ==="',
+        'Write-Host ""',
+        'Write-Host "=== Agent finished. You can close this window. ==="',
+        f'Remove-Item -LiteralPath "{script_path}" -Force -ErrorAction SilentlyContinue',
     ]
     script_path.write_text("\n".join(lines), encoding="utf-8-sig")
 
-    ps_cmd = (
-        f'Start-Process powershell'
-        f' -ArgumentList "-NoProfile","-File","{script_path}"'
-    )
+    ps_cmd = f'Start-Process powershell -ArgumentList "-NoProfile","-File","{script_path}"'
 
     subprocess.run(
         ["powershell", "-NoProfile", "-Command", ps_cmd],
@@ -325,6 +331,7 @@ def _dispatch_basic(agent_cfg, agent_name, task_desc, context, model, task):
 
 
 # ── Status and result display ─────────────────────────────────────
+
 
 def gateway_filter(raw_text):
     """Extract boss-visible content from agent result file."""
@@ -437,6 +444,7 @@ def list_agents():
 
 
 # ── CLI main ──────────────────────────────────────────────────────
+
 
 def main():
     parser = argparse.ArgumentParser(description="Maestro Agent Dispatch")

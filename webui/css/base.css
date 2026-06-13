@@ -1,6 +1,6 @@
 /* 从 style.css 拆分 — 重置与基础排版 */
 *{margin:0;padding:0;box-sizing:border-box}
-body{font:14px/1.55 "DM Sans","Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;overflow:hidden}
+body{font:14px/1.55 system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;overflow:hidden}
 *{scrollbar-width:none;-ms-overflow-style:none}
 *::-webkit-scrollbar{width:0;height:0}
 

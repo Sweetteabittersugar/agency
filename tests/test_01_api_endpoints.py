@@ -2,15 +2,21 @@
 """
 Test 1: API endpoints for Agency
 """
-import sys, os, json, time, threading, unittest
+
+import sys
+import json
+import time
+import threading
+import unittest
 from http.server import HTTPServer
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "maestro"))
-from web import Handler, HTML, AGENCY_VERSION
+from web import Handler, AGENCY_VERSION
 
 PORT = 18801
+
 
 class TestAPIEndpoints(unittest.TestCase):
     """All API endpoint availability tests"""
@@ -18,6 +24,7 @@ class TestAPIEndpoints(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         import urllib.request
+
         proxy_handler = urllib.request.ProxyHandler({})
         opener = urllib.request.build_opener(proxy_handler)
         urllib.request.install_opener(opener)
@@ -33,6 +40,7 @@ class TestAPIEndpoints(unittest.TestCase):
 
     def _get(self, path):
         import urllib.request
+
         try:
             resp = urllib.request.urlopen(f"{self.base}{path}", timeout=5)
             return resp.status, resp.read()
@@ -43,10 +51,14 @@ class TestAPIEndpoints(unittest.TestCase):
 
     def _post(self, path, data=None):
         import urllib.request
+
         body = json.dumps(data or {}).encode("utf-8") if data else b"{}"
         req = urllib.request.Request(
-            f"{self.base}{path}", data=body,
-            headers={"Content-Type": "application/json"}, method="POST")
+            f"{self.base}{path}",
+            data=body,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
         try:
             resp = urllib.request.urlopen(req, timeout=10)
             return resp.status, resp.read()
@@ -149,7 +161,6 @@ class TestAPIEndpoints(unittest.TestCase):
         status, _ = self._get("/api/nonexistent")
         self.assertEqual(status, 404)
 
-
     def test_14_post_route(self):
         status, data = self._post("/api/route", {"task": "test"})
         self.assertEqual(status, 200)
@@ -210,9 +221,9 @@ class TestAPIEndpoints(unittest.TestCase):
         result = json.loads(data)
         self.assertIn("error", result)
 
+
 if __name__ == "__main__":
     suite = unittest.TestLoader().loadTestsFromTestCase(TestAPIEndpoints)
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
     sys.exit(0 if result.wasSuccessful() else 1)
-

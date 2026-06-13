@@ -1,4 +1,5 @@
 """多 Agent 共享记忆黑板 — 短期+长期+情景三层记忆"""
+
 import json
 import time
 import hashlib
@@ -29,12 +30,10 @@ class ContextLayer:
         self._long_loaded = False
         self._long_cache: dict[str, str] = {}
         self._long_path = (
-            self.project_root / "maestro" / _MEMORY_DIR_NAME
-            / f"{self._proj_hash()}.jsonl"
+            self.project_root / "maestro" / _MEMORY_DIR_NAME / f"{self._proj_hash()}.jsonl"
         )
         self._ep_path = (
-            self.project_root / "maestro" / "logs" / _EPISODIC_DIR_NAME
-            / f"{task_id}.jsonl"
+            self.project_root / "maestro" / "logs" / _EPISODIC_DIR_NAME / f"{task_id}.jsonl"
         )
 
     # ── 内部 ──
@@ -106,8 +105,9 @@ class ContextLayer:
 
     # ── 情景记忆 ──
 
-    def log_episodic(self, agent: str, action: str, result: str,
-                     elapsed_ms: float = 0, tokens: int = 0):
+    def log_episodic(
+        self, agent: str, action: str, result: str, elapsed_ms: float = 0, tokens: int = 0
+    ):
         entry = {
             "ts": time.time(),
             "agent": agent,

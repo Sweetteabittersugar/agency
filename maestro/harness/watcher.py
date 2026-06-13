@@ -3,9 +3,11 @@ Harness Watcher — SSE 事件广播 + JSONL tail 守护线程
 所有 Harness 前端共享一个 /api/harness/stream SSE 长连接，
 后端通过此模块的 broadcast() 推送事件到所有客户端。
 """
-import json, threading, time, os
-from pathlib import Path
-from queue import Queue, Empty
+
+import json
+import threading
+import time
+from queue import Queue
 
 
 class HarnessBus:
@@ -19,14 +21,15 @@ class HarnessBus:
 
     def broadcast(self, event_type: str, data: dict):
         """推送事件到所有连接的 SSE 客户端"""
-        payload = json.dumps({"type": event_type, "data": data, "ts": time.time()},
-                             ensure_ascii=False)
+        payload = json.dumps(
+            {"type": event_type, "data": data, "ts": time.time()}, ensure_ascii=False
+        )
 
         with self._lock:
             # 记入滚动日志（锁内保护，与 recent_events 互斥）
             self._event_log.append({"type": event_type, "data": data, "ts": time.time()})
             if len(self._event_log) > self._max_log:
-                self._event_log = self._event_log[-self._max_log:]
+                self._event_log = self._event_log[-self._max_log :]
 
             dead = []
             for q in self._queues:

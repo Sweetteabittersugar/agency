@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """Agency 全量检测 — JS/Python/API 一把梭"""
-import subprocess, sys, os, json, ast, re
+
+import subprocess
+import sys
+import os
+import ast
+import re
 from pathlib import Path
 from collections import Counter
 
@@ -9,6 +14,7 @@ os.chdir(str(ROOT))
 
 errors = 0
 OK = 0
+
 
 def check(title, fn):
     global errors, OK
@@ -92,7 +98,9 @@ def check_js_brackets():
                 if pairs[opened] != ch:
                     line_open = content[:pos].count("\n") + 1
                     line_close = content[:i].count("\n") + 1
-                    all_errors.append(f"{js_file.name}: {opened}(行{line_open}) 被 {ch}(行{line_close}) 错误关闭")
+                    all_errors.append(
+                        f"{js_file.name}: {opened}(行{line_open}) 被 {ch}(行{line_close}) 错误关闭"
+                    )
             i += 1
         if stack:
             for ch, pos in stack[-3:]:
@@ -110,8 +118,21 @@ def check_html_tags():
     except Exception as e:
         return False, str(e)
 
-    void_tags = {"br", "hr", "img", "input", "link", "meta", "area", "base",
-                 "col", "embed", "source", "track", "wbr"}
+    void_tags = {
+        "br",
+        "hr",
+        "img",
+        "input",
+        "link",
+        "meta",
+        "area",
+        "base",
+        "col",
+        "embed",
+        "source",
+        "track",
+        "wbr",
+    }
     # 匹配 <tag> 和 </tag>
     tags = re.findall(r"<(/?)(\w+)[^>]*>", content)
     stack = []
@@ -156,7 +177,16 @@ def check_python_syntax():
 def check_duplicate_functions():
     js_dir = ROOT / "webui" / "js"
     all_dupes = []
-    nested_ok = {"read", "finish", "runNext", "runNextPhase", "renderNode", "finish_", "read_", "run_next"}
+    nested_ok = {
+        "read",
+        "finish",
+        "runNext",
+        "runNextPhase",
+        "renderNode",
+        "finish_",
+        "read_",
+        "run_next",
+    }
     for js_file in sorted(js_dir.glob("*.js")):
         try:
             content = js_file.read_text(encoding="utf-8")
@@ -176,6 +206,7 @@ def check_duplicate_functions():
 # ── 6. API 健康检查 ──
 def check_api():
     import urllib.request
+
     # 禁用代理（Windows 可能有 socks 代理配置）
     proxy_handler = urllib.request.ProxyHandler({})
     opener = urllib.request.build_opener(proxy_handler)
@@ -211,7 +242,7 @@ if __name__ == "__main__":
     check("Python 语法", check_python_syntax)
     check("API 端点", check_api)
 
-    print(f"\n{'='*40}")
+    print(f"\n{'=' * 40}")
     if errors == 0:
         print(f"全部通过 ({OK}项)")
         sys.exit(0)

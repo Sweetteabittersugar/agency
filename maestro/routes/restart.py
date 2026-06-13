@@ -1,4 +1,5 @@
 """服务重启路由"""
+
 import os
 import sys
 import subprocess
@@ -12,8 +13,12 @@ def handle_restart(handler, body):
     handler.send_json({"ok": True, "msg": "正在重启…"})
     handler.wfile.flush()
 
-    # 启动新进程
-    script = os.path.join(os.path.dirname(os.path.dirname(__file__)), "web.py")
+    # 自动检测模式：Flask 模式重启 flask_app.py，legacy 模式重启 web.py
+    maestro_dir = os.path.dirname(os.path.dirname(__file__))
+    if os.environ.get("AGENCY_USE_LEGACY") == "1":
+        script = os.path.join(maestro_dir, "web.py")
+    else:
+        script = os.path.join(maestro_dir, "flask_app.py")
     subprocess.Popen(
         [sys.executable, script],
         stdout=subprocess.DEVNULL,

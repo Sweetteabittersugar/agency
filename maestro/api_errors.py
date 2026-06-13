@@ -7,8 +7,10 @@
 现有路由（return True 模式）继续正常工作，逐步迁移。
 """
 
+
 class AppError(Exception):
     """应用级异常，会被错误中间件捕获"""
+
     def __init__(self, code: str, message: str, http_status: int = 400, details: dict = None):
         self.code = code
         self.message = message
@@ -41,11 +43,10 @@ def internal_error(msg: str = "服务器内部错误") -> AppError:
 
 def handle_app_error(handler, error: AppError):
     """在路由处理函数中捕获 AppError 并返回统一格式"""
-    handler.send_json({
-        "ok": False,
-        "error": {
-            "code": error.code,
-            "message": error.message,
-            "details": error.details
-        }
-    }, error.http_status)
+    handler.send_json(
+        {
+            "ok": False,
+            "error": {"code": error.code, "message": error.message, "details": error.details},
+        },
+        error.http_status,
+    )

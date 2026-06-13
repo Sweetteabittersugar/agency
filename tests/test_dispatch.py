@@ -1,10 +1,11 @@
 """dispatch 基础测试"""
+
 import sys
 import os
 import pytest
 
 # 确保 maestro 在 path 中
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'maestro'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "maestro"))
 
 
 class TestDispatchBasics:
@@ -14,6 +15,7 @@ class TestDispatchBasics:
         """dispatch 模块可导入"""
         try:
             import dispatch
+
             assert dispatch is not None
         except ImportError as e:
             pytest.skip(f"dispatch 模块不可导入: {e}")
@@ -22,6 +24,7 @@ class TestDispatchBasics:
         """dispatch 包含 agent 列表"""
         try:
             from dispatch import AGENTS
+
             assert isinstance(AGENTS, dict)
             assert len(AGENTS) > 0
         except (ImportError, AttributeError) as e:
@@ -35,6 +38,7 @@ class TestSandboxBasics:
         """sandbox 模块可导入"""
         try:
             import sandbox
+
             assert sandbox is not None
         except ImportError as e:
             pytest.skip(f"sandbox 模块不可导入: {e}")
@@ -47,10 +51,11 @@ class TestGatewayBasics:
         """gateway 模块可导入"""
         try:
             import gateway
+
             assert gateway is not None
         except ImportError as e:
             pytest.skip(f"gateway 模块不可导入: {e}")
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

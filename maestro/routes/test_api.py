@@ -1,4 +1,5 @@
 """自动测试 API -- 通过 claude -p 发送 Playwright 指令并解析结果"""
+
 import json
 import subprocess
 import threading
@@ -24,9 +25,7 @@ def _build_playwright_prompt(url: str, steps: list | None = None) -> str:
     result_path = (RESULTS_DIR / f"test_result_{run_id}.json").as_posix()
 
     prompt = (
-        f"你是浏览器自动化测试执行者。执行以下测试并保存结果。\n\n"
-        f"## 任务\n"
-        f"1. 导航到 URL: {url}\n"
+        f"你是浏览器自动化测试执行者。执行以下测试并保存结果。\n\n## 任务\n1. 导航到 URL: {url}\n"
     )
 
     if steps:
@@ -60,12 +59,19 @@ def _execute_test(project_root: str, prompt: str) -> dict | None:
     try:
         result = subprocess.run(
             [
-                "claude", "-p", prompt,
-                "--model", "haiku",
-                "--permission-mode", "acceptEdits",
-                "--max-turns", "20",
-                "--max-budget-usd", "0.10",
-                "--output-format", "text",
+                "claude",
+                "-p",
+                prompt,
+                "--model",
+                "haiku",
+                "--permission-mode",
+                "acceptEdits",
+                "--max-turns",
+                "20",
+                "--max-budget-usd",
+                "0.10",
+                "--output-format",
+                "text",
             ],
             cwd=project_root,
             capture_output=True,
@@ -125,7 +131,9 @@ def handle_test_run(handler, body):
                 _runs[run_id]["screenshot"] = None
             # 持久化结果
             try:
-                Path(result_path).write_text(json.dumps(_runs[run_id], ensure_ascii=False), encoding="utf-8")
+                Path(result_path).write_text(
+                    json.dumps(_runs[run_id], ensure_ascii=False), encoding="utf-8"
+                )
             except Exception:
                 pass
         else:

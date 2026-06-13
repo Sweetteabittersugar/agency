@@ -17,7 +17,9 @@ import sys
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-PROJECT_ROOT = os.environ.get("CLAUDE_PROJECT_DIR", os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+PROJECT_ROOT = os.environ.get(
+    "CLAUDE_PROJECT_DIR", os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 
 # ── 配置 ────────────────────────────────────────────────────────────────
 COST_DB = Path(PROJECT_ROOT) / "maestro" / "cost.db"
@@ -30,10 +32,12 @@ AGENT_MODEL_MAP: dict[str, str] = {}
 # 模型层次：越靠前越便宜
 MODEL_TIER = ["haiku", "sonnet", "opus", "deepseek-v4-pro", "deepseek-v4-flash"]
 
+
 # ── 定价统一从 models.py 导入 ──
 def _model_price(model: str) -> tuple[float, float]:
     """返回模型的 (input_price_per_1M, output_price_per_1M)。"""
     from maestro.models import PRICING
+
     if model in PRICING:
         return PRICING[model]
     # 模糊匹配
@@ -50,15 +54,13 @@ def _load_agent_model_map() -> dict[str, str]:
         return {}
     try:
         data = json.loads(AGENTS_JSON.read_text(encoding="utf-8"))
-        return {
-            name: cfg.get("model", "unknown")
-            for name, cfg in data.items()
-        }
+        return {name: cfg.get("model", "unknown") for name, cfg in data.items()}
     except (json.JSONDecodeError, OSError):
         return {}
 
 
 # ── 数据查询 ────────────────────────────────────────────────────────────
+
 
 def query_today(conn: sqlite3.Connection, today_str: str) -> list[dict]:
     """查询 costs 中今日的所有记录。"""
@@ -74,16 +76,18 @@ def query_today(conn: sqlite3.Connection, today_str: str) -> list[dict]:
             (today_str, _next_day(today_str)),
         )
         for r in cur:
-            rows.append({
-                "source": "costs",
-                "time": r[0],
-                "channel": r[1] or "unknown",
-                "model": r[2] or "unknown",
-                "in_tokens": r[3],
-                "out_tokens": r[4],
-                "cost_usd": r[5],
-                "msg_count": 1,  # 每条记录 = 1 次 API 调用
-            })
+            rows.append(
+                {
+                    "source": "costs",
+                    "time": r[0],
+                    "channel": r[1] or "unknown",
+                    "model": r[2] or "unknown",
+                    "in_tokens": r[3],
+                    "out_tokens": r[4],
+                    "cost_usd": r[5],
+                    "msg_count": 1,  # 每条记录 = 1 次 API 调用
+                }
+            )
     except sqlite3.OperationalError:
         pass
 
@@ -127,6 +131,7 @@ def _next_day(day_str: str) -> str:
 
 
 # ── 分析函数 ────────────────────────────────────────────────────────────
+
 
 def analyze_channel_distribution(rows: list[dict]) -> list[str]:
     """分析各通道 token 占比是否合理。"""
@@ -172,20 +177,26 @@ def analyze_channel_distribution(rows: list[dict]) -> list[str]:
     if mc:
         mc_pct = mc["cost_usd"] / total_cost * 100 if total_cost else 0
         if mc_pct > 60:
-            lines.append(f"**警告**: 主 Claude 通道占{mc_pct:.0f}%费用，偏高。建议将更多长任务派给 reasonix/worker agent，减少主会话上下文膨胀。")
+            lines.append(
+                f"**警告**: 主 Claude 通道占{mc_pct:.0f}%费用，偏高。建议将更多长任务派给 reasonix/worker agent，减少主会话上下文膨胀。"
+            )
         lines.append("")
 
     return lines
 
 
-def analyze_reasonix_anomaly(conn: sqlite3.Connection, today_str: str,
-                             today_rows: list[dict]) -> list[str]:
+def analyze_reasonix_anomaly(
+    conn: sqlite3.Connection, today_str: str, today_rows: list[dict]
+) -> list[str]:
     """检测 reasonix 单次平均 token 是否超过昨日的 2 倍。"""
     lines: list[str] = []
 
     # 今日 reasonix 相关
-    today_reasonix = [r for r in today_rows if
-                      r["channel"] == "reasonix" or "deepseek" in r.get("model", "").lower()]
+    today_reasonix = [
+        r
+        for r in today_rows
+        if r["channel"] == "reasonix" or "deepseek" in r.get("model", "").lower()
+    ]
     if not today_reasonix:
         return lines
 
@@ -194,10 +205,15 @@ def analyze_reasonix_anomaly(conn: sqlite3.Connection, today_str: str,
     today_avg = today_total / today_count if today_count else 0
 
     # 昨日 reasonix 相关
-    yesterday_str = (datetime.strptime(today_str, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
+    yesterday_str = (datetime.strptime(today_str, "%Y-%m-%d") - timedelta(days=1)).strftime(
+        "%Y-%m-%d"
+    )
     yesterday_rows = query_day(conn, yesterday_str)
-    yesterday_reasonix = [r for r in yesterday_rows if
-                          r["channel"] == "reasonix" or "deepseek" in r.get("model", "").lower()]
+    yesterday_reasonix = [
+        r
+        for r in yesterday_rows
+        if r["channel"] == "reasonix" or "deepseek" in r.get("model", "").lower()
+    ]
 
     yesterday_count = sum(r["msg_count"] for r in yesterday_reasonix)
     yesterday_total = sum(r["in_tokens"] + r["out_tokens"] for r in yesterday_reasonix)
@@ -210,19 +226,24 @@ def analyze_reasonix_anomaly(conn: sqlite3.Connection, today_str: str,
 
     if yesterday_avg > 0 and today_avg > yesterday_avg * 2:
         ratio = today_avg / yesterday_avg
-        lines.append(f"")
-        lines.append(f"**异常**: 今日 reasonix 单次平均 token ({today_avg:,.0f}) 是昨日 ({yesterday_avg:,.0f}) "
-                     f"的 {ratio:.1f} 倍，超过 2 倍阈值。")
-        lines.append(f"  - 建议: 检查是否有任务携带了过多上下文；考虑拆分大任务为多个小任务；启用 deepseek-v4-flash 处理简单查询。")
+        lines.append("")
+        lines.append(
+            f"**异常**: 今日 reasonix 单次平均 token ({today_avg:,.0f}) 是昨日 ({yesterday_avg:,.0f}) "
+            f"的 {ratio:.1f} 倍，超过 2 倍阈值。"
+        )
+        lines.append(
+            "  - 建议: 检查是否有任务携带了过多上下文；考虑拆分大任务为多个小任务；启用 deepseek-v4-flash 处理简单查询。"
+        )
     else:
-        lines.append(f"- 单次平均 token 在正常范围内。")
+        lines.append("- 单次平均 token 在正常范围内。")
 
     lines.append("")
     return lines
 
 
-def analyze_model_misuse(conn: sqlite3.Connection, today_str: str,
-                         today_rows: list[dict]) -> list[str]:
+def analyze_model_misuse(
+    conn: sqlite3.Connection, today_str: str, today_rows: list[dict]
+) -> list[str]:
     """检测是否简单任务用了 sonnet 而非 haiku。"""
     lines: list[str] = []
 
@@ -247,9 +268,11 @@ def analyze_model_misuse(conn: sqlite3.Connection, today_str: str,
         if ch in channel_model_usage:
             for model, stats in channel_model_usage[ch].items():
                 if "sonnet" in model.lower() or "opus" in model.lower():
-                    lines.append(f"**注意**: {ch} 通道使用了 {model} ({stats['count']} 次)，"
-                                 f"应使用 haiku。累计费用 ${stats['cost_usd']:.4f}。")
-                    lines.append(f"  - 建议: 检查 dispatch 时 model 参数是否被错误覆盖。")
+                    lines.append(
+                        f"**注意**: {ch} 通道使用了 {model} ({stats['count']} 次)，"
+                        f"应使用 haiku。累计费用 ${stats['cost_usd']:.4f}。"
+                    )
+                    lines.append("  - 建议: 检查 dispatch 时 model 参数是否被错误覆盖。")
 
     # 检查是否有小而简单的调用用了昂贵模型
     for ch, models in channel_model_usage.items():
@@ -257,9 +280,11 @@ def analyze_model_misuse(conn: sqlite3.Connection, today_str: str,
             if "opus" in model.lower() and stats["total_tokens"] and stats["count"]:
                 avg = stats["total_tokens"] / stats["count"]
                 if avg < 2000:
-                    lines.append(f"**注意**: {ch} 用 {model} 处理了 {stats['count']} 次小任务"
-                                 f"(平均 {avg:,.0f} tokens/次)，费用 ${stats['cost_usd']:.4f}。")
-                    lines.append(f"  - 建议: <2000 token 的任务应降级到 haiku 或 sonnet。")
+                    lines.append(
+                        f"**注意**: {ch} 用 {model} 处理了 {stats['count']} 次小任务"
+                        f"(平均 {avg:,.0f} tokens/次)，费用 ${stats['cost_usd']:.4f}。"
+                    )
+                    lines.append("  - 建议: <2000 token 的任务应降级到 haiku 或 sonnet。")
 
     if not any("注意" in l or "异常" in l for l in lines[1:]):
         lines.append("- 模型使用正常，未发现 haiku→sonnet 误配。")
@@ -358,15 +383,18 @@ def analyze_task_board_efficiency(today_str: str) -> list[str]:
         if expected_model in ("sonnet", "opus") and stats["total"] >= 3:
             # 检查是否有大量 dispatched 未完成 → 可能是僵尸任务
             if stats["dispatched"] > stats["done"] * 2:
-                lines.append(f"**注意**: {agent} ({expected_model}) 有 {stats['dispatched']} 个未完成任务，"
-                             f"仅 {stats['done']} 个完成。可能是僵尸任务浪费资源。")
-                lines.append(f"  - 建议: 取消超时任务，清理 task-board 僵尸记录。")
+                lines.append(
+                    f"**注意**: {agent} ({expected_model}) 有 {stats['dispatched']} 个未完成任务，"
+                    f"仅 {stats['done']} 个完成。可能是僵尸任务浪费资源。"
+                )
+                lines.append("  - 建议: 取消超时任务，清理 task-board 僵尸记录。")
 
     lines.append("")
     return lines
 
 
 # ── 建议生成 ────────────────────────────────────────────────────────────
+
 
 def generate_recommendations(
     today_rows: list[dict],
@@ -380,7 +408,7 @@ def generate_recommendations(
     total_cost = sum(r["cost_usd"] for r in today_rows)
     total_tokens = sum(r["in_tokens"] + r["out_tokens"] for r in today_rows)
 
-    lines.append(f"## 成本分析 (private)")
+    lines.append("## 成本分析 (private)")
     lines.append("")
     lines.append(f"**日期**: {today_str}")
     lines.append(f"**当日总费用**: ${total_cost:.4f}")
@@ -416,7 +444,9 @@ def generate_recommendations(
 
     mc_pct = channel_costs.get("main_claude", 0) / total_cost * 100 if total_cost else 0
     if mc_pct > 50:
-        recommendations.append((1, "**切换模型**: 将主会话长任务委托给 reasonix agent，减少 main_claude 上下文膨胀"))
+        recommendations.append(
+            (1, "**切换模型**: 将主会话长任务委托给 reasonix agent，减少 main_claude 上下文膨胀")
+        )
 
     # 基于模型使用的建议
     sonnet_overuse = False
@@ -427,19 +457,31 @@ def generate_recommendations(
             sonnet_overuse = True
             break
     if sonnet_overuse:
-        recommendations.append((2, "**降级任务**: explorer/test 应强制使用 haiku，确认 dispatch 未错误覆盖 model 参数"))
+        recommendations.append(
+            (2, "**降级任务**: explorer/test 应强制使用 haiku，确认 dispatch 未错误覆盖 model 参数")
+        )
 
     # 上下文压缩建议
     mc_in = sum(r["in_tokens"] for r in today_rows if r["channel"] == "main_claude")
     if mc_in > 80_000:
-        recommendations.append((3, "**压缩上下文**: 主会话入向 >80K，建议降低上下文压缩阈值至 200K 或手动 /compact"))
+        recommendations.append(
+            (3, "**压缩上下文**: 主会话入向 >80K，建议降低上下文压缩阈值至 200K 或手动 /compact")
+        )
 
     # 任务拆分建议
-    reasonix_rows = [r for r in today_rows if r["channel"] == "reasonix" or "deepseek" in r.get("model", "").lower()]
+    reasonix_rows = [
+        r
+        for r in today_rows
+        if r["channel"] == "reasonix" or "deepseek" in r.get("model", "").lower()
+    ]
     if reasonix_rows:
-        avg_tokens = sum(r["in_tokens"] + r["out_tokens"] for r in reasonix_rows) / sum(r["msg_count"] for r in reasonix_rows)
+        avg_tokens = sum(r["in_tokens"] + r["out_tokens"] for r in reasonix_rows) / sum(
+            r["msg_count"] for r in reasonix_rows
+        )
         if avg_tokens > 50_000:
-            recommendations.append((4, "**拆分大任务**: reasonix 单次超 50K tokens，建议拆分复杂任务为多步骤小任务"))
+            recommendations.append(
+                (4, "**拆分大任务**: reasonix 单次超 50K tokens，建议拆分复杂任务为多步骤小任务")
+            )
 
     if not recommendations:
         recommendations.append((0, "今日成本结构正常，无需调整。继续保持当前策略。"))
@@ -453,6 +495,7 @@ def generate_recommendations(
 
 
 # ── 文件输出 ────────────────────────────────────────────────────────────
+
 
 def append_to_worklog(today_str: str, report_lines: list[str]) -> None:
     """追加分析结果到当日工作日志。"""
@@ -490,6 +533,7 @@ def append_to_worklog(today_str: str, report_lines: list[str]) -> None:
 
 # ── 入口 ────────────────────────────────────────────────────────────────
 
+
 def main() -> int:
     global AGENT_MODEL_MAP
     AGENT_MODEL_MAP = _load_agent_model_map()
@@ -505,7 +549,7 @@ def main() -> int:
         print(f"[cost-analyzer] cost.db 不存在: {COST_DB}", file=sys.stderr)
         # 即使数据库不存在，也生成一份空报告
         report = [
-            f"## 成本分析 (private)",
+            "## 成本分析 (private)",
             "",
             f"**日期**: {today_str}",
             "**状态**: cost.db 不存在，无数据可分析。",
@@ -523,7 +567,7 @@ def main() -> int:
 
         if not today_rows:
             report = [
-                f"## 成本分析 (private)",
+                "## 成本分析 (private)",
                 "",
                 f"**日期**: {today_str}",
                 "**状态**: 今日无记录。",

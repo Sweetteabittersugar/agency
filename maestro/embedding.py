@@ -30,15 +30,15 @@ def _tokenize(text: str) -> list[str]:
     tokens: list[str] = []
 
     # 英文: 按空白/标点分词
-    english_words = re.findall(r'[a-zA-Z0-9_]+', text.lower())
+    english_words = re.findall(r"[a-zA-Z0-9_]+", text.lower())
     for w in english_words:
         tokens.append(w)
         # 添加 bigram
         for i in range(len(w) - 1):
-            tokens.append(w[i:i + 2])
+            tokens.append(w[i : i + 2])
 
     # 中文: 字符级 unigram + bigram
-    chinese_chars = re.findall(r'[一-鿿㐀-䶿]', text)
+    chinese_chars = re.findall(r"[一-鿿㐀-䶿]", text)
     for ch in chinese_chars:
         tokens.append(ch)
     for i in range(len(chinese_chars) - 1):
@@ -73,10 +73,7 @@ class EmbeddingRouter:
     def _build_index(self):
         """构建 TF-IDF 向量索引。"""
         self.agent_names = [a.get("name", "") for a in self.agents]
-        self.agent_texts = [
-            a.get("name", "") + " " + a.get("description", "")
-            for a in self.agents
-        ]
+        self.agent_texts = [a.get("name", "") + " " + a.get("description", "") for a in self.agents]
 
         # 第一步：分词 + 构建文档列表
         doc_tokens: list[list[str]] = []
@@ -184,16 +181,19 @@ def get_embedding_router(agents: Optional[list[dict]] = None) -> EmbeddingRouter
     if agents is None:
         # 从 agents/ 目录自动加载
         from maestro.agent_parser import parse_agent_md
+
         project_root = Path(__file__).resolve().parent.parent
         agents_dir = project_root / "agents"
         agents = []
         if agents_dir.exists():
             for f in sorted(agents_dir.glob("**/*.md")):
                 info = parse_agent_md(f)
-                agents.append({
-                    "name": info["name"],
-                    "description": info["description"],
-                })
+                agents.append(
+                    {
+                        "name": info["name"],
+                        "description": info["description"],
+                    }
+                )
 
     _embedding_router = EmbeddingRouter(agents)
     return _embedding_router

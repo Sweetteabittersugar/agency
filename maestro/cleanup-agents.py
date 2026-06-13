@@ -6,6 +6,7 @@
 - 记录清理日志
 - --kill <task_id>: 杀特定任务的 agent 进程
 """
+
 import subprocess
 import json
 import sys
@@ -15,7 +16,9 @@ from datetime import datetime
 
 _logger = logging.getLogger(__name__)
 
-PROJECT_ROOT = os.environ.get("CLAUDE_PROJECT_DIR", os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+PROJECT_ROOT = os.environ.get(
+    "CLAUDE_PROJECT_DIR", os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 
 MAESTRO_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FILE = os.path.join(MAESTRO_DIR, "cleanup.log")
@@ -36,7 +39,7 @@ def log(msg: str):
 def get_claude_processes() -> list[dict]:
     """通过 PowerShell 获取所有 claude.exe 进程详情"""
     ps_cmd = (
-        'powershell -NoProfile -ExecutionPolicy Bypass -Command '
+        "powershell -NoProfile -ExecutionPolicy Bypass -Command "
         '"Get-CimInstance Win32_Process -Filter \\"Name=\'claude.exe\'\\" | '
         'Select-Object ProcessId, CreationDate, WorkingSetSize | ConvertTo-Json"'
     )
@@ -67,7 +70,9 @@ def get_claude_processes() -> list[dict]:
             _logger.debug(f"cleanup-agents parse created date: {created_str}")
             created = datetime.now()  # 解析失败用当前时间，避免误杀
 
-        processes.append({"pid": pid, "memory_kb": mem // 1024, "created": created, "raw_created": created_str})
+        processes.append(
+            {"pid": pid, "memory_kb": mem // 1024, "created": created, "raw_created": created_str}
+        )
 
     return processes
 
@@ -83,7 +88,10 @@ def kill_process(pid: int) -> bool:
     """强制终止进程"""
     result = subprocess.run(
         ["taskkill", "/PID", str(pid), "/F"],
-        capture_output=True, text=True, timeout=10, shell=False
+        capture_output=True,
+        text=True,
+        timeout=10,
+        shell=False,
     )
     return result.returncode == 0
 
@@ -92,7 +100,10 @@ def kill_process_tree(pid: int) -> bool:
     """强制终止进程及其所有子进程"""
     result = subprocess.run(
         ["taskkill", "/PID", str(pid), "/F", "/T"],
-        capture_output=True, text=True, timeout=10, shell=False
+        capture_output=True,
+        text=True,
+        timeout=10,
+        shell=False,
     )
     return result.returncode == 0
 
@@ -107,9 +118,9 @@ def _search_process(method):
     """
     proc_name, pattern, _match_type = method
     ps_cmd = (
-        'powershell -NoProfile -ExecutionPolicy Bypass -Command '
+        "powershell -NoProfile -ExecutionPolicy Bypass -Command "
         f'"Get-CimInstance Win32_Process -Filter \\"Name=\'{proc_name}\'\\" | '
-        f'Where-Object {{ $_.CommandLine -like \'*{pattern}*\' }} | '
+        f"Where-Object {{ $_.CommandLine -like '*{pattern}*' }} | "
         f'Select-Object ProcessId | ConvertTo-Json"'
     )
     result = subprocess.run(ps_cmd, capture_output=True, text=True, timeout=15, shell=True)
@@ -134,7 +145,8 @@ def find_task_processes(task_id: str) -> list[int]:
     3. 查找 cmd.exe / node.exe 命令行中含 {task_id} 的进程（reasonix 等）
     """
     import re
-    if not re.match(r'^[a-zA-Z0-9_-]{1,64}$', task_id):
+
+    if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", task_id):
         return []
 
     methods = [
@@ -232,7 +244,7 @@ def main():
             if now_ts - last_ts < THROTTLE_SEC:
                 return  # 静默跳过
     except (ValueError, OSError):
-        _logger.debug(f"cleanup-agents throttle stamp read")
+        _logger.debug("cleanup-agents throttle stamp read")
         pass
 
     # 更新时间戳
@@ -266,7 +278,9 @@ def main():
         age_minutes = age.total_seconds() / 60
 
         if age_minutes >= MIN_AGE_MINUTES:
-            log(f"清理子进程: PID={p['pid']}, 内存={p['memory_kb']} KB, 运行={age_minutes:.1f} 分钟")
+            log(
+                f"清理子进程: PID={p['pid']}, 内存={p['memory_kb']} KB, 运行={age_minutes:.1f} 分钟"
+            )
             if kill_process(p["pid"]):
                 log(f"  已终止 PID={p['pid']}")
                 killed += 1

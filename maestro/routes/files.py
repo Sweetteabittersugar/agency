@@ -1,4 +1,5 @@
 """文件浏览路由"""
+
 import time
 import logging
 from urllib.parse import parse_qs
@@ -25,15 +26,21 @@ def handle_list(handler, parsed):
         entries = []
         for child in sorted(p.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower())):
             try:
-                entries.append({
-                    "name": child.name,
-                    "is_dir": child.is_dir(),
-                    "size": child.stat().st_size if child.is_file() else 0,
-                    "mtime": time.strftime("%m-%d %H:%M", time.localtime(child.stat().st_mtime)),
-                })
+                entries.append(
+                    {
+                        "name": child.name,
+                        "is_dir": child.is_dir(),
+                        "size": child.stat().st_size if child.is_file() else 0,
+                        "mtime": time.strftime(
+                            "%m-%d %H:%M", time.localtime(child.stat().st_mtime)
+                        ),
+                    }
+                )
             except Exception:
                 log.debug(f"Failed to list directory {p}", exc_info=True)
-        handler.send_json({"path": str(p), "entries": entries, "parent": str(p.parent) if p.parent != p else ""})
+        handler.send_json(
+            {"path": str(p), "entries": entries, "parent": str(p.parent) if p.parent != p else ""}
+        )
     except Exception as e:
         log.error(f"文件操作失败: {e}", exc_info=True)
         handler.send_json({"error": "文件操作失败，请稍后重试"}, 500)

@@ -20,7 +20,9 @@ import re
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = os.environ.get("CLAUDE_PROJECT_DIR", os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+PROJECT_ROOT = os.environ.get(
+    "CLAUDE_PROJECT_DIR", os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 
 MAESTRO_DIR = Path(PROJECT_ROOT) / "maestro"
 TASKS_DIR = MAESTRO_DIR / "tasks"
@@ -29,19 +31,19 @@ RESULTS_DIR = MAESTRO_DIR / "results"
 # ── 黑名单模式：命中即丢弃 ──────────────────────────────────
 BLACKLIST_PATTERNS = [
     # XML 思考/工具标签
-    r'<\s*(?:thinking|thought|reasoning|chain.of.thought|tool.calls?|function.calls?|internal|scratchpad)',
-    r'<\s*/\s*(?:thinking|thought|reasoning|chain.of.thought|tool.calls?|function.calls?|internal|scratchpad)',
+    r"<\s*(?:thinking|thought|reasoning|chain.of.thought|tool.calls?|function.calls?|internal|scratchpad)",
+    r"<\s*/\s*(?:thinking|thought|reasoning|chain.of.thought|tool.calls?|function.calls?|internal|scratchpad)",
     # 工具调用关键词（行首）
-    r'^\s*(?:<function_call>|<tool_call>|Tool|Call|Invoke|Execut(?:e|ing)|Running|Bash|bash)\b',
+    r"^\s*(?:<function_call>|<tool_call>|Tool|Call|Invoke|Execut(?:e|ing)|Running|Bash|bash)\b",
     # 系统消息泄露标志
-    r'(?:system.reminder|system-reminder|internal.instruction|claudeMd|CLAUDE\.md|agent.instruction|task.notification)',
-    r'(?:<env>|</env>|<system-reminder>|</system-reminder>)',
+    r"(?:system.reminder|system-reminder|internal.instruction|claudeMd|CLAUDE\.md|agent.instruction|task.notification)",
+    r"(?:<env>|</env>|<system-reminder>|</system-reminder>)",
     # task-notification 的原始字段名
-    r'^\s*(?:STATUS:|RESULT:|SUMMARY:|TASK_ID:|AGENT:)',
+    r"^\s*(?:STATUS:|RESULT:|SUMMARY:|TASK_ID:|AGENT:)",
     # 思考链引导语
-    r'^\s*(?:Let me|I need to|I should|I will|First,|Next,|Then,|Finally,|Now I|I\'ll|I\'m going to)',
+    r"^\s*(?:Let me|I need to|I should|I will|First,|Next,|Then,|Finally,|Now I|I\'ll|I\'m going to)",
     # 代码块标记（裸 ``` 行）
-    r'^\s*```',
+    r"^\s*```",
 ]
 BLACKLIST_RE = [re.compile(p, re.IGNORECASE) for p in BLACKLIST_PATTERNS]
 
@@ -50,12 +52,14 @@ def _has_cjk(text):
     """检查文本是否包含 CJK 字符（中日韩），用于区分实质内容和英文过程。"""
     for ch in text:
         cp = ord(ch)
-        if (0x4E00 <= cp <= 0x9FFF or    # CJK 统一汉字
-            0x3400 <= cp <= 0x4DBF or    # CJK 扩展 A
-            0x20000 <= cp <= 0x2A6DF or  # CJK 扩展 B
-            0x3040 <= cp <= 0x309F or    # 平假名
-            0x30A0 <= cp <= 0x30FF or    # 片假名
-            0xAC00 <= cp <= 0xD7AF):     # 韩文
+        if (
+            0x4E00 <= cp <= 0x9FFF  # CJK 统一汉字
+            or 0x3400 <= cp <= 0x4DBF  # CJK 扩展 A
+            or 0x20000 <= cp <= 0x2A6DF  # CJK 扩展 B
+            or 0x3040 <= cp <= 0x309F  # 平假名
+            or 0x30A0 <= cp <= 0x30FF  # 片假名
+            or 0xAC00 <= cp <= 0xD7AF
+        ):  # 韩文
             return True
     return False
 
@@ -124,12 +128,12 @@ def gateway_filter(raw_text):
     in_summary = False
     summary_lines = []
     for line in lines:
-        if re.match(r'^##\s*用户摘要', line.strip()):
+        if re.match(r"^##\s*用户摘要", line.strip()):
             in_summary = True
             continue
         if in_summary:
             # 遇到下一个 ## 段头就停止
-            if re.match(r'^##\s', line.strip()) and not re.match(r'^##\s*用户摘要', line.strip()):
+            if re.match(r"^##\s", line.strip()) and not re.match(r"^##\s*用户摘要", line.strip()):
                 break
             # 摘要内二次过滤
             if line.strip() and _is_leak_line(line):
@@ -142,7 +146,7 @@ def gateway_filter(raw_text):
 
 def has_user_summary(raw_text):
     """检查结果是否包含用户摘要段。"""
-    return bool(re.search(r'##\s*用户摘要', raw_text))
+    return bool(re.search(r"##\s*用户摘要", raw_text))
 
 
 def get_agent_name(task_id):
@@ -180,7 +184,9 @@ def filter_result(task_id=None, file_path=None, raw=False, check=False):
         if has_user_summary(content):
             leak_count = sum(1 for line in content.split("\n") if _is_leak_line(line))
             if leak_count > 0:
-                print(f"WARNING: 含用户摘要段，但检测到 {leak_count} 行疑似泄露内容（英文/工具调用）")
+                print(
+                    f"WARNING: 含用户摘要段，但检测到 {leak_count} 行疑似泄露内容（英文/工具调用）"
+                )
             else:
                 print("OK: 含用户摘要段，未检测到泄露内容")
         else:

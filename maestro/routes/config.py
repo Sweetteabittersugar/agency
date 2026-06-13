@@ -1,9 +1,8 @@
 """配置管理路由 — settings / version / skills / MCP / Skills toggle / MCP config"""
+
 import json
 import yaml
-import time
 import logging
-from urllib.parse import parse_qs
 from pathlib import Path
 
 log = logging.getLogger(__name__)
@@ -14,6 +13,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 def handle_version(handler, parsed):
     """GET /api/version"""
     from maestro.shared import AGENCY_VERSION
+
     handler.send_json({"version": AGENCY_VERSION})
     return True
 
@@ -22,12 +22,17 @@ def handle_settings(handler, parsed):
     """GET /api/settings — 运行配置"""
     from maestro.shared import AGENCY_VERSION, CLAUDE_BIN, _claude_dir
     import os
-    handler.send_json({
-        "claude_bin": CLAUDE_BIN or "not found",
-        "config_dir": str(_claude_dir),
-        "has_api_key": bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("DEEPSEEK_API_KEY")),
-        "version": AGENCY_VERSION,
-    })
+
+    handler.send_json(
+        {
+            "claude_bin": CLAUDE_BIN or "not found",
+            "config_dir": str(_claude_dir),
+            "has_api_key": bool(
+                os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("DEEPSEEK_API_KEY")
+            ),
+            "version": AGENCY_VERSION,
+        }
+    )
     return True
 
 
@@ -60,14 +65,16 @@ def handle_skills(handler, parsed):
                             fm = yaml.safe_load(parts[1]) or {}
                         except Exception:
                             log.debug(f"Failed to parse frontmatter for skill {skill_name}")
-                skills.append({
-                    "name": skill_name,
-                    "description": fm.get("description", ""),
-                    "triggers": fm.get("triggers", fm.get("trigger", [])),
-                    "model": fm.get("model", ""),
-                    "enabled": enabled,
-                    "path": str(skmd.resolve()),
-                })
+                skills.append(
+                    {
+                        "name": skill_name,
+                        "description": fm.get("description", ""),
+                        "triggers": fm.get("triggers", fm.get("trigger", [])),
+                        "model": fm.get("model", ""),
+                        "enabled": enabled,
+                        "path": str(skmd.resolve()),
+                    }
+                )
             except Exception:
                 log.debug(f"Failed to read skill {skill_name}", exc_info=True)
         # 也扫描 disabled 的 Skill
@@ -86,14 +93,16 @@ def handle_skills(handler, parsed):
                             fm = yaml.safe_load(parts[1]) or {}
                         except Exception:
                             log.debug(f"Failed to parse frontmatter for skill {skill_name}")
-                skills.append({
-                    "name": skill_name,
-                    "description": fm.get("description", ""),
-                    "triggers": fm.get("triggers", fm.get("trigger", [])),
-                    "model": fm.get("model", ""),
-                    "enabled": False,
-                    "path": str(skmd.resolve()),
-                })
+                skills.append(
+                    {
+                        "name": skill_name,
+                        "description": fm.get("description", ""),
+                        "triggers": fm.get("triggers", fm.get("trigger", [])),
+                        "model": fm.get("model", ""),
+                        "enabled": False,
+                        "path": str(skmd.resolve()),
+                    }
+                )
             except Exception:
                 log.debug(f"Failed to read skill {skill_name}", exc_info=True)
     handler.send_json(skills)
@@ -103,11 +112,15 @@ def handle_skills(handler, parsed):
 def _check_mcp_running(name, args):
     """检测 MCP 进程是否在运行"""
     import subprocess
+
     try:
         # 检查是否有匹配的 npx/node 进程
         r = subprocess.run(
             "wmic process where \"name='node.exe' or name='npx.exe'\" get commandline /format:csv",
-            capture_output=True, text=True, timeout=5, shell=True
+            capture_output=True,
+            text=True,
+            timeout=5,
+            shell=True,
         )
         search = name
         if args:
@@ -149,17 +162,19 @@ def handle_mcp_status(handler, parsed):
                     continue
                 seen.add(name)
                 running = _check_mcp_running(name, cfg.get("args", []))
-                servers.append({
-                    "name": name,
-                    "command": cfg.get("command", ""),
-                    "args": cfg.get("args", []),
-                    "env": list(cfg.get("env", {}).keys()) if cfg.get("env") else [],
-                    "running": running,
-                    "source": str(src),
-                    "tools": [],
-                    "callCount": 0,
-                    "enabled": mcp_state.get(name, True),
-                })
+                servers.append(
+                    {
+                        "name": name,
+                        "command": cfg.get("command", ""),
+                        "args": cfg.get("args", []),
+                        "env": list(cfg.get("env", {}).keys()) if cfg.get("env") else [],
+                        "running": running,
+                        "source": str(src),
+                        "tools": [],
+                        "callCount": 0,
+                        "enabled": mcp_state.get(name, True),
+                    }
+                )
         except Exception:
             log.debug(f"Failed to read MCP config from {src}", exc_info=True)
     handler.send_json({"servers": servers})
@@ -169,13 +184,17 @@ def handle_mcp_status(handler, parsed):
 def handle_skills_save(handler, body):
     """POST /api/skills/save — 保存 Skill 源码（默认写入 user/ 子目录）"""
     import re
+
     name = body.get("name", "").strip()
     content = body.get("content", "")
-    if not re.match(r'^[a-zA-Z0-9_-]+$', name):
+    if not re.match(r"^[a-zA-Z0-9_-]+$", name):
         handler.send_json({"ok": False, "error": "名称只能包含字母、数字、连字符、下划线"}, 400)
         return True
     if not name or not content:
-        handler.send_json({"error": "缺少必填字段。请同时提供 name（Skill 名称）和 content（Skill 源码内容）"}, 400)
+        handler.send_json(
+            {"error": "缺少必填字段。请同时提供 name（Skill 名称）和 content（Skill 源码内容）"},
+            400,
+        )
         return True
     skills_dir = PROJECT_ROOT / ".claude" / "skills" / "user" / name
     skills_dir.mkdir(parents=True, exist_ok=True)
@@ -290,6 +309,46 @@ def handle_settings_patch(handler, body):
     return True
 
 
+def handle_compaction_config(handler, parsed):
+    """GET /api/settings/compaction — 获取压缩比例配置"""
+    cfg_path = PROJECT_ROOT.parent / "maestro" / "compaction_config.json" if (PROJECT_ROOT.parent / "maestro").exists() else Path(__file__).resolve().parent.parent / "compaction_config.json"
+    # Use maestro/ relative to this file's parent
+    cfg_path = Path(__file__).resolve().parent.parent / "compaction_config.json"
+    try:
+        data = json.loads(cfg_path.read_text(encoding="utf-8"))
+    except Exception:
+        data = {"defaults": {"warn": 0.70, "force": 0.85}, "models": {}}
+    handler.send_json({"ok": True, "config": data})
+    return True
+
+
+def handle_compaction_save(handler, body):
+    """POST /api/settings/compaction — 保存压缩比例配置"""
+    from maestro.models import MODEL_CONTEXT_WINDOWS
+    cfg_path = Path(__file__).resolve().parent.parent / "compaction_config.json"
+    defaults = body.get("defaults", {"warn": 0.70, "force": 0.85})
+    models = body.get("models", {})
+    # 只保存已知模型
+    cleaned = {}
+    for m, cfg in models.items():
+        if m in MODEL_CONTEXT_WINDOWS:
+            cleaned[m] = {
+                "warn": max(0.1, min(0.99, float(cfg.get("warn", 0.70)))),
+                "force": max(0.1, min(0.99, float(cfg.get("force", 0.85)))),
+            }
+    data = {
+        "_comment": "模型压缩比例配置",
+        "defaults": {
+            "warn": max(0.1, min(0.99, float(defaults.get("warn", 0.70)))),
+            "force": max(0.1, min(0.99, float(defaults.get("force", 0.85)))),
+        },
+        "models": cleaned,
+    }
+    cfg_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    handler.send_json({"ok": True})
+    return True
+
+
 def handle_skills_content(handler, parsed):
     """GET /api/skills/content/:name — 查看 Skill 源码"""
     path = parsed.path
@@ -320,6 +379,7 @@ def handle_skills_content(handler, parsed):
 def handle_skills_delete(handler, parsed):
     """DELETE /api/skills/:name — 删除 Skill"""
     import shutil
+
     path = parsed.path
     name = path.replace("/api/skills/", "").strip("/")
     if not name:
@@ -355,6 +415,7 @@ def handle_skills_delete(handler, parsed):
 
 # ── Profile API ──
 
+
 def handle_profile(handler, parsed):
     """GET /api/profile — 返回当前可用 profile 列表和当前选择"""
     profiles_path = PROJECT_ROOT / "profiles.json"
@@ -368,15 +429,18 @@ def handle_profile(handler, parsed):
 
     try:
         from maestro.profiles import estimate_complexity, load_profile
+
         _has = True
     except ImportError:
         _has = False
 
-    handler.send_json({
-        "profiles": profiles,
-        "available": list(profiles.keys()) if profiles else ["minimal", "standard", "full"],
-        "has_engine": _has,
-    })
+    handler.send_json(
+        {
+            "profiles": profiles,
+            "available": list(profiles.keys()) if profiles else ["minimal", "standard", "full"],
+            "has_engine": _has,
+        }
+    )
     return True
 
 
@@ -385,25 +449,31 @@ def handle_profile_set(handler, body):
     level = body.get("level", "")
     valid = ["minimal", "standard", "full"]
     if level not in valid:
-        handler.send_json({
-            "error": "无效的 profile 级别。可选: minimal, standard, full",
-            "valid": valid,
-        }, 400)
+        handler.send_json(
+            {
+                "error": "无效的 profile 级别。可选: minimal, standard, full",
+                "valid": valid,
+            },
+            400,
+        )
         return True
 
     # 验证 profiles.json 中是否包含此级别
     profile = {}
     try:
         from maestro.profiles import load_profile
+
         profile = load_profile(level)
     except Exception:
         pass
 
-    handler.send_json({
-        "ok": True,
-        "level": level,
-        "profile": profile,
-    })
+    handler.send_json(
+        {
+            "ok": True,
+            "level": level,
+            "profile": profile,
+        }
+    )
     return True
 
 
@@ -411,12 +481,14 @@ def handle_profiles_list(handler, parsed):
     """GET /api/profiles — 返回 profiles.json 完整内容（复数路由，供外部工具调用）"""
     profiles_path = PROJECT_ROOT / "profiles.json"
     if not profiles_path.exists():
-        handler.send_json({
-            "version": "0.1.0",
-            "description": "Profile 分级未配置",
-            "profiles": {},
-            "available": ["minimal", "standard", "full"],
-        })
+        handler.send_json(
+            {
+                "version": "0.1.0",
+                "description": "Profile 分级未配置",
+                "profiles": {},
+                "available": ["minimal", "standard", "full"],
+            }
+        )
         return True
     try:
         data = json.loads(profiles_path.read_text(encoding="utf-8"))
@@ -429,13 +501,16 @@ def handle_profiles_list(handler, parsed):
 def handle_check_update(handler, parsed):
     """GET /api/check-update — 检查 agency-kit 新版本"""
     from maestro.version_check import _get_installed_version, _get_latest_version
+
     current = _get_installed_version()
     latest = _get_latest_version()
     has_update = latest is not None and latest != current
-    handler.send_json({
-        "current": current,
-        "latest": latest or current,
-        "has_update": has_update,
-        "upgrade_cmd": "pip install --upgrade agency-kit" if has_update else None,
-    })
+    handler.send_json(
+        {
+            "current": current,
+            "latest": latest or current,
+            "has_update": has_update,
+            "upgrade_cmd": "pip install --upgrade agency-kit" if has_update else None,
+        }
+    )
     return True

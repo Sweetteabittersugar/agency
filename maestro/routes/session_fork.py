@@ -1,4 +1,5 @@
 """会话 Fork — 从指定位置分叉出新会话"""
+
 import json
 import time
 import uuid
@@ -56,28 +57,33 @@ def handle_fork(handler, body):
         with open(new_file, "w", encoding="utf-8") as f:
             for line in base_events:
                 f.write(line + "\n")
-            fork_event = json.dumps({
-                "ts": time.time(),
-                "type": "fork",
-                "data": {
-                    "forked_from": session_id,
-                    "fork_point": fork_point,
-                    "label": fork_label or f"分叉 {new_id[:8]}",
-                    "base_event_count": len(base_events)
-                }
-            }, ensure_ascii=False)
+            fork_event = json.dumps(
+                {
+                    "ts": time.time(),
+                    "type": "fork",
+                    "data": {
+                        "forked_from": session_id,
+                        "fork_point": fork_point,
+                        "label": fork_label or f"分叉 {new_id[:8]}",
+                        "base_event_count": len(base_events),
+                    },
+                },
+                ensure_ascii=False,
+            )
             f.write(fork_event + "\n")
     except Exception as e:
         handler.send_json({"ok": False, "error": str(e)}, 500)
         return True
 
-    handler.send_json({
-        "ok": True,
-        "forked": True,
-        "new_session_id": new_id,
-        "base_events": len(base_events),
-        "fork_label": fork_label or f"分叉 {new_id[:8]}"
-    })
+    handler.send_json(
+        {
+            "ok": True,
+            "forked": True,
+            "new_session_id": new_id,
+            "base_events": len(base_events),
+            "fork_label": fork_label or f"分叉 {new_id[:8]}",
+        }
+    )
     return True
 
 
@@ -94,22 +100,25 @@ def handle_list_forks(handler, parsed):
     if not path.startswith(prefix):
         handler.send_json({"ok": False, "error": "无效路径"}, 400)
         return True
-    sid = path[len(prefix):prefix_end]
+    sid = path[len(prefix) : prefix_end]
 
     forks = []
     if SESSION_DIR.exists():
-        for f in sorted(SESSION_DIR.glob(f"fork_{sid}_*.jsonl"),
-                       key=lambda x: x.stat().st_mtime, reverse=True):
+        for f in sorted(
+            SESSION_DIR.glob(f"fork_{sid}_*.jsonl"), key=lambda x: x.stat().st_mtime, reverse=True
+        ):
             try:
                 with open(f, "r", encoding="utf-8") as fp:
                     for line in fp:
                         if '"type":"fork"' in line or '"type": "fork"' in line:
                             evt = json.loads(line.strip())
-                            forks.append({
-                                "session_id": f.stem,
-                                "fork_data": evt.get("data", {}),
-                                "created": f.stat().st_mtime
-                            })
+                            forks.append(
+                                {
+                                    "session_id": f.stem,
+                                    "fork_data": evt.get("data", {}),
+                                    "created": f.stat().st_mtime,
+                                }
+                            )
                             break
             except Exception:
                 pass

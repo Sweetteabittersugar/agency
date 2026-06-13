@@ -13,10 +13,11 @@ import json
 import os
 import sqlite3
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 
-PROJECT_ROOT = os.environ.get("CLAUDE_PROJECT_DIR", os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+PROJECT_ROOT = os.environ.get(
+    "CLAUDE_PROJECT_DIR", os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 
 # 确保 maestro 包可导入
 _maestro_root = Path(__file__).resolve().parent.parent
@@ -38,24 +39,27 @@ CHANNEL = "main_claude"
 # V4-Flash: input $0.14/M  (cache miss), $0.0028/M  (cache hit), output $0.28/M
 PRICING = {
     # (cache_miss_input, cache_hit_input, output)  per 1M tokens
-    "deepseek-v4-pro":   (0.435, 0.003625, 0.87),
-    "deepseek-v4-flash": (0.14,  0.0028,   0.28),
-    "deepseek-v3":       (0.27,  0.27,     1.10),
-    "deepseek-r1":       (0.55,  0.55,     2.19),
-    "deepseek-chat":     (0.14,  0.14,     0.28),
+    "deepseek-v4-pro": (0.435, 0.003625, 0.87),
+    "deepseek-v4-flash": (0.14, 0.0028, 0.28),
+    "deepseek-v3": (0.27, 0.27, 1.10),
+    "deepseek-r1": (0.55, 0.55, 2.19),
+    # 2026-06 旧模型清理：deepseek-chat 重命名为 deepseek-v4-flash
+    "deepseek-v4-flash": (0.14, 0.14, 0.28),
 }
 # 旧格式兼容: 仅当 model key 不在 PRICING 中时使用（用于 cost-writer 等仍传二元组的场景）
 PRICING_LEGACY: dict[str, tuple[float, float]] = {
     "deepseek-v4-pro": (0.435, 0.87),
-    "deepseek-v3":     (0.27,  1.10),
-    "deepseek-r1":     (0.55,  2.19),
-    "deepseek-chat":   (0.14,  0.28),
+    "deepseek-v3": (0.27, 1.10),
+    "deepseek-r1": (0.55, 2.19),
+    # 2026-06 旧模型清理：deepseek-chat 重命名为 deepseek-v4-flash
+    "deepseek-v4-flash": (0.14, 0.28),
 }
-DEFAULT_PRICE_IN  = 0.435
+DEFAULT_PRICE_IN = 0.435
 DEFAULT_PRICE_OUT = 0.87
 
 
 # ── 数据库 ──────────────────────────────────────────────────────────────
+
 
 def init_db() -> sqlite3.Connection:
     """初始化 cost.db。统一使用 cost_logs 表（与 cost_mw.py 兼容）。"""
@@ -76,12 +80,16 @@ def init_db() -> sqlite3.Connection:
     """)
     # 迁移: 添加 cache_read_input_tokens 列（如果不存在）
     try:
-        conn.execute("ALTER TABLE cost_logs ADD COLUMN cache_read_input_tokens INTEGER NOT NULL DEFAULT 0")
+        conn.execute(
+            "ALTER TABLE cost_logs ADD COLUMN cache_read_input_tokens INTEGER NOT NULL DEFAULT 0"
+        )
     except sqlite3.OperationalError:
         pass  # 列已存在
     # 迁移: 添加 cache_creation_input_tokens 列（如果不存在）
     try:
-        conn.execute("ALTER TABLE cost_logs ADD COLUMN cache_creation_input_tokens INTEGER NOT NULL DEFAULT 0")
+        conn.execute(
+            "ALTER TABLE cost_logs ADD COLUMN cache_creation_input_tokens INTEGER NOT NULL DEFAULT 0"
+        )
     except sqlite3.OperationalError:
         pass  # 列已存在
     conn.execute("""
@@ -142,13 +150,24 @@ def write_entry(
     cur = conn.execute(
         """INSERT INTO cost_logs (time, channel, model, in_tokens, out_tokens, cost_usd, note, cache_read_input_tokens, cache_creation_input_tokens)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (ts, CHANNEL, model, in_tokens, out_tokens, round(cost, 8), note, cache_read_tokens, cache_creation_tokens),
+        (
+            ts,
+            CHANNEL,
+            model,
+            in_tokens,
+            out_tokens,
+            round(cost, 8),
+            note,
+            cache_read_tokens,
+            cache_creation_tokens,
+        ),
     )
     conn.commit()
     return cur.lastrowid
 
 
 # ── 状态管理 ────────────────────────────────────────────────────────────
+
 
 def load_state() -> dict:
     """返回 {file_mtime: last_processed_uuid}，记录每个文件的处理进度。"""
@@ -170,6 +189,7 @@ def save_state(state: dict) -> None:
 
 
 # ── JSONL 解析 ──────────────────────────────────────────────────────────
+
 
 def find_jsonl_files() -> list[Path]:
     """找到所有 JSONL session 文件，按修改时间排序。"""
@@ -287,10 +307,12 @@ def process_jsonl(filepath: Path, last_uuid: str | None) -> list[dict]:
 
         # 维护上下文：记录所有有内容的消息（用于 fallback 估算）
         if obj_type in ("user", "assistant", "system", "tool") and msg.get("content"):
-            context_buffer.append({
-                "role": obj_type,
-                "content": msg.get("content", ""),
-            })
+            context_buffer.append(
+                {
+                    "role": obj_type,
+                    "content": msg.get("content", ""),
+                }
+            )
 
         if obj_type != "assistant":
             continue
@@ -329,16 +351,18 @@ def process_jsonl(filepath: Path, last_uuid: str | None) -> list[dict]:
             note = "[estimated]"
             estimated_count += 1
 
-        results.append({
-            "ts": ts,
-            "model": model,
-            "in_tokens": in_tokens,
-            "out_tokens": out_tokens,
-            "cache_read_tokens": cache_read_tokens,
-            "cache_creation_tokens": cache_creation_tokens,
-            "uuid": uuid,
-            "note": note,
-        })
+        results.append(
+            {
+                "ts": ts,
+                "model": model,
+                "in_tokens": in_tokens,
+                "out_tokens": out_tokens,
+                "cache_read_tokens": cache_read_tokens,
+                "cache_creation_tokens": cache_creation_tokens,
+                "uuid": uuid,
+                "note": note,
+            }
+        )
 
     if estimated_count > 0:
         print(
@@ -350,6 +374,7 @@ def process_jsonl(filepath: Path, last_uuid: str | None) -> list[dict]:
 
 
 # ── 主流程 ──────────────────────────────────────────────────────────────
+
 
 def main() -> int:
     """入口：扫描 JSONL → 提取 real token → 写入 cost.db。"""
