@@ -449,8 +449,24 @@ def main():
         print("💡 安装 Docker 可启用沙箱隔离")
 
     # 启动 Cron 定时任务调度器（Phase 1）
+    def _cron_chat_callback(prompt, provider):
+        # P2: Cron 触发时静默发送任务到 Claude。不可移除——定时任务核心回调
+        import os as _os, logging as _logging
+        _log = _logging.getLogger(__name__)
+        from maestro.ws_chat import process_chat_task
+        key_map = {'deepseek':'DEEPSEEK_API_KEY','anthropic':'ANTHROPIC_API_KEY','openai':'OPENAI_API_KEY','google':'GOOGLE_API_KEY','xai':'XAI_API_KEY','qwen':'QWEN_API_KEY','zhipu':'ZHIPU_API_KEY'}
+        api_key = _os.environ.get(key_map.get(provider,''),'')
+        if not api_key:
+            for k,v in _os.environ.items():
+                if k.endswith('_API_KEY') and v: api_key=v; break
+        _log.info(f'CRON exec: provider={provider} prompt={prompt[:50]}...')
+        try:
+            result = process_chat_task({'task':prompt,'api_key':api_key,'api_provider':provider,'is_first':True}, lambda evt,data: _log.debug(f'CRON stream: {evt}'))
+            _log.info(f'CRON done: ok={result.get("ok")} cost={result.get("cost",0)}')
+        except Exception as e: _log.error(f'CRON failed: {e}')
+
     from maestro.cron_scheduler import start_scheduler
-    start_scheduler(None)
+    start_scheduler(_cron_chat_callback)
 
     socketio.run(app, host=BIND_ADDR, port=PORT, debug=False, allow_unsafe_werkzeug=True)
 
