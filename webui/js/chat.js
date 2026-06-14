@@ -129,31 +129,62 @@ function handleSendWS(pid,forceAgent){
   p.dom.input.style.height='auto';
   try{localStorage.removeItem('chat_draft_'+pid);}catch(e){}
 
+  // Phase 2 fix: WS 连接超时 + 静默回退 SSE，防止按钮永久卡死
+  var _wsFallbackTimer = null;
+  var _wsDone = false;
+  var returnToSSE = function() {
+    if (_wsDone) return;
+    _wsDone = true;
+    p.dom.input.value = task;  // 恢复输入
+    p.dom.sendBtn.disabled = false;
+    p.isStreaming = false;
+    p.dom.dot.style.background = '';
+    // 移除空 assistant 消息
+    var msgs = p.dom.messages.querySelectorAll('.bubble');
+    for (var i=msgs.length-1; i>=0; i--) {
+      if (msgs[i].classList.contains('assistant')) { msgs[i].remove(); break; }
+    }
+    // 回退 SSE
+    window._wsChatEnabled = false;
+    handleSend(pid);
+  };
+
   addMsg(p,'user',task);
-  var emptyMsg=addMsg(p,'assistant','⏳ 处理中...');
+  var emptyMsg=addMsg(p,'assistant','...');
   var fullText='';
   p.isStreaming=true;
   p.dom.dot.style.background='#fa3';
 
-  /* Phase 2: 构建请求数据——面板级 Provider 优先，否则回退全局设置 */
   var body={
     task:task,
     api_key:apiKey||'',
-    api_provider:(p._provider)||apiProvider||'deepseek',  /* B3: 面板级 Provider */
+    api_provider:(p._provider)||apiProvider||'deepseek',
     force_agent:forceAgent||p._lastAgent||'',
     session_id:p.currentConvo.sessionId||'',
     is_first:!p.currentConvo.messages.length||p.currentConvo.messages.length<=1,
-    sid:pid+'-'+Date.now()  /* 临时标识——用于后端日志关联 */
+    sid:pid+'-'+Date.now()
   };
 
-  /* Phase 2: 连接 /ws/chat namespace——与 /ws/terminal 独立 */
   var sock=io('/ws/chat');
 
+  // 3 秒连接超时 → 静默回退 SSE（不可移除——防止 WS 故障导致按钮卡死）
+  _wsFallbackTimer = setTimeout(function() {
+    if (!_wsDone) { sock.disconnect(); returnToSSE(); }
+  }, 3000);
+
   sock.on('connect',function(){
+    clearTimeout(_wsFallbackTimer);
     sock.emit('chat_send',body);
   });
 
+  sock.on('connect_error',function() {
+    // 连接失败直接回退 SSE
+    clearTimeout(_wsFallbackTimer);
+    returnToSSE();
+  });
+
   sock.on('chat_event',function(d){
+    _wsDone = true;
     var evt=d._event;
     if(evt==='content'){
       fullText+=d.content;

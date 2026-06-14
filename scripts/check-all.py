@@ -228,6 +228,82 @@ def check_api():
     return True, ""
 
 
+# ── 7. 前端功能完整性（防止改A坏B）──
+def check_frontend_critical():
+    """验证 HTML 关键元素 + JS 关键函数存在，防止修改导致按钮/输入框消失"""
+    try:
+        html = (ROOT / "webui" / "index.html").read_text(encoding="utf-8")
+    except Exception as e:
+        return False, str(e)
+
+    # 关键 DOM 元素（按钮、输入框、面板容器）
+    must_have = [
+        ('id="grid"', "面板容器(JS动态挂载)"),
+        ('id="helpBtn"', "帮助按钮"),
+        ('id="searchBtn"', "搜索按钮"),
+        ('id="dashboardBtn"', "仪表盘按钮"),
+        ('id="devBtn"', "设置按钮"),
+        ('id="api-key"', "API Key 输入框"),
+        ('id="api-provider"', "Provider 下拉"),
+        ('id="devOverlay"', "设置覆盖层"),
+        ('id="helpOverlay"', "帮助覆盖层"),
+        ('id="searchOverlay"', "搜索覆盖层"),
+        ('id="compaction-config-ui"', "压缩配置UI"),
+        ('id="cron-section"', "定时任务区"),
+        ('id="pr-section"', "PR集成区"),
+    ]
+    missing = []
+    for needle, desc in must_have:
+        if needle not in html:
+            missing.append(f"{desc} ({needle})")
+    if missing:
+        return False, "缺失关键DOM元素: " + ", ".join(missing)
+
+    # 关键 JS 文件存在 + 语法正确
+    js_dir = ROOT / "webui" / "js"
+    critical_js = ["chat.js", "app.js", "settings.js", "dashboard.js", "terminal.js", "utils.js"]
+    for fname in critical_js:
+        fpath = js_dir / fname
+        if not fpath.exists():
+            return False, f"缺失关键JS: {fname}"
+        r = subprocess.run(["node", "--check", str(fpath)], capture_output=True, text=True)
+        if r.returncode != 0:
+            return False, f"{fname} 语法错误: {r.stderr.strip()[:200]}"
+
+    # 关键函数存在性（防止函数被误删或改名导致按钮失效）
+    func_checks = [
+        ("chat.js", "handleSend", "发送消息"),
+        ("chat.js", "buildPanelDOM", "面板构建"),
+        ("chat.js", "removePanel", "关闭面板"),
+        ("app.js", "toggleHelpOverlay", "帮助覆盖层"),
+        ("app.js", "toggleGlobalSearch", "全局搜索"),
+        ("settings.js", "toggleDevOverlay", "设置面板"),
+        ("settings.js", "saveCompactionConfig", "压缩配置保存"),
+        ("dashboard.js", "toggleDashboard", "仪表盘"),
+        ("terminal.js", "toggleTerminal", "终端"),
+        ("terminal.js", "stopTerminal", "终端清理"),
+    ]
+    missing_funcs = []
+    for fname, func, desc in func_checks:
+        try:
+            content = (js_dir / fname).read_text(encoding="utf-8")
+            # 匹配 function xxx( 或 xxx = function( 或 xxx=function( 或 window.xxx = function(
+            found = False
+            for pat in [f"function {func}(", f"{func} = function(", f"{func}=function(",
+                        f"window.{func} = function(", f"window.{func}=function("]:
+                if pat in content:
+                    found = True
+                    break
+            if not found:
+                missing_funcs.append(f"{desc}({func} in {fname})")
+        except Exception:
+            pass
+    if missing_funcs:
+        return False, "缺失关键函数: " + ", ".join(missing_funcs)
+
+    return True, ""
+
+
 # ═══════════════════════════════════
 if __name__ == "__main__":
     # 确保 stdout 用 utf-8
@@ -241,6 +317,7 @@ if __name__ == "__main__":
     check("HTML 标签配对", check_html_tags)
     check("Python 语法", check_python_syntax)
     check("API 端点", check_api)
+    check("前端关键功能完整性", check_frontend_critical)
 
     print(f"\n{'=' * 40}")
     if errors == 0:
