@@ -47,6 +47,8 @@ from maestro.routes import (
     session_fork,
     conversations,
     cron,
+    search,    # Phase 3: 全局搜索
+    pr,        # Phase 3: GitHub PR 集成
 )
 from maestro import worktree_manager
 
@@ -302,6 +304,11 @@ app.add_url_rule(
 app.add_url_rule("/api/cron", "cron_list", adapt_handler(cron.handle_list))
 app.add_url_rule("/api/cron", "cron_create", adapt_handler(cron.handle_create), methods=["POST"])
 app.add_url_rule("/api/cron/<id>", "cron_delete", adapt_handler(cron.handle_delete), methods=["DELETE"])
+
+# ─── Phase 3 路由（全局搜索 + GitHub PR） ───
+app.add_url_rule("/api/search", "search", adapt_handler(search.handle_search))
+app.add_url_rule("/api/pr/list", "pr_list", adapt_handler(pr.handle_pr_list))
+app.add_url_rule("/api/pr/diff", "pr_diff", adapt_handler(pr.handle_pr_diff))
 
 # ─── DELETE 路由 ───
 app.add_url_rule(

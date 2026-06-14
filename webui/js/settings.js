@@ -659,3 +659,30 @@ window.deleteCronJob = function(id) {
     if (d.ok) loadCronJobs();
   });
 };
+
+/* Phase 3: GitHub PR Diff */
+window.loadPRDiff = function() {
+  var owner = document.getElementById("pr-owner").value.trim();
+  var repo = document.getElementById("pr-repo").value.trim();
+  var prNum = document.getElementById("pr-number").value.trim();
+  var container = document.getElementById("pr-diff-container");
+  if (!owner || !repo || !prNum) { showToast("请填写 owner/repo/PR#"); return; }
+  container.style.display = "block";
+  container.innerHTML = '<div style="padding:12px;color:var(--muted)">加载中…</div>';
+  fetch('/api/pr/diff?owner='+encodeURIComponent(owner)+'&repo='+encodeURIComponent(repo)+'&pr='+encodeURIComponent(prNum))
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (!d.ok) { container.innerHTML = '<div style="padding:12px;color:var(--danger)">'+escHtml(d.error)+'</div>'; return; }
+      var lines = d.diff.split(String.fromCharCode(10));  /* 跨平台换行处理 */
+      var html = '<div style="padding:8px;font-family:monospace;font-size:10px;line-height:1.6;white-space:pre-wrap;max-height:280px;overflow:auto">';
+      lines.forEach(function(l){
+        if (l.startsWith("+") && !l.startsWith("+++")) html += '<div style="background:#1a3a1a;color:#7d7">'+escHtml(l)+'</div>';
+        else if (l.startsWith("-") && !l.startsWith("---")) html += '<div style="background:#3a1a1a;color:#f88">'+escHtml(l)+'</div>';
+        else if (l.startsWith("@@")) html += '<div style="color:var(--accent);font-weight:600">'+escHtml(l)+'</div>';
+        else html += '<div style="color:var(--text2)">'+escHtml(l)+'</div>';
+      });
+      html += '</div>';
+      container.innerHTML = html;
+    })
+    .catch(function(e){ container.innerHTML = '<div style="padding:12px;color:var(--danger)">错误: '+e.message+'</div>'; });
+};

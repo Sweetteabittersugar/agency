@@ -461,3 +461,41 @@ window.PROFILE_ICONS = PROFILE_ICONS;
 window.PROFILE_ROUNDS = PROFILE_ROUNDS;
 window.PROFILE_DESC_FALLBACK = PROFILE_DESC_FALLBACK;
 window.PROFILE_COLORS = PROFILE_COLORS;
+
+/* Phase 3: 全局搜索 — 跨会话全文检索 */
+window.toggleGlobalSearch = function() {
+  var ov = document.getElementById('searchOverlay');
+  if (!ov) return;
+  ov.classList.toggle('on');
+  if (ov.classList.contains('on')) {
+    setTimeout(function() { var inp = document.getElementById('global-search-input'); if (inp) inp.focus(); }, 100);
+  }
+};
+
+window.doGlobalSearch = function() {
+  var inp = document.getElementById('global-search-input');
+  var res = document.getElementById('global-search-results');
+  if (!inp || !res) return;
+  var q = inp.value.trim();
+  if (!q) { res.innerHTML = ''; return; }
+  res.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:12px">搜索中…</div>';
+  fetch('/api/search?q=' + encodeURIComponent(q)).then(function(r){ return r.json(); }).then(function(d){
+    if (!d.results || !d.results.length) { res.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:12px">未找到匹配结果</div>'; return; }
+    res.innerHTML = d.results.map(function(r){
+      var icon = r.source === 'session' ? '📝' : '💬';
+      return '<div class="search-result-item" style="padding:8px;border-bottom:1px solid var(--border);cursor:pointer;font-size:11px" onclick="openSearchResult(\''+r.id+'\',\''+r.source+'\')">' +
+        '<div style="display:flex;justify-content:space-between;margin-bottom:4px">' +
+          '<span style="font-weight:600;color:var(--text)">' + icon + ' ' + escHtml(r.title || r.id) + '</span>' +
+          '<span style="font-size:9px;color:var(--muted)">' + escHtml(r.source) + '</span>' +
+        '</div>' +
+        '<div style="color:var(--text2);line-height:1.5">' + (r.snippet || escHtml(r.preview || '').substring(0, 200)) + '</div>' +
+      '</div>';
+    }).join('');
+    res.innerHTML += '<div style="font-size:9px;color:var(--muted);padding:8px;text-align:center">扫描 ' + d.total + ' 个会话，找到 ' + d.results.length + ' 条</div>';
+  }).catch(function(e){ res.innerHTML = '<div style="color:var(--danger);font-size:12px;padding:12px">搜索失败: ' + e.message + '</div>'; });
+};
+
+window.openSearchResult = function(id, source) {
+  toggleGlobalSearch();
+  showToast('会话ID: ' + id);
+};

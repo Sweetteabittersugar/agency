@@ -95,6 +95,7 @@
 <button class="btn" onclick="addPanel()" title="新建面板" aria-label="新建面板">＋</button>
 <button class="btn" id="gridBtn" onclick="cycleGrid()" title="切换布局" aria-label="切换分屏布局">⊞</button>
 			<button class="btn" id="helpBtn" onclick="toggleHelpOverlay()" title="帮助" aria-label="帮助">❓</button>
+			<button class="btn" id="searchBtn" onclick="toggleGlobalSearch()" title="全局搜索" aria-label="全局搜索">🔍</button>
 <button class="btn" id="profileQuickBtn" onclick="cycleProfile()" title="切换 Profile 级别" aria-label="切换 Profile" style="display:none;font-size:10px;font-weight:600">⚙</button>
 <button class="btn" id="orchBtn" onclick="toggleOrchMode()" aria-label="智能调度模式" style="display:none">🧠</button>
 </div>
@@ -256,7 +257,19 @@ t<select id="profile-select" style="display:none" aria-hidden="true"><option val
 		    <button class="btn" onclick="addCronJob()" style="font-size:10px;padding:4px 10px">➕</button>
 		  </div>
 		</div>
-		<div class="settings-section" style="margin-top:16px" id="feature-unlock-section">
+		<div class="settings-section" style="margin-top:16px" id="pr-section">
+<h3 id="sett-PR集成" style="font-size:12px;color:var(--text);margin-bottom:8px">🔀 PR 集成</h3>
+<p style="font-size:10px;color:var(--muted);margin-bottom:8px">拉取 GitHub PR diff 并排对照审查（需 GitHub Token 环境变量 GITHUB_TOKEN）</p>
+<div style="display:flex;gap:6px;margin-bottom:8px">
+<input id="pr-owner" placeholder="owner" style="width:80px;font-size:10px;background:var(--bg2);color:var(--text);border:1px solid var(--border);padding:4px 6px;border-radius:4px">
+<input id="pr-repo" placeholder="repo" style="width:80px;font-size:10px;background:var(--bg2);color:var(--text);border:1px solid var(--border);padding:4px 6px;border-radius:4px">
+<input id="pr-number" placeholder="PR #" style="width:60px;font-size:10px;background:var(--bg2);color:var(--text);border:1px solid var(--border);padding:4px 6px;border-radius:4px">
+<button class="btn" onclick="loadPRDiff()" style="font-size:10px;padding:4px 8px">查看 Diff</button>
+</div>
+<div id="pr-diff-container" style="max-height:300px;overflow:auto;font-size:10px;font-family:monospace;background:var(--bg);border-radius:4px;display:none"></div>
+</div>
+
+<div class="settings-section" style="margin-top:16px" id="feature-unlock-section">
 	<h3 id="sett-功能解锁" style="font-size:12px;color:var(--text);margin-bottom:8px">🔓 功能解锁</h3>
 	<div id="feature-unlock-content"></div>
 	</div>
@@ -295,6 +308,14 @@ t<select id="profile-select" style="display:none" aria-hidden="true"><option val
 <div class="apm-footer" id="setup-footer"></div>
 </div>
 </div>
+<!-- 全局搜索覆盖层（Phase 3 — 跨会话全文检索） -->
+<div class="agent-prompt-overlay" id="searchOverlay">
+<div class="apm-header"><span>🔍 全局搜索</span><button class="btn" onclick="toggleGlobalSearch()">✕</button></div>
+<div class="apm-body" style="padding:12px">
+<input id="global-search-input" placeholder="搜索所有对话和会话…" style="width:100%;padding:8px 12px;font-size:13px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;margin-bottom:12px" onkeydown="if(event.key==='Enter')doGlobalSearch()">
+<div id="global-search-results" style="max-height:400px;overflow-y:auto"></div>
+</div></div>
+
 <!-- 帮助覆盖层 -->
 <div class="agent-prompt-overlay" id="helpOverlay">
 <div class="agent-prompt-modal" style="width:560px">
