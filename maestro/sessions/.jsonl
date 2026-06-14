@@ -1,2 +1,4 @@
 {"ts": 1781362906.226761, "type": "route_decision", "data": {"agent": "code-reviewer", "model": "sonnet", "source": "tfidf_fallback", "task_preview": "回复OK即可，不要多说"}}
 {"ts": 1781429482.8399303, "type": "route_decision", "data": {"agent": "auto", "model": "auto", "source": "auto", "task_preview": "回OK"}}
+{"ts": 1781430050.655794, "type": "route_decision", "data": {"agent": "auto", "model": "auto", "source": "auto", "task_preview": "回OK"}}
+{"ts": 1781430103.258813, "type": "route_decision", "data": {"agent": "auto", "model": "auto", "source": "auto", "task_preview": "回OK"}}

@@ -2,8 +2,19 @@
   {
     "id": "test-1",
     "title": "test",
-    "messages": [],
-    "sessionId": "",
-    "updated": 1781362777940
+    "messages": [
+      {
+        "role": "user",
+        "content": "回OK"
+      },
+      {
+        "role": "assistant",
+        "content": "OK",
+        "status": "done",
+        "statusDetail": ""
+      }
+    ],
+    "sessionId": "f1439e7f-e3d1-495e-b9f4-cda23a952696",
+    "updated": 1781430057556
   }
 ]
