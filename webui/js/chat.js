@@ -145,6 +145,7 @@ function handleSendWS(pid,forceAgent){
       if (msgs[i].classList.contains('assistant')) { msgs[i].remove(); break; }
     }
     // 回退 SSE
+    p._sendLock = false;  // 清除锁防止回退时 handleSend 被锁挡掉
     window._wsChatEnabled = false;
     handleSend(pid);
   };
@@ -203,6 +204,9 @@ function handleSendWS(pid,forceAgent){
       showToast(d.error,true);
       p.dom.dot.style.background='#e55';
       p.isStreaming=false;
+      p.dom.sendBtn.disabled=false;  // WS错误时恢复按钮
+      p.dom.input.value=task;         // 恢复输入
+      p._sendLock=false;              // 清锁允重试
       sock.disconnect();
     }else if(evt==='done'){
       p.currentConvo.sessionId=d.session_id||'';
