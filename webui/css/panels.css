@@ -127,3 +127,8 @@
 .panel-terminal { display:none; height:200px; border-top:1px solid var(--border); background:#0d1117; overflow:hidden; resize:vertical; min-height:100px; max-height:400px }
 .panel-terminal.on { display:block }
 .panel-terminal .xterm { height:100%; padding:4px 8px }
+/* P1-1: 移动端终端适配——缩小高度、强制字体，保证手机端可用 */
+@media (max-width: 768px) {
+  .panel-terminal { height: 150px; min-height: 80px; max-height: 250px; }
+  .panel-terminal .xterm { font-size: 11px !important; }
+}

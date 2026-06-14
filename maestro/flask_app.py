@@ -409,7 +409,7 @@ def handle_chat_send(data):
     def _emit(event_type, payload):
         """向该 socket 连接推送事件——与 /ws/terminal 隔离 namespace"""
         payload['_event'] = event_type
-        socketio.emit('chat_event', payload, namespace='/ws/chat', to=request.sid)
+        socketio.emit('chat_event', payload, namespace='/ws/chat')  # broadcast, threading mode no request.sid
 
     try:
         result = process_chat_task(data, _emit)

@@ -81,6 +81,8 @@ window.switchHarnessTab = function(tabName){
     mcp: function(){ renderMCPDetail(c); },
     subagents: function(){ renderSubagentsDetail(c); },
     hooks: function(){ renderHooksDetail(c); },
+    /* Phase P2: Worktree 标签页渲染 */
+    worktree: function(){ renderWorktreeTab(c); },
   };
   var fn = renderers[tabName] || renderers.overview;
   fn();
@@ -88,7 +90,8 @@ window.switchHarnessTab = function(tabName){
 
 function openDashDetail(cardType){
   var detail=document.getElementById('dash-detail');
-  var panelFns={cost:renderCostDetail,worktree:renderWorktreeTab,weixin:renderWeixinTab,operations:renderOperationsTab,memory:renderMemoryTab,mcp:renderMCPDetail,context:renderContextDetail,test:renderTestDetail,subagents:renderSubagentsDetail,hooks:renderHooksDetail};
+  /* Phase P2: worktree 加入面板函数映射 */
+var panelFns={cost:renderCostDetail,worktree:renderWorktreeTab,weixin:renderWeixinTab,operations:renderOperationsTab,memory:renderMemoryTab,mcp:renderMCPDetail,context:renderContextDetail,test:renderTestDetail,subagents:renderSubagentsDetail,hooks:renderHooksDetail};
   var fn=panelFns[cardType];
   if(fn){detail.style.display='block';fn(detail);detail.scrollIntoView({behavior:'smooth'});}
 }
@@ -484,6 +487,79 @@ function drawDemoCostTrend(){
     }
   });
 }
+
+/* Phase P2: Worktree 图形化管理面板 */
+function renderWorktreeTab(container) {
+  /* 渲染 Worktree 管理界面：创建分支、查看工作树列表、清理 */
+  container.innerHTML = '<div style="padding:12px"><div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">🌳 工作树管理</div>' +
+    '<div style="display:flex;gap:8px;margin-bottom:12px">' +
+      '<input id="wt-new-branch" placeholder="分支名" style="flex:1;font-size:10px;background:var(--bg2);color:var(--text);border:1px solid var(--border);padding:4px 8px;border-radius:4px">' +
+      '<button class="btn" onclick="createWorktree()" style="font-size:10px;padding:4px 10px">➕ 创建</button>' +
+      '<button class="btn" onclick="cleanupWorktrees()" style="font-size:10px;padding:4px 10px;color:var(--danger)">🧹 清理</button>' +
+    '</div>' +
+    '<div id="worktree-list" style="font-size:11px"><span style="color:var(--muted)">加载中…</span></div></div>';
+  loadWorktrees();
+}
+
+window.loadWorktrees = function() {
+  /* 从 /api/worktrees 加载活跃工作树列表 */
+  fetch('/api/worktrees').then(function(r){ return r.json(); }).then(function(d){
+    var list = document.getElementById('worktree-list');
+    if (!list) return;
+    if (!d.ok) { list.innerHTML = '<span style="color:var(--danger)">加载失败</span>'; return; }
+    var trees = d.agents || [];
+    var html = '<div style="font-size:9px;color:var(--muted);margin-bottom:4px">主仓库: ' + escHtml(d.main?.branch||'?') + ' (' + (d.main?.head||'').substring(0,7) + ')</div>';
+    if (!trees.length) {
+      html += '<div style="color:var(--muted);padding:12px;text-align:center;border:1px dashed var(--border);border-radius:4px">暂无活跃工作树</div>';
+    } else {
+      trees.forEach(function(t){
+        html += '<div style="display:flex;align-items:center;gap:8px;padding:8px;margin-bottom:4px;background:var(--surface2);border-radius:4px">' +
+          '<span style="flex:1;font-weight:600;color:var(--text)">' + escHtml(t.branch||t.name||'?') + '</span>' +
+          '<span style="font-size:9px;color:var(--muted)">' + (t.head||'').substring(0,7) + '</span>' +
+          '<button class="btn" onclick="deleteWorktree(\'' + escAttr(t.id||t.branch) + '\')" style="font-size:9px;padding:2px 8px;color:var(--danger)">✕</button>' +
+          '</div>';
+      });
+    }
+    list.innerHTML = html;
+  }).catch(function(e){ list.innerHTML = '<span style="color:var(--danger)">加载失败: ' + e.message + '</span>'; });
+};
+
+window.createWorktree = function() {
+  /* 创建新工作树分支 */
+  var inp = document.getElementById('wt-new-branch');
+  if (!inp || !inp.value.trim()) { showToast('请输入分支名'); return; }
+  var branch = inp.value.trim();
+  fetch('/api/worktrees/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ branch: branch })
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if (d.ok) { inp.value = ''; loadWorktrees(); showToast('工作树已创建: ' + branch); }
+    else showToast('创建失败: ' + (d.error||'?'));
+  });
+};
+
+window.deleteWorktree = function(id) {
+  /* 删除指定工作树（需确认） */
+  if (!confirm('确定删除此工作树？未提交的改动将丢失。')) return;
+  fetch('/api/worktrees/remove', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: id })
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if (d.ok) { loadWorktrees(); showToast('已删除'); }
+    else showToast('删除失败: ' + (d.error||'?'));
+  });
+};
+
+window.cleanupWorktrees = function() {
+  /* 清理已合并的旧工作树（需确认） */
+  if (!confirm('清理所有已合并的旧工作树？')) return;
+  fetch('/api/worktrees/cleanup', { method: 'POST' }).then(function(r){ return r.json(); }).then(function(d){
+    if (d.ok) { loadWorktrees(); showToast('清理完成'); }
+    else showToast('清理失败: ' + (d.error||'?'));
+  });
+};
 
 // beforeunload 清理定时器 (P0 fix)
 window.addEventListener('beforeunload', function() {

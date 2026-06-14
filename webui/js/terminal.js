@@ -16,6 +16,14 @@ function toggleTerminal(pid) {
     container.className = 'panel-terminal';
     msgArea.parentNode.insertBefore(container, msgArea.nextSibling);
     initTerminal(pid, container);
+    // P1-2: 面板重建后自动恢复终端展开状态，无需用户再点按钮
+    var wasOpen = false;
+    try { wasOpen = localStorage.getItem('term_open_'+pid) === '1'; } catch(e){}
+    if (wasOpen) {
+      container.classList.add('on');
+      startTerminal(pid);
+      return;  // 已自动展开，跳过后续 toggle 逻辑
+    }
   }
   container.classList.toggle('on');
   if (container.classList.contains('on')) {
@@ -29,14 +37,19 @@ function initTerminal(pid, container) {
     container.textContent = 'xterm.js 未加载，请检查网络';
     return;
   }
+  // P1-1: 移动端适配——小屏减小字体、增大触摸区域，防止键盘遮挡
+  var isMobile = window.innerWidth < 768;
   var term = new Terminal({
     cursorBlink: true,
-    fontSize: 13,
+    fontSize: isMobile ? 11 : 13,
     fontFamily: '"JetBrains Mono", Consolas, monospace',
     theme: { background: '#0d1117', foreground: '#c9d1d9', cursor: '#58a6ff' },
-    rows: 12,
+    rows: isMobile ? 8 : 12,
     cols: 80
   });
+  if (isMobile) {
+    container.style.paddingBottom = '120px';
+  }
   term.open(container);
   termInstances[pid] = term;
 

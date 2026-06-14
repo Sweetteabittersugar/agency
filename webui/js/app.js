@@ -495,7 +495,19 @@ window.doGlobalSearch = function() {
   }).catch(function(e){ res.innerHTML = '<div style="color:var(--danger);font-size:12px;padding:12px">搜索失败: ' + e.message + '</div>'; });
 };
 
+/* P1-3: 全局搜索结果点击——根据来源类型执行实际跳转，而非仅弹 toast */
 window.openSearchResult = function(id, source) {
   toggleGlobalSearch();
-  showToast('会话ID: ' + id);
+  if (source === 'conversation') {
+    /* 对话类型：尝试从侧边栏加载对话 */
+    if (typeof loadConversation === 'function') {
+      loadConversation(id);
+      showToast('已加载对话');
+    } else {
+      showToast('对话ID: ' + id);
+    }
+  } else if (source === 'session') {
+    /* 会话类型：提示用户可从历史恢复 */
+    showToast('会话 ' + id.substring(0,8) + ' — 点击新建面板后可从历史恢复', true, 'info');
+  }
 };
