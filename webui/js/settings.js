@@ -210,6 +210,20 @@ function showProfilePicker(){
 }
 
 /* ── Key 可见性切换 ── */
+/* 保存 API Key 到 localStorage——不可移除，否则设置面板Key无法持久化 */
+window.saveApiKey = function(){
+  var ak = document.getElementById('api-key');
+  var ap = document.getElementById('api-provider');
+  if (ak && ak.value.trim()) {
+    apiKey = ak.value.trim();
+    localStorage.setItem('agency_api_key', apiKey);
+  }
+  if (ap && ap.value) {
+    apiProvider = ap.value;
+    localStorage.setItem('agency_api_provider', apiProvider);
+  }
+  showToast('API Key 已保存');
+};
 function toggleKeyVisibility(){var inp=$('api-key');var btn=$('key-toggle-btn');if(inp.type==='password'){inp.type='text';btn.textContent='🙈'}else{inp.type='password';btn.textContent='👁'}}
 
 /* ── Provider 切换提示 ── */

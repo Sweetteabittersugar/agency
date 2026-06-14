@@ -139,9 +139,9 @@
 <div class="settings-section">
 <h3 id="sett-APIKey" style="font-size:12px;color:var(--text);margin-bottom:8px">🔑 API Key</h3>
 <p style="font-size:10px;color:var(--muted);margin-bottom:6px">支持 DeepSeek / Anthropic / OpenAI 兼容 · 🔒 Key 仅存本地，永不上传</p>
-<input class="proj-input" id="api-key" type="password" placeholder="sk-…" autocomplete="off" style="width:100%">
+<input class="proj-input" id="api-key" type="password" placeholder="sk-…" autocomplete="off" style="width:100%" onchange="saveApiKey()">
 <button class="btn" id="key-toggle-btn" onclick="toggleKeyVisibility()" style="position:absolute;right:3px;top:50%;transform:translateY(-50%);font-size:14px;padding:2px 6px;background:transparent;border:none;cursor:pointer;z-index:1" title="显示/隐藏">👁</button>
-<select class="proj-input" id="api-provider" style="width:100%;margin:4px 0" onchange="onProviderChange()">
+<select class="proj-input" id="api-provider" style="width:100%;margin:4px 0" onchange="saveApiKey();onProviderChange()">
 <option value="deepseek">DeepSeek</option>
 <option value="anthropic">Anthropic</option>
 <option value="openai">OpenAI</option>
