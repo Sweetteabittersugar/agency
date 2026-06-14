@@ -3,6 +3,7 @@
 import sys
 import os
 import logging
+import threading
 from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -11,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from flask import Flask, send_from_directory
 from flask_cors import CORS
+from flask_socketio import SocketIO, emit
 
 from maestro.flask_adapter import adapt_handler
 from maestro.app_config import PORT, BIND_ADDR
@@ -18,6 +20,7 @@ from maestro.sandbox import check_docker_available
 
 app = Flask(__name__, static_folder=None)
 CORS(app, origins=["http://localhost:*", "http://127.0.0.1:*"])
+socketio = SocketIO(app, async_mode='threading', cors_allowed_origins="*")
 
 # ─── 导入所有路由处理函数 ───
 from maestro.routes import (
@@ -43,6 +46,7 @@ from maestro.routes import (
     reset,
     session_fork,
     conversations,
+    cron,
 )
 from maestro import worktree_manager
 
@@ -294,6 +298,11 @@ app.add_url_rule(
     "/api/reset/full", "reset_full", adapt_handler(reset.handle_reset_full), methods=["POST"]
 )
 
+# ─── Cron 定时任务路由 ───
+app.add_url_rule("/api/cron", "cron_list", adapt_handler(cron.handle_list))
+app.add_url_rule("/api/cron", "cron_create", adapt_handler(cron.handle_create), methods=["POST"])
+app.add_url_rule("/api/cron/<id>", "cron_delete", adapt_handler(cron.handle_delete), methods=["DELETE"])
+
 # ─── DELETE 路由 ───
 app.add_url_rule(
     "/api/skills/<name>",
@@ -333,6 +342,77 @@ def static_files(filename):
     return send_from_directory(str(WEBUI_DIR), filename)
 
 
+# ─── WebSocket: 终端数据通道（Phase 1） ───
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+@socketio.on('terminal_input', namespace='/ws/terminal')
+def handle_terminal_input(data):
+    from maestro.terminal import _terminals
+    sid = data.get('sid', '')
+    ts = _terminals.get(sid)
+    if ts and ts.alive:
+        ts.write(data.get('data', ''))
+
+@socketio.on('terminal_resize', namespace='/ws/terminal')
+def handle_terminal_resize(data):
+    from maestro.terminal import _terminals
+    sid = data.get('sid', '')
+    ts = _terminals.get(sid)
+    if ts and ts.alive:
+        ts.resize(data.get('rows', 24), data.get('cols', 80))
+
+@socketio.on('terminal_start', namespace='/ws/terminal')
+def handle_terminal_start(data):
+    from maestro.terminal import get_or_create_terminal, _terminals
+    sid = data.get('sid', '')
+    cwd = data.get('cwd', str(PROJECT_ROOT))
+    ts = get_or_create_terminal(sid, cwd)
+    emit('terminal_ready', {'sid': sid})
+    def _read_loop():
+        import time
+        while ts.alive:
+            out = ts.read()
+            if out:
+                try:
+                    socketio.emit('terminal_output', {
+                        'sid': sid,
+                        'data': out.decode('utf-8', errors='replace')
+                    }, namespace='/ws/terminal')
+                except Exception:
+                    break
+            else:
+                time.sleep(0.05)
+        emit('terminal_died', {'sid': sid}, namespace='/ws/terminal')
+    threading.Thread(target=_read_loop, daemon=True).start()
+
+@socketio.on('terminal_kill', namespace='/ws/terminal')
+def handle_terminal_kill(data):
+    from maestro.terminal import kill_terminal
+    kill_terminal(data.get('sid', ''))
+
+
+# ─── WebSocket: 聊天消息通道（Phase 2 — 替代 SSE） ───
+@socketio.on('chat_send', namespace='/ws/chat')
+def handle_chat_send(data):
+    """前端发送聊天消息 → 后端处理 → 流式推回事件。
+    不可移除——这是 Phase 2 WebSocket 聊天的核心通道。"""
+    from maestro.ws_chat import process_chat_task  # Phase 2: 聊天处理独立模块
+    sid = data.get('sid', '')  # 前端生成的临时 session id
+
+    def _emit(event_type, payload):
+        """向该 socket 连接推送事件——与 /ws/terminal 隔离 namespace"""
+        payload['_event'] = event_type
+        socketio.emit('chat_event', payload, namespace='/ws/chat', to=request.sid)
+
+    try:
+        result = process_chat_task(data, _emit)
+        _emit('done', result)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f'WS chat error: {e}')
+        _emit('error', {'error': str(e)[:200]})
+
+
 def main():
     """启动 Flask 应用"""
     if os.environ.get("AGENCY_USE_LEGACY") == "1":
@@ -353,7 +433,11 @@ def main():
     else:
         print("💡 安装 Docker 可启用沙箱隔离")
 
-    app.run(host=BIND_ADDR, port=PORT, debug=False, threaded=True)
+    # 启动 Cron 定时任务调度器（Phase 1）
+    from maestro.cron_scheduler import start_scheduler
+    start_scheduler(None)
+
+    socketio.run(app, host=BIND_ADDR, port=PORT, debug=False, allow_unsafe_werkzeug=True)
 
 
 if __name__ == "__main__":

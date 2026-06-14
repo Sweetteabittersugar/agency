@@ -1,6 +1,6 @@
 /* Agency — 开发者设置面板 */
 function saveApiKey(){var newKey=$('api-key').value.trim();var newProvider=$('api-provider').value;var oldKey=apiKey;var oldProvider=apiProvider;apiKey=newKey;apiProvider=newProvider;localStorage.setItem('agency_api_provider',apiProvider);if(apiKey){localStorage.setItem('agency_api_key',apiKey)}else{localStorage.removeItem('agency_api_key')}$('api-status').textContent=apiKey?'已保存':'已清除';showUndoableToast(t('configSaved'),function(){apiKey=oldKey;apiProvider=oldProvider;localStorage.setItem('agency_api_provider',oldProvider);$('api-key').value=oldKey;$('api-provider').value=oldProvider;if(oldKey){localStorage.setItem('agency_api_key',oldKey)}else{localStorage.removeItem('agency_api_key')}$('api-status').textContent=oldKey?'已保存':'已清除'},5000)}
-function toggleDevOverlay(){devMode=!devMode;var ov=$('devOverlay'),btn=$('devBtn');ov.classList.toggle('on',devMode);btn.classList.toggle('on',devMode);if(devMode){var ak=$('api-key');if(ak&&apiKey)ak.value=apiKey;var ap=$('api-provider');if(ap&&apiProvider)ap.value=apiProvider;loadMemList();loadRemotePanel();loadIntegrationPanel();loadMCPConfig();loadCompactionConfig();setTimeout(initSettingsAccordion,200)}}
+function toggleDevOverlay(){devMode=!devMode;var ov=$('devOverlay'),btn=$('devBtn');ov.classList.toggle('on',devMode);btn.classList.toggle('on',devMode);if(devMode){var ak=$('api-key');if(ak&&apiKey)ak.value=apiKey;var ap=$('api-provider');if(ap&&apiProvider)ap.value=apiProvider;loadMemList();loadRemotePanel();loadIntegrationPanel();loadMCPConfig();loadCompactionConfig();loadCronJobs();setTimeout(initSettingsAccordion,200)}}
 
 /* ── 设置面板折叠分组 ── */
 var _settingsAccordionDone=false;
@@ -616,5 +616,46 @@ window.saveCompactionConfig = function(){
     var msg=document.getElementById("cmp-save-msg");
     if(msg)msg.textContent="保存失败";
     showToast("保存失败",!0);
+  });
+};
+
+/* Phase 1: Cron 定时任务管理 */
+
+function loadCronJobs() {
+  fetch('/api/cron').then(function(r){ return r.json(); }).then(function(d) {
+    var list = document.getElementById('cron-jobs-list');
+    if (!list) return;
+    var jobs = d.jobs || [];
+    if (!jobs.length) {
+      list.innerHTML = '<div style="font-size:10px;color:var(--muted)">暂无定时任务</div>';
+      return;
+    }
+    list.innerHTML = jobs.map(function(j) {
+      return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border);font-size:10px">' +
+        '<span style="flex:1;color:var(--text)">' + escHtml(j.prompt) + '</span>' +
+        '<code style="color:var(--accent);font-size:9px">' + escHtml(j.cron_expr) + '</code>' +
+        '<button class="btn" onclick="deleteCronJob(\'' + j.id + '\')" style="font-size:9px;padding:2px 6px;color:var(--danger)">✕</button>' +
+        '</div>';
+    }).join('');
+  });
+}
+
+window.addCronJob = function() {
+  var prompt = document.getElementById('cron-new-prompt');
+  var expr = document.getElementById('cron-new-expr');
+  if (!prompt || !expr || !prompt.value.trim()) return;
+  fetch('/api/cron', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt: prompt.value.trim(), cron_expr: expr.value.trim() || '0 9 * * *' })
+  }).then(function(r){ return r.json(); }).then(function(d) {
+    if (d.ok) { prompt.value = ''; expr.value = ''; loadCronJobs(); }
+  });
+};
+
+window.deleteCronJob = function(id) {
+  if (!confirm('删除此定时任务？')) return;
+  fetch('/api/cron/' + id, { method: 'DELETE' }).then(function(r){ return r.json(); }).then(function(d) {
+    if (d.ok) loadCronJobs();
   });
 };

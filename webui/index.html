@@ -17,6 +17,10 @@
 <link rel="stylesheet" href="css/layout.css?v=2">
 <link rel="stylesheet" href="css/components.css?v=2">
 <link rel="stylesheet" href="css/panels.css?v=2">
+<!-- xterm.js 终端模拟器 + Socket.IO（Phase 1 嵌入终端） -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css">
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+<script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
 </head>
 <body>
 <nav class="sidebar">
@@ -90,6 +94,7 @@
 <button class="btn" id="devBtn" onclick="toggleDevOverlay()" title="设置" aria-label="开发者设置">⚙️</button>
 <button class="btn" onclick="addPanel()" title="新建面板" aria-label="新建面板">＋</button>
 <button class="btn" id="gridBtn" onclick="cycleGrid()" title="切换布局" aria-label="切换分屏布局">⊞</button>
+			<button class="btn" id="helpBtn" onclick="toggleHelpOverlay()" title="帮助" aria-label="帮助">❓</button>
 <button class="btn" id="profileQuickBtn" onclick="cycleProfile()" title="切换 Profile 级别" aria-label="切换 Profile" style="display:none;font-size:10px;font-weight:600">⚙</button>
 <button class="btn" id="orchBtn" onclick="toggleOrchMode()" aria-label="智能调度模式" style="display:none">🧠</button>
 </div>
@@ -241,7 +246,17 @@ t<select id="profile-select" style="display:none" aria-hidden="true"><option val
 		  <span id="cmp-save-msg" style="margin-left:8px;font-size:11px;color:var(--green)"></span>
 		</div>
 	</div>
-	<div class="settings-section" style="margin-top:16px" id="feature-unlock-section">
+	<div class="settings-section" style="margin-top:16px" id="cron-section">
+		  <h3 id="sett-定时任务" style="font-size:12px;color:var(--text);margin-bottom:8px">⏰ 定时任务</h3>
+		  <p style="font-size:10px;color:var(--muted);margin-bottom:8px">定时向 Claude 发送预设任务（格式: 分 时 日 月 周，如 0 9 * * * = 每天9点）</p>
+		  <div id="cron-jobs-list" style="margin-bottom:8px"></div>
+		  <div style="display:flex;gap:8px;flex-wrap:wrap">
+		    <input id="cron-new-prompt" placeholder="任务描述" style="flex:1;min-width:120px;font-size:10px;background:var(--bg2);color:var(--text);border:1px solid var(--border);padding:4px 6px;border-radius:4px">
+		    <input id="cron-new-expr" placeholder="0 9 * * *" style="width:90px;font-size:10px;background:var(--bg2);color:var(--text);border:1px solid var(--border);padding:4px 6px;border-radius:4px">
+		    <button class="btn" onclick="addCronJob()" style="font-size:10px;padding:4px 10px">➕</button>
+		  </div>
+		</div>
+		<div class="settings-section" style="margin-top:16px" id="feature-unlock-section">
 	<h3 id="sett-功能解锁" style="font-size:12px;color:var(--text);margin-bottom:8px">🔓 功能解锁</h3>
 	<div id="feature-unlock-content"></div>
 	</div>
@@ -323,6 +338,7 @@ t<select id="profile-select" style="display:none" aria-hidden="true"><option val
 <script src="js/settings-config.js"></script>
 <script src="js/settings-security.js"></script>
 <script src="js/settings.js"></script>
+<script src="js/terminal.js"></script>
 <script src="js/split-layout.js"></script>
 <script src="js/sidebar.js"></script>
 <script src="js/chat.js"></script>
