@@ -21,6 +21,16 @@ def process_chat_task(data, emit_callback):
     api_key = data.get('api_key', '')
     api_provider = data.get('api_provider', 'deepseek')
 
+    # 后台配置优先：无前端 Key 时从环境变量读取
+    if not api_key:
+        import os
+        from maestro.models import get_provider_config
+        _, env_key, _ = get_provider_config()
+        api_key = env_key
+    if not api_provider:
+        import os
+        api_provider = os.environ.get("PROVIDER", "deepseek")
+
     # Phase 2: 输入校验——空任务和缺 Key 在推送 error 事件后立即返回
     if not task:
         emit_callback('error', {'error': '请求为空'})

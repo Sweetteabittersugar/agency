@@ -1,0 +1,2 @@
+{"ts": 1781429482.8572488, "type": "user_message", "data": {"content": "回OK"}}
+{"ts": 1781429501.3286908, "type": "agent_response", "data": {"content_preview": "收到，小明。当前分支 `main`，有 2 个已修改文件和 2 个未跟踪文件。随时告诉我接下来做什么。", "elapsed": 0.0, "cost": 0.266505, "tokens_in": 50751, "tokens_out": 510}}

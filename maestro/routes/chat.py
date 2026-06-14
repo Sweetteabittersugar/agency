@@ -27,6 +27,14 @@ def handle_chat(handler, body):
     api_key = body.get("api_key", "")
     api_provider = body.get("api_provider", "")
 
+    # 后台配置优先：环境变量有 Key 时直接使用，前端不必传
+    if not api_key:
+        from maestro.models import get_provider_config
+        _, env_key, _ = get_provider_config()
+        api_key = env_key
+    if not api_provider:
+        api_provider = os.environ.get("PROVIDER", "deepseek")
+
     if not task:
         handler.send_json({"error": "请求为空。请在消息框中输入任务描述后发送"}, 400)
         return True
