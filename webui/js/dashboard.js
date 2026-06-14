@@ -573,3 +573,45 @@ window.toggleDashboard = toggleDashboard;
 window.renderDashboardGrid = renderDashboardGrid;
 window.loadCostOverview = loadCostOverview;
 window.openDashDetail = openDashDetail;
+
+/* P2-2: 会话历史时间线 — 事件溯源查看器 */
+function renderHistoryTimeline(container){
+  container.innerHTML='<div style="padding:12px"><div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">📜 会话历史</div><div id="session-timeline-list" style="max-height:500px;overflow-y:auto"><span style="color:var(--muted);font-size:11px">加载中…</span></div></div>';
+  loadSessionTimeline();
+}
+function loadSessionTimeline(){
+  fetch("/api/sessions/timeline").then(function(r){return r.json()}).then(function(d){
+    var list=document.getElementById("session-timeline-list");if(!list)return;
+    var sessions=d.sessions||[];
+    if(!sessions.length){list.innerHTML='<div style="color:var(--muted);padding:12px;text-align:center">暂无会话记录</div>';return}
+    list.innerHTML=sessions.map(function(s){
+      var date=new Date(s.updated).toLocaleString("zh-CN");
+      return '<div style="display:flex;align-items:center;gap:8px;padding:8px;margin-bottom:4px;background:var(--surface2);border-radius:4px;cursor:pointer" onclick="replaySession(\''+s.session_id+'\')">'+
+        '<span style="font-size:14px">📝</span>'+
+        '<div style="flex:1"><div style="font-size:11px;font-weight:600;color:var(--text)">'+escHtml(s.session_id.substring(0,12))+'…</div>'+
+        '<div style="font-size:9px;color:var(--muted)">'+s.event_count+' 事件 · '+date+'</div></div>'+
+        '<span style="font-size:9px;color:var(--accent)">▶ 回放</span></div>';
+    }).join("");
+  });
+}
+window.replaySession=function(sid){/* P2-2: 回放会话事件时间线 */
+  fetch("/api/sessions/replay/"+sid).then(function(r){return r.json()}).then(function(d){
+    if(!d.ok){showToast("回放失败");return}
+    var h="<div style='padding:8px;font-size:11px'>"+
+      "<div style='font-weight:600;color:var(--text);margin-bottom:8px'>📜 "+escHtml(sid.substring(0,16))+"…</div>"+
+      "<div style='display:flex;gap:12px;margin-bottom:12px;font-size:10px;color:var(--muted)'>"+
+        "<span>总计 "+d.stats.total_events+" 事件</span>"+
+        "<span>💬 "+d.stats.user_messages+"</span>"+
+        "<span>🤖 "+d.stats.assistant_messages+"</span>"+
+        "<span>🔧 "+d.stats.tool_calls+"</span></div>";
+    (d.events||[]).forEach(function(e){
+      var i=e.type=="user_message"?"👤":e.type=="assistant_message"?"🤖":e.type=="tool_call"?"🔧":"📌";
+      h+="<div style='padding:4px 0;border-bottom:1px solid var(--border);display:flex;gap:8px'>"+
+        "<span style='font-size:12px'>"+i+"</span>"+
+        "<div style='flex:1'><div style='font-size:9px;color:var(--accent)'>"+escHtml(e.type||"?")+"</div>"+
+        "<div style='font-size:10px;color:var(--text);max-height:60px;overflow:hidden'>"+escHtml(String(e.content||"").substring(0,200))+"</div></div></div>";
+    });
+    h+="</div>";
+    var detail=document.getElementById("dash-detail");if(detail){detail.innerHTML=h;detail.style.display="block"}
+  });
+};

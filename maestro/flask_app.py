@@ -45,6 +45,7 @@ from maestro.routes import (
     weixin_api,
     reset,
     session_fork,
+    session_replay,    # P2-2: 会话回放
     conversations,
     cron,
     search,    # Phase 3: 全局搜索
@@ -333,6 +334,13 @@ app.add_url_rule(
 )
 app.add_url_rule(
     "/api/sessions/processes", "session_processes", adapt_handler(sessions.handle_list_processes)
+)
+# ─── P2-2 会话事件溯源 ───
+app.add_url_rule(
+    "/api/sessions/timeline", "session_timeline", adapt_handler(session_replay.handle_timeline)
+)
+app.add_url_rule(
+    "/api/sessions/replay/<sid>", "session_replay", adapt_handler(session_replay.handle_replay)
 )
 
 # ─── 静态文件 ───
