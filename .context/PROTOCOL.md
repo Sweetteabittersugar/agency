@@ -2,20 +2,23 @@
 
 > 每个 Agent（包括你自己）在改动项目前必须读这个文件。
 
-## 改代码前（必做）
+## 会话开始（必做）
 
-1. **读决策日志** → `ls .context/decisions/` 找相关决策
-2. **读错误日志** → `.context/mistakes/` 避免重复踩坑
-3. **读 handoff** → `.context/handoff.md` 了解上次会话状态
+1. **读 handoff** → `.context/handoff.md` 了解上次状态
+2. **读 backlog** → `.context/BACKLOG.md` 看有什么待做的
+3. **读决策日志** → `ls .context/decisions/` 找相关决策
+4. **读错误日志** → `.context/mistakes/` 避免重复踩坑
 
-## 改代码后（必做）
+## 会话中（随时）
 
-1. **如果做了架构级决策** → 写 `.context/decisions/YYYY-MM-DD-<slug>.md`
-   - 包含：Context（为什么需要决策）、Decision（做了什么选择）、Why（为什么选这个不选那个）
-2. **如果踩了坑** → 写 `.context/mistakes/<slug>.md`
-   - 包含：症状、根因、怎么避免、用什么检测
-3. **更新 handoff** → `.context/handoff.md`
-   - 当前状态、已知问题、下一步
+- **想到新功能/改进但没空做** → 立即写 `.context/BACKLOG.md`（不要靠脑子记）
+- **做了架构级决策** → 写 `.context/decisions/YYYY-MM-DD-<slug>.md`
+- **踩了坑** → 写 `.context/mistakes/<slug>.md`
+
+## 会话结束（必做）
+
+1. **更新 handoff** → `.context/handoff.md`（状态、已知问题、下一步）
+2. **更新 backlog** → 把本次完成的事项移到"已完成"
 
 ## 决策格式
 
