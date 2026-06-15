@@ -39,4 +39,13 @@
 - 轻活直调 Agent，重活(3+文件)走 dispatch
 - @status | @cost | @tracker
 
+## 决策溯源（防改坏）
+
+改关键代码前 → 读 `.context/decisions/` 了解之前为什么这样做。
+做架构决策后 → 写 `.context/decisions/YYYY-MM-DD-<slug>.md`。
+踩坑后 → 写 `.context/mistakes/<slug>.md`。
+详细协议见 `.context/PROTOCOL.md`
+
+---
+
 详见 AGENTS.md（路由矩阵）
