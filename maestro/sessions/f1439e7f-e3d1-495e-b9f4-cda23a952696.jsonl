@@ -1,2 +1,8 @@
 {"ts": 1781430050.69814, "type": "user_message", "data": {"content": "回OK"}}
 {"ts": 1781430057.5469534, "type": "agent_response", "data": {"content_preview": "OK", "elapsed": 0.0, "cost": 0.25433, "tokens_in": 50716, "tokens_out": 30}}
+{"ts": 1781430169.5580893, "type": "route_decision", "data": {"agent": "auto", "model": "auto", "source": "auto", "task_preview": "回OK"}}
+{"ts": 1781430169.5591152, "type": "user_message", "data": {"content": "回OK"}}
+{"ts": 1781430176.3441908, "type": "agent_response", "data": {"content_preview": "好的，收到！有什么需要帮忙的随时说。", "elapsed": 0.0, "cost": 0.457344, "tokens_in": 38989, "tokens_out": 77}}
+{"ts": 1781430202.3562794, "type": "route_decision", "data": {"agent": "coder", "model": "sonnet", "source": "llm_cached", "task_preview": "回复OK"}}
+{"ts": 1781430202.4004316, "type": "user_message", "data": {"content": "回复OK"}}
+{"ts": 1781430213.6680312, "type": "agent_response", "data": {"content_preview": "OK\n\n已加载会话上下文，包括全局教训记录（`lessons.md`）和项目级记忆（`MEMORY.md`）。有什么需要随时说。", "elapsed": 0.0, "cost": 0.255745, "tokens_in": 50709, "tokens_out": 88}}

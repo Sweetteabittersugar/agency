@@ -5,6 +5,12 @@ Phase 2: 聊天 SSE → WebSocket 升级"""
 
 import json, time, os, logging
 
+
+def _ws_estimate_tokens(text: str, model: str = "") -> int:
+    """Token 估算——根据模型 tokenizer 特性加权。"""
+    from maestro.models import estimate_tokens
+    return estimate_tokens(text, model or "deepseek-v4-flash")
+
 log = logging.getLogger(__name__)
 
 
@@ -27,6 +33,19 @@ def process_chat_task(data, emit_callback):
         from maestro.models import get_provider_config
         _, env_key, _ = get_provider_config()
         api_key = env_key
+    # 第二兜底：从服务端 api_key.json 读取
+    if not api_key:
+        try:
+            import json
+            from pathlib import Path as _Path
+            _key_file = _Path(__file__).resolve().parent / "api_key.json"
+            if _key_file.exists():
+                _data = json.loads(_key_file.read_text(encoding="utf-8"))
+                api_key = _data.get("key", "")
+                if not api_provider:
+                    api_provider = _data.get("provider", "deepseek")
+        except Exception:
+            pass
     if not api_provider:
         import os
         api_provider = os.environ.get("PROVIDER", "deepseek")
@@ -59,6 +78,21 @@ def process_chat_task(data, emit_callback):
     iso_env = build_isolated_env(api_key, api_provider)
 
     # Phase 2: 获取或创建 Claude 会话——每个面板独立 session
+    # 2026-06: 预算检查——任务执行前验证日预算
+    try:
+        from maestro.permission_engine import PermissionEngine
+        from maestro.shared import PROJECT_ROOT as _prj_root
+        _engine = PermissionEngine(_prj_root / "maestro" / "cost.db")
+        _budget_ok, _budget_msg = _engine.check_cost_budget(
+            task_estimate_tokens=_ws_estimate_tokens(actual_task, model),
+            model=model or "deepseek-v4-flash",
+        )
+        if not _budget_ok:
+            emit_callback('error', {'error': _budget_msg, 'action': 'budget_exceeded'})
+            return {'ok': False, 'error': _budget_msg}
+    except Exception:
+        pass  # 预算检查失败不阻塞聊天
+
     cs = get_or_create(session_id, str(PROJECT_ROOT), iso_env)
     if cs is None:
         emit_callback('error', {'error': '无法启动 Claude 进程'})
@@ -98,17 +132,34 @@ def process_chat_task(data, emit_callback):
 
     # Phase 2: 统计——耗时 / Token / 费用 / 压缩状态
     elapsed = round(time.time() - start_time, 1)
-    in_tokens = done_data.get('in_tokens', len(task) // 4)
+    in_tokens = done_data.get('in_tokens', _ws_estimate_tokens(task, model))
     out_tokens = done_data.get('out_tokens', 0)
     model_used = done_data.get('model', model)
-    from maestro.models import estimate_cost, check_compaction
-    cost = estimate_cost(model_used, in_tokens, out_tokens)
+    # 2026-06 修复：统一切到 Claude result.total_cost_usd（API 实际扣费），不再自己用 PRICING 表估算
+    # estimate_cost() 只在无 Claude 进程时做 fallback（如读历史 JSONL）
+    cost = done_data.get('cost', 0)
+    from maestro.models import check_compaction
     comp = check_compaction(model_used, cs._total_in_tokens)
 
     # Phase 2: 费用记录——写入 Web 费用日志
+    # 2026-06 修复：参数顺序对齐 web_cost.record_cost 签名 (project_root, time_str, model, ...)
+    # 之前把 model_used 当 project_root 传入，导致每次写入静默失败，费用数据全部丢失
     try:
-        from maestro.web_cost import record_cost
-        record_cost(model_used, in_tokens, out_tokens, cost, agent_name, 'ws_chat')
+        from maestro.web_cost import record_cost as web_record_cost
+        from maestro.shared import PROJECT_ROOT as _prj_root
+        _now_str = time.strftime("%Y-%m-%d %H:%M:%S")
+        web_record_cost(
+            project_root=_prj_root,
+            time_str=_now_str,
+            model=model_used,
+            in_tokens=in_tokens,
+            out_tokens=out_tokens,
+            cost_usd=cost,
+            duration_s=elapsed,
+            agent=agent_name,
+            session_id=session_id,
+            tokens_from_api=True,  # ws_chat 走 Claude stream-json，token 来自 API 真实值
+        )
     except Exception:
         pass
 

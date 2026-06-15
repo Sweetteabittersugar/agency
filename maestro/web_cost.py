@@ -23,10 +23,27 @@ def record_cost(
     project="",
     cache_read=0,
     cache_write=0,
-    cache_saved=0.0,
+    cache_saved=None,  # None → 自动根据 ModelPrice 计算
     is_estimated=False,
     session_id="",
+    tokens_from_api=True,  # True=API返回值, False=客户端估算
 ):
+    # 自动计算缓存节省金额（如果调用方没传或传了0）
+    # cache_saved = cache_read * (input_price - cache_read_price)，表示因缓存而少付的输入费
+    # cache_saved is None → 新调用方没传；cache_saved == 0 → 旧调用方传了占位值
+    if (cache_saved is None or cache_saved == 0) and cache_read > 0:
+        try:
+            from maestro.models import get_model_price
+            price = get_model_price(model)
+            if price and price.input > price.cache_read:
+                cache_saved = (cache_read / 1_000_000) * (price.input - price.cache_read)
+            else:
+                cache_saved = 0.0
+        except Exception:
+            cache_saved = 0.0
+    elif cache_saved is None or cache_saved == 0:
+        cache_saved = 0.0
+
     db = project_root / "maestro" / "cost.db"
     date_str = time_str[:10]
     with _cost_db_lock:
@@ -43,7 +60,8 @@ def record_cost(
                 cache_write_tokens INTEGER DEFAULT 0,
                 cache_saved_usd REAL DEFAULT 0.0,
                 is_estimated INTEGER DEFAULT 0,
-                session_id TEXT DEFAULT ''
+                session_id TEXT DEFAULT '',
+                tokens_from_api INTEGER DEFAULT 1
             )""")
             _migrate = [
                 "date TEXT DEFAULT ''",
@@ -55,6 +73,7 @@ def record_cost(
                 "cache_saved_usd REAL DEFAULT 0.0",
                 "is_estimated INTEGER DEFAULT 0",
                 "session_id TEXT DEFAULT ''",
+                "tokens_from_api INTEGER DEFAULT 1",
             ]
             for col_def in _migrate:
                 try:
@@ -65,7 +84,7 @@ def record_cost(
                 "UPDATE costs SET date = substr(time, 1, 10) WHERE date = '' OR date IS NULL"
             )
             conn.execute(
-                "INSERT INTO costs (time, date, project, agent, model, in_tokens, out_tokens, cost_usd, duration_s, cache_read_tokens, cache_write_tokens, cache_saved_usd, is_estimated, session_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO costs (time, date, project, agent, model, in_tokens, out_tokens, cost_usd, duration_s, cache_read_tokens, cache_write_tokens, cache_saved_usd, is_estimated, session_id, tokens_from_api) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (
                     time_str,
                     date_str,
@@ -81,6 +100,7 @@ def record_cost(
                     round(cache_saved, 8),
                     1 if is_estimated else 0,
                     session_id or "",
+                    1 if tokens_from_api else 0,
                 ),
             )
             conn.commit()
@@ -106,10 +126,12 @@ def get_cost_analytics(project_root, days=30):
             f"SELECT COUNT(*) as calls, COALESCE(SUM(cost_usd),0) as cost, COALESCE(SUM(in_tokens),0) as in_tok, COALESCE(SUM(out_tokens),0) as out_tok FROM costs WHERE {date_col} >= date('now','-'||?||' days')",
             (days,),
         ).fetchone()
+        # 2026-06 修复：by_date 补上 token 聚合字段，供 handle_summary 和前端使用
+        # 之前只返回 {date, calls, cost}，导致 handle_summary 的 input_tokens/output_tokens 始终为 0
         by_date = [
             dict(r)
             for r in conn.execute(
-                f"SELECT {date_col} as date, COUNT(*) as calls, ROUND(COALESCE(SUM(cost_usd),0),6) as cost FROM costs WHERE {date_col} >= date('now','-'||?||' days') GROUP BY {date_col} ORDER BY date",
+                f"SELECT {date_col} as date, COUNT(*) as calls, ROUND(COALESCE(SUM(cost_usd),0),6) as cost, COALESCE(SUM(in_tokens),0) as input_tokens, COALESCE(SUM(out_tokens),0) as output_tokens FROM costs WHERE {date_col} >= date('now','-'||?||' days') GROUP BY {date_col} ORDER BY date",
                 (days,),
             )
         ]

@@ -7,9 +7,43 @@ var projDir='',apiKey='',apiProvider='deepseek',authToken='';
 try{projDir=localStorage.getItem('agency_proj_dir')||''}catch(_){}
 // 注意：API Key 明文存 localStorage 有 XSS 泄漏风险
 // 生产环境建议用 session token 替代，或后端代理持有 Key
+/* 2026-06: API Key 优先从服务端加载，防止 pywebview localStorage 不持久化 */
 try{apiKey=localStorage.getItem('agency_api_key')||''}catch(_){}
 try{apiProvider=localStorage.getItem('agency_api_provider')||'deepseek'}catch(_){}
+// 服务端覆盖：后台保存的 Key 优先级最高
+try{
+  fetch('/api/config/key').then(function(r){return r.json()}).then(function(d){
+    if(d.has_key){ apiKey=d.key||apiKey; apiProvider=d.provider||apiProvider; }
+  }).catch(function(){});
+}catch(_){}
 try{authToken=localStorage.getItem('agency_auth_token')||''}catch(_){}
+
+// 2026-06: 从服务端恢复用户偏好（防止 pywebview localStorage 丢失）
+(function _restoreServerPrefs(){
+  fetch('/api/config/prefs').then(function(r){return r.json()}).then(function(prefs){
+    if(!prefs||!Object.keys(prefs).length)return;
+    // 只恢复 localStorage 中没有的 key（localStorage 优先）
+    var keys=['agency_api_key','agency_api_provider','agency_theme','agency_trust_mode',
+              'agency_profile','sticky_agent','custom_shortcuts','agency_unlock_all',
+              'agency_custom_templates','agency_output_dir','agency_proj_dir','agency_font_size'];
+    keys.forEach(function(k){
+      if(prefs[k]&&!localStorage.getItem(k)){
+        try{localStorage.setItem(k,prefs[k])}catch(_){}
+        if(k==='agency_api_key')apiKey=prefs[k];
+        if(k==='agency_api_provider')apiProvider=prefs[k];
+        if(k==='agency_profile')agencyProfile=prefs[k];
+      }
+    });
+  }).catch(function(){});
+})();
+
+// 通用偏好同步：任何 localStorage 变更后调用，异步上传到服务端
+window.syncPrefs = function(key, value){
+  try{
+    var payload={};payload[key]=value;
+    fetch('/api/config/prefs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(function(){});
+  }catch(_){}
+};
 
 // ── Profile 级别 ──
 var agencyProfile='standard';  // minimal | standard | full

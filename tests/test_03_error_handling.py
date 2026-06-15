@@ -210,11 +210,11 @@ class TestLogicErrorHandling(unittest.TestCase):
         self.assertGreater(len(prompt), 0)
 
     def test_07_estimate_cost_unknown_model(self):
-        cost = estimate_cost("unknown-model-12345", 100, 50)
+        cost, saved, hit_rate = estimate_cost("unknown-model-12345", 100, 50)
         self.assertGreater(cost, 0)
 
     def test_08_estimate_cost_known(self):
-        cost = estimate_cost("deepseek-chat", 1000, 500)
+        cost, saved, hit_rate = estimate_cost("deepseek-chat", 1000, 500)
         self.assertGreater(cost, 0)
 
     def test_09_record_agent_result(self):

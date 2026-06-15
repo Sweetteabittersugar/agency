@@ -1,20 +1,78 @@
 [
   {
+    "id": 1781448077885,
+    "title": "我叫小米",
+    "messages": [
+      {
+        "role": "user",
+        "content": "我叫小米"
+      },
+      {
+        "role": "assistant",
+        "content": "❌ 已停止"
+      }
+    ],
+    "sessionId": "",
+    "updated": 1781448244898,
+    "archived": true,
+    "archived_at": 1781449545838
+  },
+  {
+    "id": 1781448044437,
+    "title": "我叫小米",
+    "messages": [
+      {
+        "role": "user",
+        "content": "我叫小米"
+      },
+      {
+        "role": "assistant",
+        "content": "❌ 已停止"
+      }
+    ],
+    "sessionId": "",
+    "updated": 1781448074500,
+    "archived": true,
+    "archived_at": 1781449910027
+  },
+  {
     "id": "test-1",
     "title": "test",
     "messages": [
       {
+        "content": "回OK",
+        "role": "user"
+      },
+      {
+        "content": "OK",
+        "role": "assistant",
+        "status": "done",
+        "statusDetail": ""
+      },
+      {
+        "content": "回OK",
+        "role": "user"
+      },
+      {
+        "content": "好的，收到！有什么需要帮忙的随时说。",
+        "role": "assistant",
+        "status": "done",
+        "statusDetail": ""
+      },
+      {
         "role": "user",
-        "content": "回OK"
+        "content": "回复OK"
       },
       {
         "role": "assistant",
-        "content": "OK",
+        "content": "OK\n\n已加载会话上下文，包括全局教训记录（`lessons.md`）和项目级记忆（`MEMORY.md`）。有什么需要随时说。",
         "status": "done",
         "statusDetail": ""
       }
     ],
     "sessionId": "f1439e7f-e3d1-495e-b9f4-cda23a952696",
-    "updated": 1781430057556
+    "updated": 1781430213684,
+    "archived": true,
+    "archived_at": 1781449912472
   }
 ]

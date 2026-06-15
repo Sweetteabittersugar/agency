@@ -159,7 +159,10 @@ class ClaudeSession:
                     self._total_cache_read += cache_read
                     self._total_cost += cost
                     if model:
-                        self._detected_model = model  # real model from Claude, not hardcoded
+                        # 2026-06：标准化模型名——Claude Code 可能报简称如 "sonnet"，
+                        # 统一到 PRICING 表键名如 "claude-sonnet-4-6"，避免聚合统计出错
+                        from maestro.models import normalize_model_name
+                        self._detected_model = normalize_model_name(model)
                     events.append(
                         {
                             "done": {

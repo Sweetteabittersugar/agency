@@ -62,13 +62,23 @@ class TestModels:
         assert len(model) > 0
 
     def test_estimate_cost_known_model(self):
-        """已知模型的费用估算应返回正数"""
-        cost = estimate_cost("deepseek-v4-flash", 1000, 500)
+        """已知模型的费用估算应返回正数（缓存感知三元组）"""
+        cost, saved, hit_rate = estimate_cost("deepseek-v4-flash", 1000, 500)
         assert cost > 0
+        assert isinstance(saved, float)
+        assert isinstance(hit_rate, float)
+
+    def test_estimate_cost_with_cache(self):
+        """缓存命中应降低费用并产生节省"""
+        cost_no_cache, _, _ = estimate_cost("deepseek-v4-flash", 100000, 10000)
+        cost_cached, saved, hit_rate = estimate_cost("deepseek-v4-flash", 100000, 10000, cache_read=50000)
+        assert saved > 0, f"缓存应该节省费用，实际 saved={saved}"
+        assert hit_rate > 0, f"命中率应>0，实际 hit_rate={hit_rate}"
+        assert cost_cached < cost_no_cache, f"缓存费用应更低: {cost_cached} vs {cost_no_cache}"
 
     def test_estimate_cost_unknown_model(self):
         """未知模型使用保守估算"""
-        cost = estimate_cost("unknown-model", 1000, 500)
+        cost, saved, hit_rate = estimate_cost("unknown-model", 1000, 500)
         assert cost > 0
 
     def test_get_provider_config_returns_three_values(self):

@@ -13,7 +13,28 @@ Agent frontmatter 中的 model 字段是"能力级别"：
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 from pathlib import Path
+
+
+@dataclass(frozen=True)
+class ModelPrice:
+    """模型定价——含缓存感知价格 + token 估算系数。
+
+    cache_read:  缓存命中输入价格（USD/MTok），通常为 input 的 10-20%
+    cache_write: 缓存写入价格（USD/MTok），仅 Anthropic/Google/Qwen 收取。
+                 5-min TTL 通常为 input 的 1.25×，1-hour TTL 为 2×。
+                 此字段取 5-min TTL 值（高频场景默认）。
+    tok_per_char: 中文场景 token/字符 估算系数。
+                  不同模型 tokenizer 对同一中文文本的 token 数可差 3 倍：
+                  Claude ~0.8 tok/字，DeepSeek ~0.5 tok/字，Qwen ~0.3 tok/字。
+                  取实测上限值（保守高估），用于无 API usage 时的 fallback 估算。
+    """
+    input: float
+    cache_read: float
+    output: float
+    cache_write: float = 0.0
+    tok_per_char: float = 0.40  # 默认保守值
 
 # === 主流模型预设（用户只需选 provider） ===
 
@@ -61,6 +82,42 @@ PROVIDER_PRESETS = {
         "light": "GLM-4-Flash",
         "base_url": "https://open.bigmodel.cn/api/paas/v4",
     },
+    "kimi": {
+        "heavy": "kimi-k2.6",
+        "standard": "kimi-k2.6",
+        "light": "kimi-k2.6",
+        "base_url": "https://api.moonshot.cn/v1",
+    },
+    "minimax": {
+        "heavy": "minimax-m3",
+        "standard": "minimax-m3",
+        "light": "minimax-m2.7",
+        "base_url": "https://api.minimax.chat/v1",
+    },
+    "doubao": {
+        "heavy": "doubao-pro-32k",
+        "standard": "doubao-pro-32k",
+        "light": "doubao-lite-32k",
+        "base_url": "https://ark.cn-beijing.volces.com/api/v3",
+    },
+    "longcat": {
+        "heavy": "longcat-2-preview",
+        "standard": "longcat-2-preview",
+        "light": "longcat-2-preview",
+        "base_url": "https://api.longcat.chat/v1",
+    },
+    "mimo": {
+        "heavy": "mimo-v2.5-pro",
+        "standard": "mimo-v2.5-pro",
+        "light": "mimo-v2.5-pro",
+        "base_url": "https://api.mimo.tech/v1",
+    },
+    "baidu": {
+        "heavy": "ernie-4.5",
+        "standard": "ernie-4.5",
+        "light": "ernie-speed",
+        "base_url": "https://qianfan.baidubce.com/v2",
+    },
 }
 
 # === API Provider 映射（chat / orchestrate 共用）===
@@ -97,6 +154,30 @@ PROVIDER_MAP = {
         "ANTHROPIC_BASE_URL": "https://open.bigmodel.cn/api/paas/v4",
         "ANTHROPIC_MODEL": "GLM-5.1",
     },
+    "kimi": {
+        "ANTHROPIC_BASE_URL": "https://api.moonshot.cn/v1",
+        "ANTHROPIC_MODEL": "kimi-k2.6",
+    },
+    "minimax": {
+        "ANTHROPIC_BASE_URL": "https://api.minimax.chat/v1",
+        "ANTHROPIC_MODEL": "minimax-m3",
+    },
+    "doubao": {
+        "ANTHROPIC_BASE_URL": "https://ark.cn-beijing.volces.com/api/v3",
+        "ANTHROPIC_MODEL": "doubao-pro-32k",
+    },
+    "longcat": {
+        "ANTHROPIC_BASE_URL": "https://api.longcat.chat/v1",
+        "ANTHROPIC_MODEL": "longcat-2-preview",
+    },
+    "mimo": {
+        "ANTHROPIC_BASE_URL": "https://api.mimo.tech/v1",
+        "ANTHROPIC_MODEL": "mimo-v2.5-pro",
+    },
+    "baidu": {
+        "ANTHROPIC_BASE_URL": "https://qianfan.baidubce.com/v2",
+        "ANTHROPIC_MODEL": "ernie-4.5",
+    },
     "custom": {},
 }
 
@@ -123,6 +204,12 @@ def get_provider_config() -> tuple[str, str, dict[str, str]]:
         "zhipu": "ZHIPU_API_KEY",
         "google": "GOOGLE_API_KEY",
         "xai": "XAI_API_KEY",
+        "kimi": "KIMI_API_KEY",
+        "minimax": "MINIMAX_API_KEY",
+        "doubao": "DOUBAO_API_KEY",
+        "longcat": "LONGCAT_API_KEY",
+        "mimo": "MIMO_API_KEY",
+        "baidu": "BAIDU_API_KEY",
     }
 
     api_key = ""
@@ -243,51 +330,216 @@ def get_default_model() -> str:
     return os.environ.get("DEFAULT_MODEL") or resolve_model("sonnet")
 
 
-# === 模型定价表（2026.06 WebSearch 核实） ===
-# (input_price, output_price) 单位 USD/百万token
+# === 模型定价表（2026.06.15 WebSearch 核实，含缓存感知价格） ===
+# 格式: ModelPrice(input, cache_read, output, cache_write)
+#   - input:       标准输入 / cache miss (USD/MTok)
+#   - cache_read:  缓存命中输入 (USD/MTok)，通常为 input 的 10-20%
+#   - output:      输出 (USD/MTok)
+#   - cache_write: 缓存写入 (USD/MTok)，仅 Anthropic/Google/Qwen 收取
 #
-# DeepSeek 来源: api-docs.deepseek.com/quick_start/pricing
-#   - deepseek-chat/reasoner 将于 2026-07-24 废弃，迁移到 v4-flash
-#   - V4 Pro 75% 永久折扣: $1.74→$0.435, $3.48→$0.87
-# Anthropic 来源: cloudzero.com/blog/claude-api-pricing
-#   - Opus 4.6+ 降价 67%: $15/$75 → $5/$25
-# OpenAI 来源: openai.com/api/pricing (GPT-4.1 取代 GPT-4o)
-# Google 来源: opslyft.com/blog/google-gemini-api-pricing-2026
+# 缓存折扣对比（跨厂商）：
+#   DeepSeek V4 Pro:   cache_read=$0.0145,  97% off (!)
+#   Claude Opus 4.8:   cache_read=$0.50,    90% off
+#   GPT-5:             cache_read=$0.125,   90% off
+#   Gemini 2.5 Pro:    cache_read=$0.125,   90% off
+#   Grok 4.3:          cache_read=$0.20,    84% off
+#   Kimi K2.6:         cache_read=$0.16,    83% off
+#   MiniMax M3:        cache_read=$0.06,    80% off
 #
-# 2026.06 更新：GPT-5系列定价、xAI Grok 4.3、Qwen3/Zhipu GLM-5.1
-PRICING = {
-    # DeepSeek — api-docs.deepseek.com（2026.04 V4 永久促销）
-    "deepseek-v4-pro": (0.435, 0.87),
-    "deepseek-v4-flash": (0.14, 0.28),
-    "deepseek-chat": (0.14, 0.28),      # 2026.07退役→v4-flash，保留兼容
-    "deepseek-reasoner": (0.14, 0.28),  # 同上
-    # Anthropic Claude — platform.claude.com（Opus 4.6+ 降价67%）
-    "claude-opus-4-8": (5.00, 25.00),
-    "claude-sonnet-4-6": (3.00, 15.00),
-    "claude-haiku-4-5": (1.00, 5.00),
-    # OpenAI GPT-5 — developers.openai.com（2025.08）
-    "gpt-5": (1.25, 10.00),
-    "gpt-5-mini": (0.25, 2.00),
-    "gpt-5-nano": (0.05, 0.40),
-    "gpt-4.1": (2.00, 8.00),            # 长上下文1M，保留兼容
-    "gpt-4.1-mini": (0.40, 1.60),
-    "gpt-4.1-nano": (0.10, 0.40),
-    "gpt-4o": (2.50, 10.00),            # 旧版，保留兼容
-    "gpt-4o-mini": (0.15, 0.60),
-    # Google Gemini — opslyft.com
-    "gemini-2.5-pro": (1.25, 10.00),
-    "gemini-2.5-flash": (0.30, 2.50),
-    "gemini-2.5-flash-lite": (0.10, 0.40),
-    # xAI Grok — docs.x.ai（2026.05）
-    "grok-4.3": (1.25, 2.50),
-    "grok-4-1-fast-reasoning": (0.20, 0.50),
-    # Qwen 通义千问 — help.aliyun.com（1USD≈7.25CNY）
-    "qwen3-max": (0.34, 1.38),
-    "qwen-long": (0.07, 0.28),
-    # Zhipu 智谱 — cloudprice.net
-    "GLM-5.1": (0.83, 3.31),
-    "GLM-4-Flash": (0, 0),              # 免费
+# 数据来源（2026.06.15 WebSearch）：
+#   cloudzero.com/blog/claude-api-pricing
+#   cloudzero.com/blog/deepseek-pricing
+#   openai.com/api/pricing
+#   opslyft.com/blog/google-gemini-api-pricing-2026
+#   docs.x.ai/developers/pricing
+#   alibabacloud.com/help/zh/model-studio/model-pricing
+#   platform.minimax.io/docs/guides/pricing-paygo
+#   kimi.com/resources/kimi-k2-6-pricing
+PRICING: dict[str, ModelPrice] = {
+    # ── DeepSeek — api-docs.deepseek.com（2026.05 75%永久降价） ──
+    # cache 自动生效，无 cache_write 费
+    # tok_per_char=0.5: 中文高效 tokenizer，实测 0.3-0.5 tok/字，取上限
+    "deepseek-v4-pro": ModelPrice(
+        input=0.435, cache_read=0.0145, output=0.87, tok_per_char=0.5,
+    ),
+    "deepseek-v4-flash": ModelPrice(
+        input=0.14, cache_read=0.028, output=0.28, tok_per_char=0.5,
+    ),
+    # 旧名兼容（2026.07退役，迁移到 v4-flash）
+    "deepseek-chat": ModelPrice(
+        input=0.14, cache_read=0.028, output=0.28, tok_per_char=0.5,
+    ),
+    "deepseek-reasoner": ModelPrice(
+        input=0.14, cache_read=0.028, output=0.28, tok_per_char=0.5,
+    ),
+
+    # ── Anthropic Claude — platform.claude.com ──
+    # cache_write: 5-min TTL = 1.25× input, 1-hour TTL = 2× input
+    # tok_per_char=0.8: 中文 token 税最高（比英文贵 64%），实测 0.6-0.8 tok/字
+    "claude-opus-4-8": ModelPrice(
+        input=5.00, cache_read=0.50, output=25.00, cache_write=6.25, tok_per_char=0.8,
+    ),
+    "claude-sonnet-4-6": ModelPrice(
+        input=3.00, cache_read=0.30, output=15.00, cache_write=3.75, tok_per_char=0.8,
+    ),
+    "claude-haiku-4-5": ModelPrice(
+        input=1.00, cache_read=0.10, output=5.00, cache_write=1.25, tok_per_char=0.8,
+    ),
+
+    # ── OpenAI GPT-5 — developers.openai.com ──
+    # cache 自动生效（≥1024 token 前缀匹配），无 cache_write 费
+    # tok_per_char=0.65: 中文比英文贵 ~35%，实测 0.45-0.65 tok/字
+    "gpt-5": ModelPrice(
+        input=1.25, cache_read=0.125, output=10.00, tok_per_char=0.65,
+    ),
+    "gpt-5-mini": ModelPrice(
+        input=0.25, cache_read=0.025, output=2.00, tok_per_char=0.65,
+    ),
+    "gpt-5-nano": ModelPrice(
+        input=0.05, cache_read=0.005, output=0.40, tok_per_char=0.65,
+    ),
+    "gpt-5.2": ModelPrice(
+        input=1.75, cache_read=0.175, output=14.00, tok_per_char=0.65,
+    ),
+    "gpt-5.4": ModelPrice(
+        input=2.50, cache_read=0.25, output=15.00, tok_per_char=0.65,
+    ),
+    "gpt-5.4-mini": ModelPrice(
+        input=0.75, cache_read=0.075, output=4.50, tok_per_char=0.65,
+    ),
+    "gpt-5.4-nano": ModelPrice(
+        input=0.20, cache_read=0.02, output=1.25, tok_per_char=0.65,
+    ),
+    "gpt-5-pro": ModelPrice(
+        input=15.00, cache_read=0, output=120.00, tok_per_char=0.65,  # Pro 不支持缓存
+    ),
+    # GPT-4.1 系列（保留兼容）
+    "gpt-4.1": ModelPrice(
+        input=2.00, cache_read=0.50, output=8.00, tok_per_char=0.55,
+    ),
+    "gpt-4.1-mini": ModelPrice(
+        input=0.40, cache_read=0.10, output=1.60, tok_per_char=0.55,
+    ),
+    "gpt-4.1-nano": ModelPrice(
+        input=0.10, cache_read=0.025, output=0.40, tok_per_char=0.55,
+    ),
+    # GPT-4o 旧版（保留兼容）
+    "gpt-4o": ModelPrice(
+        input=2.50, cache_read=1.25, output=10.00, tok_per_char=0.55,
+    ),
+    "gpt-4o-mini": ModelPrice(
+        input=0.15, cache_read=0.075, output=0.60, tok_per_char=0.55,
+    ),
+
+    # ── Google Gemini — opslyft.com ──
+    # cache_write: 按小时收费的存储费（此处取标准 5-min 等价）
+    # tok_per_char=0.6: 中位水平
+    "gemini-2.5-pro": ModelPrice(
+        input=1.25, cache_read=0.125, output=10.00, cache_write=1.5625, tok_per_char=0.6,
+    ),
+    "gemini-2.5-flash": ModelPrice(
+        input=0.30, cache_read=0.03, output=2.50, cache_write=0.375, tok_per_char=0.6,
+    ),
+    "gemini-2.5-flash-lite": ModelPrice(
+        input=0.10, cache_read=0.01, output=0.40, cache_write=0.125, tok_per_char=0.6,
+    ),
+
+    # ── xAI Grok — docs.x.ai（2026.05） ──
+    # tok_per_char=0.55: 中位偏上
+    "grok-4.3": ModelPrice(
+        input=1.25, cache_read=0.20, output=2.50, tok_per_char=0.55,
+    ),
+    "grok-4.20": ModelPrice(
+        input=1.25, cache_read=0.20, output=2.50, tok_per_char=0.55,
+    ),
+    "grok-build-0.1": ModelPrice(
+        input=1.00, cache_read=0.20, output=2.00, tok_per_char=0.55,
+    ),
+    "grok-4-1-fast-reasoning": ModelPrice(
+        input=0.20, cache_read=0.05, output=0.50, tok_per_char=0.55,
+    ),
+
+    # ── Qwen 通义千问 — help.aliyun.com（2026.06） ──
+    # 显式缓存：write=1.25×input, read=0.1×input
+    # tok_per_char=0.35: 中文最高效，实测 0.25-0.4 tok/字
+    "qwen3-max": ModelPrice(
+        input=0.34, cache_read=0.034, output=1.38, cache_write=0.425, tok_per_char=0.35,
+    ),
+    "qwen3.7-max": ModelPrice(
+        input=2.50, cache_read=0.25, output=7.50, cache_write=3.125, tok_per_char=0.35,
+    ),
+    "qwen3.6-flash": ModelPrice(
+        input=0.25, cache_read=0.025, output=0.70, cache_write=0.3125, tok_per_char=0.35,
+    ),
+    "qwen-long": ModelPrice(
+        input=0.07, cache_read=0.007, output=0.28, cache_write=0.0875, tok_per_char=0.35,
+    ),
+    "qwen-turbo": ModelPrice(
+        input=0.10, cache_read=0.02, output=0.30, tok_per_char=0.35,
+    ),
+
+    # ── Zhipu 智谱 — bigmodel.cn ──
+    # tok_per_char=0.55: 中位水平
+    "GLM-5.1": ModelPrice(
+        input=0.83, cache_read=0.083, output=3.31, cache_write=1.0375, tok_per_char=0.55,
+    ),
+    "GLM-4.7": ModelPrice(
+        input=0.55, cache_read=0.055, output=2.20, cache_write=0.6875, tok_per_char=0.55,
+    ),
+    "GLM-4.5-air": ModelPrice(
+        input=0.27, cache_read=0.027, output=1.10, tok_per_char=0.55,
+    ),
+    "GLM-4-Flash": ModelPrice(
+        input=0, cache_read=0, output=0, tok_per_char=0.55,  # 免费
+    ),
+
+    # ── Kimi / Moonshot — kimi.com（2026.05 K2.6） ──
+    # tok_per_char=0.5: 中位
+    "kimi-k2.6": ModelPrice(
+        input=0.95, cache_read=0.16, output=4.00, tok_per_char=0.5,
+    ),
+
+    # ── MiniMax — platform.minimax.io（2026.06 M3） ──
+    # 50% 启动折扣已永久化，英文效率最优（-4.3%）
+    # tok_per_char=0.45: 英文最优，中文取中位
+    "minimax-m3": ModelPrice(
+        input=0.30, cache_read=0.06, output=1.20, tok_per_char=0.45,
+    ),
+    "minimax-m2.7": ModelPrice(
+        input=0.15, cache_read=0.03, output=0.60, tok_per_char=0.45,
+    ),
+
+    # ── 豆包 / 火山引擎 — ark.cn-beijing.volces.com ──
+    # tok_per_char=0.4: 中文优化，接近 Qwen
+    "doubao-pro-32k": ModelPrice(
+        input=0.10, cache_read=0.02, output=0.40, tok_per_char=0.4,
+    ),
+    "doubao-lite-32k": ModelPrice(
+        input=0.04, cache_read=0.008, output=0.16, tok_per_char=0.4,
+    ),
+
+    # ── 美团 LongCat — longcat.chat ──
+    "longcat-2-preview": ModelPrice(
+        input=0.28, cache_read=0.056, output=1.10, tok_per_char=0.5,
+    ),
+
+    # ── 小米 MiMo — api.mimo.tech ──
+    "mimo-v2.5-pro": ModelPrice(
+        input=1.00, cache_read=0.20, output=3.00, tok_per_char=0.5,
+    ),
+
+    # ── 百度千帆 — qianfan.baidubce.com ──
+    "ernie-4.5": ModelPrice(
+        input=0.82, cache_read=0.082, output=3.28, tok_per_char=0.55,
+    ),
+    "ernie-speed": ModelPrice(
+        input=0.06, cache_read=0.012, output=0.24, tok_per_char=0.55,
+    ),
 }
+
+# 向后兼容：从 ModelPrice 提取 (input, output) 二元组
+# 旧代码通过 get_price() 访问，无需直接读取此表
+_LEGACY_PRICING_CACHE: dict[str, tuple[float, float]] = {}
 
 # === 模型分级 ===
 # 替代旧的 haiku/sonnet/opus 命名，统一为三级：
@@ -305,6 +557,12 @@ MODEL_TIERS = {
     "xai": {"powerful": "grok-4.3", "balanced": "grok-4.3", "fast": "grok-4-1-fast-reasoning"},
     "qwen": {"powerful": "qwen3-max", "balanced": "qwen3-max", "fast": "qwen-long"},
     "zhipu": {"powerful": "GLM-5.1", "balanced": "GLM-5.1", "fast": "GLM-4-Flash"},
+    "kimi": {"powerful": "kimi-k2.6", "balanced": "kimi-k2.6", "fast": "kimi-k2.6"},
+    "minimax": {"powerful": "minimax-m3", "balanced": "minimax-m3", "fast": "minimax-m2.7"},
+    "doubao": {"powerful": "doubao-pro-32k", "balanced": "doubao-pro-32k", "fast": "doubao-lite-32k"},
+    "longcat": {"powerful": "longcat-2-preview", "balanced": "longcat-2-preview", "fast": "longcat-2-preview"},
+    "mimo": {"powerful": "mimo-v2.5-pro", "balanced": "mimo-v2.5-pro", "fast": "mimo-v2.5-pro"},
+    "baidu": {"powerful": "ernie-4.5", "balanced": "ernie-4.5", "fast": "ernie-speed"},
 }
 
 # === 模型上下文窗口容量（token） ===
@@ -321,6 +579,11 @@ MODEL_CONTEXT_WINDOWS = {
     "gpt-5": 400_000,
     "gpt-5-mini": 400_000,
     "gpt-5-nano": 400_000,
+    "gpt-5.2": 400_000,
+    "gpt-5.4": 272_000,
+    "gpt-5.4-mini": 400_000,
+    "gpt-5.4-nano": 400_000,
+    "gpt-5-pro": 400_000,
     "gpt-4.1": 1_000_000,
     "gpt-4.1-mini": 1_000_000,
     "gpt-4.1-nano": 1_000_000,
@@ -330,11 +593,27 @@ MODEL_CONTEXT_WINDOWS = {
     "gemini-2.5-flash": 1_000_000,
     "gemini-2.5-flash-lite": 1_000_000,
     "grok-4.3": 1_000_000,
+    "grok-4.20": 1_000_000,
+    "grok-build-0.1": 256_000,
     "grok-4-1-fast-reasoning": 2_000_000,
     "qwen3-max": 262_144,
+    "qwen3.7-max": 1_000_000,
+    "qwen3.6-flash": 1_000_000,
     "qwen-long": 1_000_000,
+    "qwen-turbo": 128_000,
     "GLM-5.1": 200_000,
+    "GLM-4.7": 200_000,
+    "GLM-4.5-air": 128_000,
     "GLM-4-Flash": 128_000,
+    "kimi-k2.6": 262_144,
+    "minimax-m3": 1_000_000,
+    "minimax-m2.7": 256_000,
+    "doubao-pro-32k": 32_000,
+    "doubao-lite-32k": 32_000,
+    "longcat-2-preview": 256_000,
+    "mimo-v2.5-pro": 256_000,
+    "ernie-4.5": 128_000,
+    "ernie-speed": 128_000,
 }
 
 # === 上下文压缩策略 ===
@@ -404,20 +683,180 @@ def load_pricing_overrides() -> dict:
     return {}
 
 
+def get_model_price(model: str) -> ModelPrice | None:
+    """获取模型的完整定价信息（含缓存价格）。
+    先查用户覆盖（pricing.json），再查内置 PRICING 表。
+    返回 None 表示未知模型。"""
+    overrides = load_pricing_overrides()
+    if model in overrides:
+        ov = overrides[model]
+        if isinstance(ov, dict):
+            return ModelPrice(
+                input=ov.get("input", 0),
+                cache_read=ov.get("cache_read", 0),
+                output=ov.get("output", 0),
+                cache_write=ov.get("cache_write", 0),
+                tok_per_char=ov.get("tok_per_char", 0.40),
+            )
+    return PRICING.get(model)
+
+
 def get_price(model: str, token_type: str = "input") -> float:
-    """获取模型价格（支持用户覆盖）。"""
+    """获取模型单一价格（向后兼容旧调用方）。
+    支持 'input', 'output', 'cache_read', 'cache_write'。
+    旧代码只传 'input'/'output' 仍正常工作。"""
     overrides = load_pricing_overrides()
     if model in overrides and token_type in overrides[model]:
-        return overrides[model][token_type]
-    idx = 0 if token_type == "input" else 1
-    return PRICING.get(model, (0, 0))[idx]
+        return float(overrides[model][token_type])
+
+    price = PRICING.get(model)
+    if price is None:
+        return 0.0
+    return getattr(price, token_type, 0.0)
 
 
-def estimate_cost(model: str, in_tokens: int, out_tokens: int) -> float:
-    """估算费用（美元）"""
-    in_price = get_price(model, "input")
-    out_price = get_price(model, "output")
-    if in_price > 0 or out_price > 0:
-        return (in_tokens / 1_000_000) * in_price + (out_tokens / 1_000_000) * out_price
-    # Unknown model: conservative estimate
-    return (in_tokens / 1_000_000) * 1.0 + (out_tokens / 1_000_000) * 3.0
+def estimate_tokens(text: str, model: str = "") -> int:
+    """根据模型 tokenizer 特性估算 token 数（中文场景）。
+
+    不同模型对同一中文文本的 token 数可差 3 倍（见 ModelPrice.tok_per_char），
+    因此不能用统一的 len(text)//4 估算。
+
+    tok_per_char 取实测上限值（保守高估），来源：
+    极客公园 2026.05 22 段平行文本 5 个 tokenizer 横向对比。
+
+    返回估算 token 数，最小为 1。
+    """
+    if not text:
+        return 0
+    price = get_model_price(model) if model else None
+    coeff = price.tok_per_char if price else 0.40
+    return max(1, int(len(text) * coeff))
+
+
+# === 模型名标准化 ===
+# Claude Code 的 result 事件中 model 字段可能用简称（如 "sonnet"），
+# 与此处 PRICING 表键名（如 "claude-sonnet-4-6"）不一致，导致费用计算、聚合统计出错。
+# 此映射将简称统一到 PRICING 标准键名，单向查找，不强制对称。
+
+_MODEL_ALIAS_MAP = {
+    # Anthropic 简称 → 全称
+    "sonnet": "claude-sonnet-4-6",
+    "opus": "claude-opus-4-8",
+    "haiku": "claude-haiku-4-5",
+    "claude-sonnet": "claude-sonnet-4-6",
+    "claude-opus": "claude-opus-4-8",
+    "claude-haiku": "claude-haiku-4-5",
+    # GPT 系列
+    "gpt-5": "gpt-5",  # 保持不变，仅占位
+    "gpt-5.1": "gpt-5",
+    "gpt-5.4": "gpt-5.4",
+    # Grok 系列
+    "grok": "grok-4.3",
+    "grok-4": "grok-4.3",
+    # Gemini 系列
+    "gemini-pro": "gemini-2.5-pro",
+    "gemini-flash": "gemini-2.5-flash",
+    # DeepSeek 系列
+    "deepseek": "deepseek-v4-pro",
+    "deepseek-chat": "deepseek-v4-flash",  # 即将退役
+    # Qwen 系列
+    "qwen": "qwen3-max",
+    "qwen3": "qwen3-max",
+    # Zhipu 系列
+    "glm": "GLM-5.1",
+    "glm-5": "GLM-5.1",
+    "glm-4": "GLM-4.7",
+    # Kimi 系列
+    "kimi": "kimi-k2.6",
+    "moonshot": "kimi-k2.6",
+    # MiniMax
+    "minimax": "minimax-m3",
+    # 豆包
+    "doubao": "doubao-pro-32k",
+    # LongCat
+    "longcat": "longcat-2-preview",
+    # MiMo
+    "mimo": "mimo-v2.5-pro",
+    # 百度
+    "ernie": "ernie-4.5",
+    "baidu": "ernie-4.5",
+}
+
+
+def normalize_model_name(model: str) -> str:
+    """将 Claude Code 可能用的模型简称标准化为 PRICING 表键名。
+    不在映射表中的名称原样返回。"""
+    if not model:
+        return model
+    lower = model.lower().strip()
+    # 精确匹配优先
+    if lower in _MODEL_ALIAS_MAP:
+        return _MODEL_ALIAS_MAP[lower]
+    # 前缀匹配（如 "sonnet-20250601" → "claude-sonnet-4-6"）
+    for alias, canonical in _MODEL_ALIAS_MAP.items():
+        if lower.startswith(alias):
+            return canonical
+    return model
+
+
+def estimate_cost(model: str, in_tokens: int, out_tokens: int,
+                  cache_read: int = 0, cache_write: int = 0) -> tuple[float, float, float]:
+    """估算费用（美元）— 仅 fallback 用。缓存感知版。
+
+    正常路径应使用 Claude Code result.total_cost_usd（API 实际扣费金额），
+    该值在 claude_session.py 的 result 事件中直接读取，天然准确。
+
+    本函数只在以下场景使用：
+    1. 无 Claude 进程时读取历史 JSONL 做离线统计
+    2. Claude result 事件异常未报 cost 时做兜底（此时标记 is_estimated=True）
+    3. cost-tracker / cost-analyzer 等只读 cost.db 的工具做补充估算
+    4. 预算检查时预估新任务的费用
+
+    计费公式（缓存感知）:
+      cost = miss_tokens × input_price
+           + cache_read × cache_read_price
+           + cache_write × cache_write_price
+           + out_tokens × output_price
+
+    返回:
+      (total_cost_usd, cache_saved_usd, cache_hit_rate_pct)
+
+      cache_saved:      与完全不使用缓存相比节省的输入费用
+      cache_hit_rate:   缓存命中率 (0-100)，无缓存时返回 0
+
+    >>> estimate_cost("deepseek-v4-pro", 100000, 10000, cache_read=50000)
+    (0.0725, 0.021, 50.0)
+    """
+    price = get_model_price(model)
+    if price is None:
+        # Unknown model: conservative estimate ($1/M input + $3/M output)
+        miss = max(0, in_tokens - cache_read - cache_write)
+        cost = (miss / 1_000_000) * 1.0 + (out_tokens / 1_000_000) * 3.0
+        saved = (cache_read / 1_000_000) * 1.0  # 保守估计缓存节省
+        hit_rate = (cache_read / (in_tokens + 1)) * 100 if in_tokens > 0 else 0
+        return (cost, saved, hit_rate)
+
+    # 缓存写入的 token 按 cache_write 价计，剩余的按标准输入价
+    miss_tokens = max(0, in_tokens - cache_read - cache_write)
+
+    cost = (
+        (miss_tokens / 1_000_000) * price.input
+        + (cache_read / 1_000_000) * price.cache_read
+        + (cache_write / 1_000_000) * price.cache_write
+        + (out_tokens / 1_000_000) * price.output
+    )
+
+    # 缓存节省 = 如果不使用缓存需要付的输入费 - 实际付的缓存费
+    saved = (cache_read / 1_000_000) * (price.input - price.cache_read)
+
+    hit_rate = (cache_read / (in_tokens + 1)) * 100 if in_tokens > 0 else 0
+
+    return (cost, saved, hit_rate)
+
+
+# 向后兼容包装：旧调用方只接受 3 参数、期望返回 float
+def _estimate_cost_legacy(model: str, in_tokens: int, out_tokens: int) -> float:
+    """旧版 estimate_cost 兼容包装——仅返回 total_cost，忽略缓存信息。
+    新代码应使用 estimate_cost() 获取完整三元组。"""
+    cost, _, _ = estimate_cost(model, in_tokens, out_tokens)
+    return cost

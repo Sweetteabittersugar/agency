@@ -362,16 +362,34 @@ class PermissionEngine:
             return []
 
     # ── a) 成本预算检查 ──
-    def check_cost_budget(self, task_estimate_tokens: int) -> tuple[bool, str]:
+    # 2026-06 修复：不再用固定 $2/M 单价算预算（无视模型差异），改为查 cost.db 今日实际费用
+    def check_cost_budget(self, task_estimate_tokens: int = 0, model: str = "") -> tuple[bool, str]:
         if task_estimate_tokens > DEFAULT_TOKEN_LIMIT:
-            return False, f"token {task_estimate_tokens} 超上限 {DEFAULT_TOKEN_LIMIT}"
-        today_key = time.strftime("%Y%m%d")
-        with self._stats_lock:
-            daily_tokens = self._stats.get(f"daily_{today_key}", 0)
-        if daily_tokens * 0.000002 > DEFAULT_DAILY_BUDGET:
-            return False, f"日预算 ${DEFAULT_DAILY_BUDGET} 已超"
-        with self._stats_lock:
-            self._stats[f"daily_{today_key}"] = daily_tokens + task_estimate_tokens
+            return False, f"单次 token {task_estimate_tokens} 超上限 {DEFAULT_TOKEN_LIMIT}"
+        # 查今日实际费用，基于真实扣费判断预算
+        today_cost = 0.0
+        if self._db_path and self._db_path.exists():
+            try:
+                import sqlite3
+                conn = sqlite3.connect(str(self._db_path))
+                conn.execute("PRAGMA busy_timeout=3000")
+                row = conn.execute(
+                    "SELECT COALESCE(SUM(cost_usd),0) as cost FROM costs WHERE date = date('now')"
+                ).fetchone()
+                if row:
+                    today_cost = row[0]
+                conn.close()
+            except Exception:
+                pass
+        # 预估本次任务新增费用（保守：假设输入+输出各半）
+        from maestro.models import estimate_cost as _budget_estimate
+        model_name = model or "deepseek-v4-flash"
+        estimated_new, _, _ = _budget_estimate(model_name, task_estimate_tokens, task_estimate_tokens // 2)
+        if today_cost + estimated_new > DEFAULT_DAILY_BUDGET:
+            return False, (
+                f"日预算 ${DEFAULT_DAILY_BUDGET:.2f} 将超 "
+                f"（今日已用 ${today_cost:.4f} + 预估本次 ${estimated_new:.4f}）"
+            )
         return True, ""
 
     # ── b) 权限范围限制 ──

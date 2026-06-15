@@ -1,49 +1,77 @@
-"""Agency 桌面版启动器 — 独立窗口，不依赖浏览器（pywebview）
+#!/usr/bin/env python3
+"""Agency Desktop Launcher.
 
-双击启动，系统托盘图标，最小化到托盘。不可移除——桌面化入口"""
+Detects whether WebView2 is available. If yes, opens standalone window.
+If no, opens in default browser immediately (no black window).
+"""
 
-import sys, os, threading, logging
+import sys, os, time, threading, webbrowser
 
-# 确保项目根目录在 sys.path
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, PROJECT_ROOT)
+SERVER_PORT = 8800
+SERVER_URL = f"http://127.0.0.1:{SERVER_PORT}"
+
+
+def _webview2_available():
+    """Check if Edge WebView2 runtime is actually installed."""
+    import glob as _glob
+    paths = [
+        os.path.expandvars(r"%ProgramFiles(x86)%\Microsoft\EdgeWebView\Application\*\msedgewebview2.exe"),
+        os.path.expandvars(r"%ProgramFiles%\Microsoft\EdgeWebView\Application\*\msedgewebview2.exe"),
+        os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\EdgeWebView\Application\*\msedgewebview2.exe"),
+        # Also check Edge's own bundled WebView2
+        os.path.expandvars(r"%ProgramFiles(x86)%\Microsoft\Edge\Application\*\msedgewebview2.exe"),
+    ]
+    for pat in paths:
+        matches = _glob.glob(pat)
+        if matches:
+            return True
+    return False
+
+
+def _server_running():
+    import urllib.request
+    try:
+        return urllib.request.urlopen(f"{SERVER_URL}/api/health", timeout=1).status == 200
+    except Exception:
+        return False
 
 
 def _start_server():
-    """后台启动 Flask 服务"""
-    from maestro.flask_app import app, socketio, PORT, BIND_ADDR
-    # 桌面模式下绑定 127.0.0.1，不暴露到局域网
-    socketio.run(app, host="127.0.0.1", port=PORT, debug=False, allow_unsafe_werkzeug=True)
+    if _server_running():
+        return
+    try:
+        from maestro.flask_app import app, socketio
+        socketio.run(app, host="127.0.0.1", port=SERVER_PORT,
+                     debug=False, allow_unsafe_werkzeug=True)
+    except OSError:
+        pass
 
 
 def main():
-    # 1. 启动 Flask 服务器线程
-    server_thread = threading.Thread(target=_start_server, daemon=True)
-    server_thread.start()
-
-    # 2. pywebview 桌面窗口
-    import webview
-    import time
-
-    # 等服务器就绪
-    for _ in range(30):
-        try:
-            import urllib.request
-            urllib.request.urlopen("http://127.0.0.1:8800/api/health", timeout=1)
-            break
-        except Exception:
+    # Start server if needed
+    if not _server_running():
+        threading.Thread(target=_start_server, daemon=True).start()
+        # Brief wait for server to come up
+        for _ in range(20):
             time.sleep(0.3)
+            if _server_running():
+                break
 
-    # 创建桌面窗口
-    window = webview.create_window(
-        title="Agency",
-        url="http://127.0.0.1:8800",
-        width=1280,
-        height=800,
-        min_size=(800, 500),
-        confirm_close=True,
-    )
-    webview.start()
+    # Decide: pywebview or browser?
+    if _webview2_available():
+        # Standalone window path
+        import webview
+        window = webview.create_window(
+            title="Agency", url=SERVER_URL,
+            width=1280, height=800, min_size=(800, 500),
+            confirm_close=True,
+        )
+        webview.start()
+    else:
+        # Browser fallback — works everywhere, always
+        webbrowser.open(SERVER_URL)
 
 
 if __name__ == "__main__":

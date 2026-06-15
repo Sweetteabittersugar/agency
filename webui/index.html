@@ -17,10 +17,10 @@
 <link rel="stylesheet" href="css/layout.css?v=2">
 <link rel="stylesheet" href="css/components.css?v=2">
 <link rel="stylesheet" href="css/panels.css?v=2">
-<!-- xterm.js 终端模拟器 + Socket.IO（Phase 1 嵌入终端） -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css">
-<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
-<script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+<!-- xterm.js + Socket.IO（本地化，不再依赖 CDN—国内 jsdelivr 被墙导致分钟级加载延迟） -->
+<link rel="stylesheet" href="/css/lib/xterm.min.css">
+<script src="/js/lib/xterm.min.js"></script>
+<script src="/js/lib/socket.io.min.js"></script>
 </head>
 <body>
 <nav class="sidebar">
@@ -147,8 +147,13 @@
 <option value="openai">OpenAI</option>
 <option value="google">Google</option>
 <option value="xai">xAI (Grok)</option>
-<!-- 已删除 siliconflow/kimi/glm/minimax — 2026-06 旧模型清理 -->
 <option value="qwen">通义千问</option>
+<option value="zhipu">智谱 GLM</option>
+<option value="kimi">Kimi (月之暗面)</option>
+<option value="minimax">MiniMax</option>
+<option value="doubao">豆包 (火山引擎)</option>
+<option value="mimo">MiMo (小米)</option>
+<option value="baidu">百度千帆</option>
 <option value="custom">自定义</option>
 </select>
 <button class="new-chat-btn" style="margin-bottom:4px;font-size:11px;padding:6px" onclick="saveApiKey()">💾 保存</button>
@@ -180,11 +185,6 @@ t<select id="trust-mode-select" style="display:none" aria-hidden="true"><option 
 t<select id="profile-select" style="display:none" aria-hidden="true"><option value="minimal">minimal</option><option value="standard">standard</option><option value="full">full</option></select>
 <p id="profile-desc" style="font-size:10px;color:var(--text2);margin-top:6px;line-height:1.6">标准模式 — 正常开发、多文件修改，约支持 80 轮对话</p>
 <p style="font-size:9px;color:var(--muted);margin-top:6px">💡 上下文用满后会自动总结前文，不会突然中断</p>
-</div>
-<div class="settings-section" style="margin-top:16px">
-<h3 style="font-size:12px;color:var(--text);margin-bottom:8px">🔌 MCP 服务 <span data-tooltip="tooltipMCP" style="cursor:help;font-size:12px">?</span></h3>
-<p style="font-size:10px;color:var(--muted);margin-bottom:8px">Agent 可用的外部工具</p>
-<div id="mcp-config-list">加载中…</div>
 </div>
 <div class="settings-section" style="margin-top:16px" id="agent-factory-section">
 <h3 id="sett-Agent工厂" style="font-size:12px;color:var(--text);margin-bottom:8px">🤖 Agent 工厂</h3>

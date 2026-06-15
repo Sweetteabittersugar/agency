@@ -190,15 +190,21 @@ def analyze_session(jsonl_path: str, model: str = "") -> dict:
     if not detected_model and model:
         detected_model = model
 
-    # 费用估算 — 使用 models.py 的定价表
-    from maestro.models import PRICING
+    # 费用估算 — 使用 models.py 的缓存感知定价表
+    from maestro.models import get_model_price
 
     cache_saved = 0.0
-    if detected_model and detected_model in PRICING:
-        in_price, out_price = PRICING[detected_model]
-        cost_in = (total_in / 1_000_000) * in_price
-        cost_out = (total_out / 1_000_000) * out_price
-        cache_saved = (total_cache_read / 1_000_000) * in_price  # 缓存命中共节省的输入费用
+    price = get_model_price(detected_model) if detected_model else None
+    if price is not None:
+        # 缓存感知计费：区分 cache miss / cache hit / cache write
+        miss_tokens = max(0, total_in - total_cache_read - total_cache_write)
+        cost_in = (
+            (miss_tokens / 1_000_000) * price.input
+            + (total_cache_read / 1_000_000) * price.cache_read
+            + (total_cache_write / 1_000_000) * price.cache_write
+        )
+        cost_out = (total_out / 1_000_000) * price.output
+        cache_saved = (total_cache_read / 1_000_000) * (price.input - price.cache_read)
     else:
         # 保守估算：未知模型按 $1.00/$3.00 每百万 token
         cost_in = (total_in / 1_000_000) * 1.0

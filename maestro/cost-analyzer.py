@@ -35,15 +35,17 @@ MODEL_TIER = ["haiku", "sonnet", "opus", "deepseek-v4-pro", "deepseek-v4-flash"]
 
 # ── 定价统一从 models.py 导入 ──
 def _model_price(model: str) -> tuple[float, float]:
-    """返回模型的 (input_price_per_1M, output_price_per_1M)。"""
-    from maestro.models import PRICING
+    """返回模型的 (input_price_per_1M, output_price_per_1M)。向后兼容旧调用方。"""
+    from maestro.models import get_model_price
 
-    if model in PRICING:
-        return PRICING[model]
+    price = get_model_price(model)
+    if price is not None:
+        return (price.input, price.output)
     # 模糊匹配
-    for key, price in PRICING.items():
+    from maestro.models import PRICING
+    for key, p in PRICING.items():
         if key in model.lower() or model.lower() in key:
-            return price
+            return (p.input, p.output)
     # 未知模型按 sonnet 算
     return (3.00, 15.00)
 

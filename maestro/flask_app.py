@@ -92,6 +92,10 @@ app.add_url_rule("/api/setup/status", "setup_st", adapt_handler(setup.handle_sta
 app.add_url_rule("/api/profile", "profile", adapt_handler(config.handle_profile))
 app.add_url_rule("/api/profiles", "profiles", adapt_handler(config.handle_profiles_list))
 app.add_url_rule("/api/check-update", "check_update", adapt_handler(config.handle_check_update))
+app.add_url_rule("/api/config/key", "config_key_get", adapt_handler(config.handle_get_api_key))
+app.add_url_rule("/api/config/key", "config_key_save", adapt_handler(config.handle_save_api_key), methods=["POST"])
+app.add_url_rule("/api/config/prefs", "config_prefs_get", adapt_handler(config.handle_get_prefs))
+app.add_url_rule("/api/config/prefs", "config_prefs_save", adapt_handler(config.handle_save_prefs), methods=["POST"])
 app.add_url_rule(
     "/api/routing/feedback/stats", "feedback_stats", adapt_handler(routing_feedback.handle_stats)
 )

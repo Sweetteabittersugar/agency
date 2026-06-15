@@ -1,6 +1,6 @@
 /* Agency — 开发者设置面板 */
 function saveApiKey(){var newKey=$('api-key').value.trim();var newProvider=$('api-provider').value;var oldKey=apiKey;var oldProvider=apiProvider;apiKey=newKey;apiProvider=newProvider;localStorage.setItem('agency_api_provider',apiProvider);if(apiKey){localStorage.setItem('agency_api_key',apiKey)}else{localStorage.removeItem('agency_api_key')}$('api-status').textContent=apiKey?'已保存':'已清除';showUndoableToast(t('configSaved'),function(){apiKey=oldKey;apiProvider=oldProvider;localStorage.setItem('agency_api_provider',oldProvider);$('api-key').value=oldKey;$('api-provider').value=oldProvider;if(oldKey){localStorage.setItem('agency_api_key',oldKey)}else{localStorage.removeItem('agency_api_key')}$('api-status').textContent=oldKey?'已保存':'已清除'},5000)}
-function toggleDevOverlay(){devMode=!devMode;var ov=$('devOverlay'),btn=$('devBtn');ov.classList.toggle('on',devMode);btn.classList.toggle('on',devMode);if(devMode){var ak=$('api-key');if(ak&&apiKey)ak.value=apiKey;var ap=$('api-provider');if(ap&&apiProvider)ap.value=apiProvider;loadMemList();loadRemotePanel();loadIntegrationPanel();loadMCPConfig();loadCompactionConfig();loadCronJobs();setTimeout(initSettingsAccordion,200)}}
+function toggleDevOverlay(){devMode=!devMode;var ov=$('devOverlay'),btn=$('devBtn');ov.classList.toggle('on',devMode);btn.classList.toggle('on',devMode);if(devMode){var ak=$('api-key');if(ak&&apiKey)ak.value=apiKey;var ap=$('api-provider');if(ap&&apiProvider)ap.value=apiProvider;loadMemList();loadRemotePanel();loadIntegrationPanel();loadCompactionConfig();loadCronJobs();setTimeout(initSettingsAccordion,200)}}
 
 /* ── 设置面板折叠分组 ── */
 var _settingsAccordionDone=false;
@@ -210,7 +210,7 @@ function showProfilePicker(){
 }
 
 /* ── Key 可见性切换 ── */
-/* 保存 API Key 到 localStorage——不可移除，否则设置面板Key无法持久化 */
+/* 保存 API Key — localStorage + 服务端双写，防止 pywebview 不持久化 */
 window.saveApiKey = function(){
   var ak = document.getElementById('api-key');
   var ap = document.getElementById('api-provider');
@@ -221,6 +221,17 @@ window.saveApiKey = function(){
   if (ap && ap.value) {
     apiProvider = ap.value;
     localStorage.setItem('agency_api_provider', apiProvider);
+  }
+  // 通用同步
+  if(apiKey)syncPrefs('agency_api_key',apiKey);
+  if(apiProvider)syncPrefs('agency_api_provider',apiProvider);
+  // 服务端持久化——重启/重开窗口不丢
+  if (apiKey) {
+    fetch('/api/config/key', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({key: apiKey, provider: apiProvider})
+    }).catch(function(){});
   }
   showToast('API Key 已保存');
 };

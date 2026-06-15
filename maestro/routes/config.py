@@ -514,3 +514,81 @@ def handle_check_update(handler, parsed):
         }
     )
     return True
+
+
+# === API Key 服务端持久化 ===
+# pywebview 的 localStorage 不保证跨会话持久化。
+# Key 存到服务端配置文件，重启/重开窗口都不丢。
+_KEY_FILE = PROJECT_ROOT / "maestro" / "api_key.json"
+
+
+def handle_get_api_key(handler, parsed):
+    """GET /api/config/key — 返回已保存的 Key（完整值，供前端使用）"""
+    try:
+        if _KEY_FILE.exists():
+            data = json.loads(_KEY_FILE.read_text(encoding="utf-8"))
+            key = data.get("key", "")
+            provider = data.get("provider", "deepseek")
+            handler.send_json({
+                "ok": True,
+                "key": key,
+                "provider": provider,
+                "has_key": bool(key),
+            })
+        else:
+            handler.send_json({"ok": True, "has_key": False, "provider": "deepseek"})
+    except Exception as e:
+        handler.send_json({"ok": False, "error": str(e)}, 500)
+    return True
+
+
+def handle_save_api_key(handler, body):
+    """POST /api/config/key — 保存 API Key 到服务端"""
+    key = (body.get("key") or "").strip()
+    provider = (body.get("provider") or "deepseek").strip()
+    if not key:
+        handler.send_json({"ok": False, "error": "Key 为空"}, 400)
+        return True
+    try:
+        _KEY_FILE.parent.mkdir(parents=True, exist_ok=True)
+        _KEY_FILE.write_text(
+            json.dumps({"key": key, "provider": provider, "updated": __import__("time").time()},
+                       ensure_ascii=False),
+            encoding="utf-8",
+        )
+        handler.send_json({"ok": True, "saved": True})
+    except Exception as e:
+        handler.send_json({"ok": False, "error": str(e)}, 500)
+    return True
+
+
+# === 通用用户偏好持久化 ===
+# 所有 localStorage 设置统一备份到服务端，防止 pywebview 丢失
+_PREFS_FILE = PROJECT_ROOT / "maestro" / "preferences.json"
+
+
+def handle_get_prefs(handler, parsed):
+    """GET /api/config/prefs — 返回所有用户偏好"""
+    try:
+        if _PREFS_FILE.exists():
+            handler.send_json(json.loads(_PREFS_FILE.read_text(encoding="utf-8")))
+        else:
+            handler.send_json({})
+    except Exception:
+        handler.send_json({})
+    return True
+
+
+def handle_save_prefs(handler, body):
+    """POST /api/config/prefs — 保存用户偏好（增量合并）"""
+    try:
+        current = {}
+        if _PREFS_FILE.exists():
+            current = json.loads(_PREFS_FILE.read_text(encoding="utf-8"))
+        current.update(body)
+        _PREFS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        _PREFS_FILE.write_text(json.dumps(current, ensure_ascii=False), encoding="utf-8")
+        handler.send_json({"ok": True})
+    except Exception as e:
+        handler.send_json({"ok": False, "error": str(e)}, 500)
+    return True

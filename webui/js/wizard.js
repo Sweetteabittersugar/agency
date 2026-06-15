@@ -323,6 +323,8 @@ function setupFinish(){
         $('setupOverlay').classList.remove('on');
         apiKey=setupData._api_key||'';apiProvider=setupData._api_provider||'deepseek';
         localStorage.setItem('agency_api_key',apiKey);localStorage.setItem('agency_api_provider',apiProvider);
+        // 同步到服务端，防止重启丢失
+        if(apiKey){fetch('/api/config/key',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:apiKey,provider:apiProvider})}).catch(function(){})}
         if(remoteToken){authToken=remoteToken;localStorage.setItem('agency_auth_token',remoteToken)}
         _demoMode=false;
         showToast('配置完成！发送一条消息试试吧 🚀');

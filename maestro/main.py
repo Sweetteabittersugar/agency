@@ -502,6 +502,12 @@ def load_agent(name):
 
 
 # ── DeepSeek API ───────────────────────────────
+def _main_estimate(text: str, model: str = "") -> int:
+    """Token 估算——根据模型 tokenizer 特性加权。"""
+    from maestro.models import estimate_tokens
+    return estimate_tokens(text, model or "deepseek-v4-flash")
+
+
 def chat(system_prompt, user_message, model=DEFAULT_MODEL):
     """流式调用 LLM API（多提供者支持）"""
     # === 安全护栏 ===
@@ -511,12 +517,12 @@ def chat(system_prompt, user_message, model=DEFAULT_MODEL):
     is_safe, reason = check_input(user_message)
     if not is_safe:
         print(f"\n[安全拦截] {reason}")
-        return len(system_prompt) // 4 + len(user_message) // 4, 0, 0
+        return _main_estimate(system_prompt + " " + user_message, model), 0, 0
 
     # 速率限制
     if not check_rate_limit():
         print("\n[速率限制] 请求过于频繁，请稍候")
-        return len(system_prompt) // 4 + len(user_message) // 4, 0, 0
+        return _main_estimate(system_prompt + " " + user_message, model), 0, 0
 
     base_url, api_key, headers = get_provider_config()
     if not base_url:
@@ -542,7 +548,7 @@ def chat(system_prompt, user_message, model=DEFAULT_MODEL):
     }
 
     start_time = time.time()
-    in_tokens = len(system_prompt) // 4 + len(user_message) // 4  # 粗略估算
+    in_tokens = _main_estimate(system_prompt + " " + user_message, model)
     out_chars = 0
 
     max_retries = 2
@@ -605,7 +611,7 @@ def chat(system_prompt, user_message, model=DEFAULT_MODEL):
 
     elapsed = time.time() - start_time
     out_tokens = out_chars // 2
-    cost = estimate_cost(model, in_tokens, out_tokens)
+    cost, _, _ = estimate_cost(model, in_tokens, out_tokens)
 
     print(f"\n── Agent: {current_agent} | 模型: {model} | {elapsed:.1f}s | ~${cost:.4f}")
 

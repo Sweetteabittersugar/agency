@@ -2,3 +2,7 @@
 {"ts": 1781429482.8399303, "type": "route_decision", "data": {"agent": "auto", "model": "auto", "source": "auto", "task_preview": "回OK"}}
 {"ts": 1781430050.655794, "type": "route_decision", "data": {"agent": "auto", "model": "auto", "source": "auto", "task_preview": "回OK"}}
 {"ts": 1781430103.258813, "type": "route_decision", "data": {"agent": "auto", "model": "auto", "source": "auto", "task_preview": "回OK"}}
+{"ts": 1781430210.4150882, "type": "route_decision", "data": {"agent": "auto", "model": "auto", "source": "auto", "task_preview": "回OK"}}
+{"ts": 1781430359.338047, "type": "route_decision", "data": {"agent": "debugger", "model": "sonnet", "source": "tfidf_fallback", "task_preview": "我叫小明，记住我的名字"}}
+{"ts": 1781448064.9336414, "type": "route_decision", "data": {"agent": "auto", "model": "auto", "source": "auto", "task_preview": "我叫小米"}}
+{"ts": 1781448178.9103174, "type": "route_decision", "data": {"agent": "orchestrator", "model": "sonnet", "source": "force", "task_preview": "[角色设定]\n你是 orchestrator。# Orchestrator — 总调度\n\n## 角色\n你是任务总调度。收到复杂任务后拆解为子任务、分派给最合适的专业 Agent、汇总结果。\n**简单任"}}

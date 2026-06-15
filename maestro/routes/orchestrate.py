@@ -3,6 +3,12 @@
 import json
 import os
 import re
+
+
+def _orch_estimate_tokens(text: str, model: str = "") -> int:
+    """Token 估算——根据模型 tokenizer 特性加权。"""
+    from maestro.models import estimate_tokens
+    return estimate_tokens(text, model or "deepseek-v4-flash")
 import sys
 import time
 import subprocess
@@ -51,7 +57,7 @@ def _policy_gate(stage: str, output: str, task_text: str, policy, coordinator) -
             coordinator.escalate(task_id, msg, "warn")
 
     # 成本检查（每个阶段）
-    est_tokens = len(output) // 2 + len(task_text) // 4
+    est_tokens = _orch_estimate_tokens(output + " " + task_text, orchestrator_model)
     ok, msg = policy.check_cost_budget(est_tokens)
     if not ok:
         coordinator.escalate(task_id, msg, "block")
@@ -224,10 +230,10 @@ def handle_orchestrate(handler, body):
         from maestro.web_cost import record_cost
 
         elapsed = time.time() - start_time
-        in_tokens = len(task) // 4
+        in_tokens = _orch_estimate_tokens(task, orchestrator_model)
         out_tokens = len(full_output) // 2
         orchestrator_model = "deepseek-v4-pro"
-        cost = estimate_cost(orchestrator_model, in_tokens, out_tokens)
+        cost, _, _ = estimate_cost(orchestrator_model, in_tokens, out_tokens)
         record_cost(
             PROJECT_ROOT,
             time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -672,10 +678,10 @@ def _run_pipeline_orchestrate(handler, body) -> bool:
         from maestro.web_cost import record_cost
 
         elapsed = time.time() - start_time
-        in_tokens = len(task) // 4 + len(full_output_all) // 4
+        in_tokens = _orch_estimate_tokens(task + " " + full_output_all, pipeline_model)
         out_tokens = len(full_output_all) // 2
         pipeline_model = "pipeline-v1"
-        cost = estimate_cost(pipeline_model, in_tokens, out_tokens)
+        cost, _, _ = estimate_cost(pipeline_model, in_tokens, out_tokens)
         record_cost(
             PROJECT_ROOT,
             time.strftime("%Y-%m-%d %H:%M:%S"),

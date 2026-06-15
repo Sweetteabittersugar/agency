@@ -10,6 +10,12 @@ from maestro.routes.operations import record_operation
 log = logging.getLogger(__name__)
 
 
+def _estimate_tokens_for(text: str, model: str = "") -> int:
+    """Token 估算——根据模型 tokenizer 特性加权，替代统一的 len(text)//4。"""
+    from maestro.models import estimate_tokens
+    return estimate_tokens(text, model or "deepseek-v4-flash")
+
+
 def handle_chat(handler, body):
     from maestro.shared import (
         PROJECT_ROOT,
@@ -32,6 +38,17 @@ def handle_chat(handler, body):
         from maestro.models import get_provider_config
         _, env_key, _ = get_provider_config()
         api_key = env_key
+    # 第二兜底：从服务端 api_key.json 读取（设置面板保存的 Key）
+    if not api_key:
+        try:
+            _key_file = PROJECT_ROOT / "maestro" / "api_key.json"
+            if _key_file.exists():
+                _data = json.loads(_key_file.read_text(encoding="utf-8"))
+                api_key = _data.get("key", "")
+                if not api_provider:
+                    api_provider = _data.get("provider", "deepseek")
+        except Exception:
+            pass
     if not api_provider:
         api_provider = os.environ.get("PROVIDER", "deepseek")
 
@@ -196,6 +213,24 @@ def handle_chat(handler, body):
         )
         handler.wfile.flush()
 
+        # 2026-06: 预算检查——任务执行前验证日预算，避免意外超支
+        # 基于 cost.db 今日实际费用 + 模型预估，而非固定 $2/M 单价
+        try:
+            from maestro.permission_engine import PermissionEngine
+            _engine = PermissionEngine(PROJECT_ROOT / "maestro" / "cost.db")
+            _budget_ok, _budget_msg = _engine.check_cost_budget(
+                task_estimate_tokens=_estimate_tokens_for(actual_task, model),
+                model=model or "deepseek-v4-flash",
+            )
+            if not _budget_ok:
+                handler.wfile.write(
+                    f"event: done\ndata: {json.dumps({'error': _budget_msg, 'action': 'budget_exceeded'})}\n\n".encode()
+                )
+                handler.wfile.flush()
+                return True
+        except Exception:
+            pass  # 预算检查失败不阻塞聊天
+
         cs = get_or_create(session_id, str(PROJECT_ROOT), iso_env)
         if cs is None:
             handler.wfile.write(
@@ -242,11 +277,18 @@ def handle_chat(handler, body):
                     pass
 
         # 发送 done 事件——模型名从 Claude result 事件读取，不再硬编码
-        in_tokens = done_data.get("in_tokens", len(task) // 4)
+        in_tokens = done_data.get("in_tokens", _estimate_tokens_for(task, model))
         out_tokens = done_data.get("out_tokens", 0)
         cache_read = done_data.get("cache_read", 0)
         cost = done_data.get("cost", 0)
         detected_model = done_data.get("model", "") or model or "deepseek-v4-flash"
+        # 2026-06 修复：正常路径 cost 来自 Claude result.total_cost_usd（API 实际扣费）。
+        # 仅在 Claude 未报 cost 时（极罕见）用 estimate_cost 兜底并标记为估算值。
+        is_estimated = False
+        if cost == 0 and (in_tokens > 0 or out_tokens > 0):
+            from maestro.models import estimate_cost as _fallback_estimate
+            cost, _, _ = _fallback_estimate(detected_model, in_tokens, out_tokens)
+            is_estimated = True
 
         done_payload = {
             "elapsed": round(elapsed, 1),
@@ -291,8 +333,9 @@ def handle_chat(handler, body):
             cache_read,
             0,
             0,
-            False,
+            is_estimated,  # 2026-06 修复：Claude 未报 cost 时用 estimate_cost 兜底，标记为估算
             session_id or "",
+            tokens_from_api=not is_estimated,  # API 路径 token 来自 Claude 真实返回
         )
         # session event: agent response to session_store for timeline
         try:

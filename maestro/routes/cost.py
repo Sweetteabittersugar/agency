@@ -111,6 +111,10 @@ def handle_summary(handler, parsed):
     # 聚合本月 token 统计
     month_input_tok = sum(d.get("input_tokens", 0) for d in month_entries)
     month_output_tok = sum(d.get("output_tokens", 0) for d in month_entries)
+    today_cache_read = sum(d.get("cache_read_tokens", 0) for d in today_entries)
+    month_cache_read = sum(d.get("cache_read_tokens", 0) for d in month_entries)
+    today_cache_saved = sum(d.get("cache_saved_usd", 0) for d in today_entries)
+    month_cache_saved = sum(d.get("cache_saved_usd", 0) for d in month_entries)
 
     handler.send_json(
         {
@@ -121,11 +125,15 @@ def handle_summary(handler, parsed):
                     "input": sum(d.get("input_tokens", 0) for d in today_entries),
                     "output": sum(d.get("output_tokens", 0) for d in today_entries),
                 },
+                "cache_read": int(today_cache_read),
+                "cache_saved": round(today_cache_saved, 6),
             },
             "this_month": {
                 "calls": month_calls,
                 "cost": round(month_cost, 6),
                 "tokens": {"input": month_input_tok, "output": month_output_tok},
+                "cache_read": int(month_cache_read),
+                "cache_saved": round(month_cache_saved, 6),
             },
             "alerts": data.get("alerts", []),
             "model": data.get("model", "N/A"),
@@ -158,7 +166,9 @@ def handle_dashboard(handler, parsed):
             SELECT date as day,
                    COUNT(*) as calls,
                    ROUND(COALESCE(SUM(cost_usd), 0), 6) as cost,
-                   COALESCE(SUM(in_tokens), 0) + COALESCE(SUM(out_tokens), 0) as tokens
+                   COALESCE(SUM(in_tokens), 0) + COALESCE(SUM(out_tokens), 0) as tokens,
+                   COALESCE(SUM(cache_read_tokens), 0) as cache_read,
+                   ROUND(COALESCE(SUM(cache_saved_usd), 0), 6) as cache_saved
             FROM costs
             WHERE date >= ?
             GROUP BY day
@@ -186,7 +196,9 @@ def handle_dashboard(handler, parsed):
             """
             SELECT COUNT(*) as total_calls,
                    ROUND(COALESCE(SUM(cost_usd), 0), 6) as total_cost,
-                   COALESCE(SUM(in_tokens), 0) + COALESCE(SUM(out_tokens), 0) as total_tokens
+                   COALESCE(SUM(in_tokens), 0) + COALESCE(SUM(out_tokens), 0) as total_tokens,
+                   COALESCE(SUM(cache_read_tokens), 0) as cache_read,
+                   ROUND(COALESCE(SUM(cache_saved_usd), 0), 6) as cache_saved
             FROM costs
             WHERE date >= ?
         """,

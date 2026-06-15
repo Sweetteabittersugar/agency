@@ -98,9 +98,13 @@ def adapt_handler(old_handler_func):
         })
 
         try:
-            if request.method in ("POST", "DELETE"):
+            if request.method == "POST":
                 body_dict = request.get_json(silent=True) or {}
                 old_handler_func(adapter, body_dict)
+            elif request.method == "DELETE":
+                # DELETE handlers need parsed.path to extract resource ID from URL
+                # Body is typically empty for DELETE requests
+                old_handler_func(adapter, parsed)
             else:
                 old_handler_func(adapter, parsed)
         except TypeError:
