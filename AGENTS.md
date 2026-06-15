@@ -1,198 +1,101 @@
-# AGENTS.md — Agent 路由矩阵与使用指南
+# AGENTS.md — Agent 路由矩阵
 
-> agency-kit 的核心编排层。收到任务 → 路由矩阵判断 → 自动选择最佳 Agent。
+> 32 个 Agent，按 13 大类组织。收到任务 → 路由矩阵判断 → 自动选择最佳 Agent。
 
 ## 路由矩阵
 
-> 32 个 Agent，按 13 大类组织。路由先定类再选 Agent：高置信度直派 / 中置信度列候选 / 低置信度反问。
-
 ### 架构设计
-| 关键词 | Agent | 说明 |
-|--------|-------|------|
-| 系统设计/架构设计/技术选型/接口设计 | `architect` | 软件架构师，只出方案不写代码 |
+| 关键词 | Agent |
+|--------|-------|
+| 系统设计/架构/技术选型/接口设计 | `architect` |
 
 ### 编码实现
-| 关键词 | Agent | 说明 |
-|--------|-------|------|
-| 写/改/重构/代码/实现/开发/死代码/清理/简化 | `coder` | 直接写代码，含代码清理 |
-| 构建报错/编译失败/依赖冲突 | `build-error-resolver` | 构建错误增量修复 |
-| 性能/瓶颈/优化/慢查询 | `performance-optimizer` | 性能瓶颈分析与优化 |
+| 关键词 | Agent |
+|--------|-------|
+| 写/改/重构/代码/实现 | `coder` |
+| 构建报错/编译失败/依赖冲突 | `build-error-resolver` |
+| 性能/瓶颈/优化/慢查询 | `performance-optimizer` |
 
 ### 审查验证
-| 关键词 | Agent | 说明 |
-|--------|-------|------|
-| 审查/review/检查（通用） | `code-reviewer` | 多维度通用代码审查（含各语言） |
-| Go审查/go代码/go项目 | `go-reviewer` | Go 代码专项审查：错误处理、并发安全、接口设计 |
-| Python审查/py代码/Django/Flask | `python-reviewer` | Python 代码专项审查：PEP 8、类型注解、框架最佳实践 |
-| TS审查/ts代码/React/Node | `typescript-reviewer` | TypeScript 代码专项审查：类型安全、React、Node.js |
-| 评估输出/质量检查/输出审查 | `critic` | 三维评估 Agent 输出，放行或打回 |
+| 关键词 | Agent |
+|--------|-------|
+| 审查/review/检查（通用） | `code-reviewer` |
+| Go审查 | `go-reviewer` |
+| Python审查/Django/Flask | `python-reviewer` |
+| TS审查/React/Node | `typescript-reviewer` |
+| 评估输出/质量检查 | `critic` |
 
-### 测试质量
-| 关键词 | Agent | 说明 |
-|--------|-------|------|
-| 测试/验证/跑/确认/test/测试策略/边界用例/回归 | `test-runner` | 执行测试、测试策略，报告结果 |
-| TDD/测试先行/红绿重构/生成测试/写测试用例 | `tdd-guide` | TDD 五步循环向导（含测试生成） |
-| 生成测试/自动测试/测试用例生成 | `test-generator` | 分析代码路径，自动生成单元/集成/API 测试用例 |
-| E2E/端到端/Playwright/浏览器测试 | `e2e-runner` | Playwright 端到端测试 |
-| 验证改动/检查修复/确认修复 | `verifier` | 独立验证改动是否解决问题 |
+### 测试
+| 关键词 | Agent |
+|--------|-------|
+| 测试/验证/跑/test | `test-runner` |
+| TDD/测试先行/生成测试 | `tdd-guide` |
+| E2E/Playwright/浏览器 | `e2e-runner` |
+| 验证改动/确认修复 | `verifier` |
 
-### 安全防护
-| 关键词 | Agent | 说明 |
-|--------|-------|------|
-| 安全/审计/漏洞 | `security-reviewer` | 深度安全审查 |
+### 安全
+| 关键词 | Agent |
+|--------|-------|
+| 安全/审计/漏洞 | `security-reviewer` |
 
-### 运维部署
-| 关键词 | Agent | 说明 |
-|--------|-------|------|
-| CI/CD/Docker/部署/环境 | `devops` | CI/CD 与基础设施 |
-| 发版/发布/CHANGELOG/版本管理 | `release-manager` | 版本管理与发布检查 |
+### 运维
+| 关键词 | Agent |
+|--------|-------|
+| CI/CD/Docker/部署 | `devops` |
+| 发版/发布/CHANGELOG | `release-manager` |
 
-### 数据工程
-| 关键词 | Agent | 说明 |
-|--------|-------|------|
-| 数据库/SQL/Schema/索引/查询优化 | `database-reviewer` | SQL 性能与 Schema 优化 |
+### 数据
+| 关键词 | Agent |
+|--------|-------|
+| 数据库/SQL/Schema/索引 | `database-reviewer` |
 
-### 前端交互
-| 关键词 | Agent | 说明 |
-|--------|-------|------|
-| 界面设计/UI设计/UX设计/交互设计 | `designer` | UI/UX 设计，可生成原型 |
+### 设计
+| 关键词 | Agent |
+|--------|-------|
+| 界面/UI/UX/交互 | `designer` |
 
-### 编排调度
-| 关键词 | Agent | 说明 |
-|--------|-------|------|
-| 调度/编排/多Agent协作/拆解任务 | `orchestrator` | 复杂任务拆解与多Agent协作 |
-| 路由/意图识别/agent选择 | `router` | 智能路由，成本优化 |
-| 规划/设计/方案/计划 | `planner` | 先规划再执行 |
-| 带队/领导/统筹 | `lead` | 多 Agent 任务领导者 |
-| 产品/需求/功能范围/验收标准/优先级 | `ceo` | 产品决策：功能范围、验收标准、优先级排序 |
+### 编排
+| 关键词 | Agent |
+|--------|-------|
+| 调度/编排/多Agent/拆解 | `orchestrator` |
+| 路由/意图识别 | `router` |
+| 规划/方案/计划 | `planner` |
+| 带队/领导/统筹 | `lead` |
+| 产品/需求/验收/优先级 | `ceo` |
 
-### 内容创作
-| 关键词 | Agent | 说明 |
-|--------|-------|------|
-| 写小说/网文/世界观/大纲/章节写作 | `webnovel-writer` | 专业中文网文作家：世界观构建、人物设计、章节写作 |
+### 内容
+| 关键词 | Agent |
+|--------|-------|
+| 写小说/网文/世界观/章节 | `webnovel-writer` |
 
-### 文档知识
-| 关键词 | Agent | 说明 |
-|--------|-------|------|
-| 更新文档/README/CHANGELOG | `doc-updater` | 代码改完文档跟着改 |
-| 压缩上下文/摘要/记忆管理 | `memory-keeper` | 长任务摘要，上下文压缩 |
+### 文档
+| 关键词 | Agent |
+|--------|-------|
+| 更新文档/README/CHANGELOG | `doc-updater` |
+| 压缩上下文/摘要/记忆 | `memory-keeper` |
 
-### 探查搜索
-| 关键词 | Agent | 说明 |
-|--------|-------|------|
-| 查/搜/找/定位/分析/grep | `explorer` | 只读搜索，不修改文件 |
-| 调试/debug/排查bug/根因分析 | `debugger` | 证据驱动诊断，不修复只诊断 |
+### 搜索
+| 关键词 | Agent |
+|--------|-------|
+| 查/搜/找/定位/grep | `explorer` |
+| 调试/debug/排查/根因 | `debugger` |
 
-### 通用工具
-| 关键词 | Agent | 说明 |
-|--------|-------|------|
-| 通用/整理/配置/杂务 | `general-worker` | 非专业领域任务 |
-| 查费用/用量/成本/@cost | `cost-analyst` | API 费用分析 |
-| 模糊/复合意图 | 反问用户 | 不猜测，先澄清 |
+### 通用
+| 关键词 | Agent |
+|--------|-------|
+| 通用/整理/配置/杂务 | `general-worker` |
+| 费用/用量/@cost | `cost-analyst` |
+| 模糊/复合意图 | 反问用户 |
 
 ## 任务分级
 
-| 级别 | 标准 | 执行方式 |
-|------|------|----------|
-| **轻活** | 单文件读写、搜索、简单编辑、一句话回答 | Agent 工具直调 |
-| **重活** | 3+ 文件写操作、worktree 隔离、代码重构、功能开发 | dispatch.py 调度 |
-
-判断标准：涉及 3+ 文件的写操作或需要隔离执行环境 → 重活。
-
-## Agent 规格
-
-### 通用格式
-
-每个 agent 文件 (`agents/**/*.md`) 遵循统一结构：
-
-```markdown
-# Agent 名称 — 一句话描述
-
-## 角色
-（这个 agent 是什么、负责什么）
-
-## 核心能力 / 审查维度
-- 能力项
-
-## 使用场景
-- 什么时候用 / 什么时候不用
-
-## 输出格式
-（STATUS + 详细结果 + 用户摘要）
-```
-
-### 现有 Agent 清单（32 个，按层级分组）
-
-#### L3 — 决策层（Opus）
-| Agent 文件 | 说明 | 适合模型 |
-|-----------|------|----------|
-| `L3_decision/orchestrator.md` | 总调度：复杂任务拆解与多Agent协作 | sonnet |
-| `L3_decision/lead.md` | 任务领导者：多 Agent 统筹 | sonnet |
-| `L3_decision/ceo.md` | 产品决策者：功能范围、验收标准、优先级排序 | sonnet |
-
-#### L2 — 专业层（Sonnet）
-| Agent 文件 | 说明 | 适合模型 |
-|-----------|------|----------|
-| `L2_specialist/architect.md` | 软件架构师，只出方案不写代码 | opus |
-| `L2_specialist/planner.md` | 规划架构师 | sonnet / opus |
-| `L2_specialist/critic.md` | 输出评估员 | sonnet |
-| `L2_specialist/designer.md` | UI/UX 设计师 | sonnet |
-| `L2_specialist/code-reviewer.md` | 代码审查员（通用） | sonnet |
-| `L2_specialist/security-reviewer.md` | 安全审计员 | sonnet |
-| `L2_specialist/go-reviewer.md` | Go 代码专项审查 | sonnet |
-| `L2_specialist/python-reviewer.md` | Python 代码专项审查 | sonnet |
-| `L2_specialist/typescript-reviewer.md` | TypeScript 代码专项审查 | sonnet |
-| `L2_specialist/database-reviewer.md` | 数据库优化师 | sonnet |
-| `L2_specialist/test-generator.md` | 测试生成器 | sonnet |
-| `L2_specialist/verifier.md` | 实施验证员 | sonnet |
-
-#### L1 — 执行层（Sonnet/Haiku）
-| Agent 文件 | 说明 | 适合模型 |
-|-----------|------|----------|
-| `L1_executor/coder.md` | 代码执行者+清理员 | deepseek-v4 / sonnet |
-| `L1_executor/debugger.md` | 调试专家：证据驱动诊断 | sonnet |
-| `L1_executor/tdd-guide.md` | TDD 向导（含测试生成） | sonnet |
-| `L1_executor/test-runner.md` | 测试执行员+策略 | haiku |
-| `L1_executor/e2e-runner.md` | E2E 测试专家 | sonnet |
-| `L1_executor/devops.md` | DevOps 工程师 | sonnet |
-| `L1_executor/release-manager.md` | 发布经理 | haiku |
-| `L1_executor/doc-updater.md` | 文档更新员 | haiku |
-| `L1_executor/performance-optimizer.md` | 性能优化师 | sonnet |
-| `L1_executor/build-error-resolver.md` | 构建错误修复 | sonnet |
-| `L1_executor/webnovel-writer.md` | 专业中文网文作家 | opus |
-| `L1_executor/general-worker.md` | 通用执行者 | sonnet |
-
-#### L0 — 工具层（Haiku）
-| Agent 文件 | 说明 | 适合模型 |
-|-----------|------|----------|
-| `L0_utility/router.md` | 智能路由器：意图识别、成本优化 | haiku |
-| `L0_utility/memory-keeper.md` | 记忆管理者：上下文压缩、摘要 | haiku |
-| `L0_utility/explorer.md` | 代码探索员：只读搜索 | haiku |
-| `L0_utility/cost-analyst.md` | 费用分析师 | haiku |
-
-## 混合派发策略
-
-```
-用户消息 → 意图解析
-    ├── 单意图 + 轻活 → 直接 Agent
-    ├── 单意图 + 重活 → dispatch.py
-    ├── 多意图 + 独立 → 并行 Agent
-    ├── 多意图 + 依赖 → 串行 Agent（pipeline）
-    └── 无法分类 → 反问用户
-```
-
-## 结果网关
-
-Agent 完成后的处理流程：
-
-1. Agent 写入结果文件（STATUS + 详细结果 + 用户摘要）
-2. 网关提取 STATUS 行和 `## 用户摘要` 段
-3. 仅向用户展示精简摘要
-4. 如需确认：显示 `[Agent名] 需要确认: <问题>`
+| 级别 | 标准 | 执行 |
+|------|------|------|
+| 轻活 | 单文件读写、搜索、简单编辑 | Agent 直调 |
+| 重活 | 3+文件写操作、worktree 隔离、重构 | dispatch.py |
 
 ## 添加新 Agent
 
-1. 在 `agents/` 下创建 `your-agent.md`
-2. 遵循通用格式
-3. 在本文档的路由矩阵中添加条目
-4. 在 `maestro/agents.json` 中注册（如使用 dispatch 系统）
+1. `agents/your-agent.md`（遵循 AGENT.md 格式）
+2. 在上面路由矩阵中加条目
+3. `maestro/agents.json` 注册（如用 dispatch）
