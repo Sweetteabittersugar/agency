@@ -41,10 +41,15 @@
 
 ## 决策溯源（防改坏）
 
-改关键代码前 → 读 `.context/decisions/` 了解之前为什么这样做。
-做架构决策后 → 写 `.context/decisions/YYYY-MM-DD-<slug>.md`。
-踩坑后 → 写 `.context/mistakes/<slug>.md`。
-详细协议见 `.context/PROTOCOL.md`
+改关键代码前 → 读 `.context/decisions/`。做架构决策后 → 写决策文件。
+踩坑后 → 写 `.context/mistakes/`。详细协议见 `.context/PROTOCOL.md`
+
+## 上下文效率
+
+- **50% 规则**：~100K token 主动 `/compact`，不等炸了才压
+- **子 agent 隔离**：搜索/审查派 subagent，脏活不占主上下文
+- **压缩前 checkpoint**：更新 `.context/handoff.md`
+- 会话开始读 `.context/SESSION.md`
 
 ---
 
