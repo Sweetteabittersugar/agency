@@ -52,9 +52,9 @@ maestro/worktrees/
 maestro/results/
 maestro/tasks/
 maestro/logs/
-maestro/*.log
-maestro/*.db
-maestro/*.jsonl
+maestro/**/*.log
+maestro/**/*.db
+maestro/**/*.jsonl
 maestro/mcp_state.json
 maestro/env_status.json
 maestro/.compact_anchor.json
@@ -62,6 +62,8 @@ maestro/_prompts/
 maestro/archive/
 maestro/_*.ps1
 maestro/_*.py
+maestro/api_key.json
+maestro/preferences.json
 
 # Claude
 .claude/settings.local.json
