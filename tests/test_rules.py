@@ -1,25 +1,23 @@
-"""Rules 文件完整性测试"""
+"""Rules 文件完整性测试 — 规则文件位于 .claude/rules/ (项目级) 和 ~/.claude/rules/ (全局级)"""
 
 import os
 
-RULES_DIR = os.path.join(os.path.dirname(__file__), "..", "rules")
+# 项目规则目录（提示词重构后迁至 .claude/rules/）
+RULES_DIR = os.path.join(os.path.dirname(__file__), "..", ".claude", "rules")
 
 
 class TestRulesStructure:
     """规则目录结构检查"""
 
-    REQUIRED_DIRS = ["common", "python", "golang", "typescript"]
-    REQUIRED_COMMON = ["security.md", "testing.md", "coding-style.md"]
+    REQUIRED_FILES = ["maestro.md", "architecture.md"]
 
-    def test_required_dirs_exist(self):
-        for d in self.REQUIRED_DIRS:
-            path = os.path.join(RULES_DIR, d)
-            assert os.path.isdir(path), f"缺少目录: rules/{d}"
+    def test_rules_dir_exists(self):
+        assert os.path.isdir(RULES_DIR), f"缺少项目规则目录: .claude/rules/"
 
-    def test_common_rules_exist(self):
-        for f in self.REQUIRED_COMMON:
-            path = os.path.join(RULES_DIR, "common", f)
-            assert os.path.isfile(path), f"缺少文件: rules/common/{f}"
+    def test_required_files_exist(self):
+        for f in self.REQUIRED_FILES:
+            path = os.path.join(RULES_DIR, f)
+            assert os.path.isfile(path), f"缺少文件: .claude/rules/{f}"
 
     def test_no_empty_md_files(self):
         for root, dirs, files in os.walk(RULES_DIR):

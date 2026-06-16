@@ -15,7 +15,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # 要检查的目录（相对于项目根）
-CHECK_DIRS = ["maestro", "agents", "rules", "hooks", "scripts", "tests", "commands", "skills"]
+CHECK_DIRS = ["maestro", "agents", ".claude/rules", "hooks", "scripts", "tests", "commands", "skills"]
 # 检查的文件扩展名
 CHECK_EXTENSIONS = {
     ".py",
@@ -224,9 +224,9 @@ class TestFileStructure(unittest.TestCase):
             PROJECT_ROOT / "maestro" / "dispatch.py",
             PROJECT_ROOT / "maestro" / "gateway.py",
             PROJECT_ROOT / "agents",
-            PROJECT_ROOT / "rules",
+            PROJECT_ROOT / ".claude" / "rules",
             PROJECT_ROOT / "hooks",
-            PROJECT_ROOT / "CLAUDE.md",
+            PROJECT_ROOT / ".claude" / "CLAUDE.md",
         ]
         for f in required:
             self.assertTrue(f.exists(), f"缺少必要文件/目录: {f}")
