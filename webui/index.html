@@ -163,7 +163,7 @@
 <h3 id="sett-信任模式" style="font-size:12px;color:var(--text);margin-bottom:8px">🛡️ 信任模式</h3>
 <p style="font-size:10px;color:var(--muted);margin-bottom:8px">控制 AI 工具调用的确认级别</p>
 <div style="display:flex;gap:4px;margin-bottom:4px">
-t<select id="trust-mode-select" style="display:none" aria-hidden="true"><option value="cautious">cautious</option><option value="normal">normal</option><option value="trusted">trusted</option></select>
+<select id="trust-mode-select" style="display:none" aria-hidden="true"><option value="cautious">cautious</option><option value="normal">normal</option><option value="trusted">trusted</option></select>
 <button class="btn trust-mode-btn" data-mode="cautious" onclick="setTrustMode('cautious')" style="flex:1;font-size:10px;padding:6px 4px">🛡️ 谨慎</button>
 <button class="btn trust-mode-btn" data-mode="normal" onclick="setTrustMode('normal')" style="flex:1;font-size:10px;padding:6px 4px">⚖️ 正常</button>
 <button class="btn trust-mode-btn" data-mode="trusted" onclick="setTrustMode('trusted')" style="flex:1;font-size:10px;padding:6px 4px">🚀 信任</button>
@@ -182,7 +182,7 @@ t<select id="trust-mode-select" style="display:none" aria-hidden="true"><option 
 <span style="font-size:10px;color:var(--muted)">当前: </span>
 <span id="profile-label" style="font-size:10px;font-weight:600">💼 标准</span>
 </div>
-t<select id="profile-select" style="display:none" aria-hidden="true"><option value="minimal">minimal</option><option value="standard">standard</option><option value="full">full</option></select>
+<select id="profile-select" style="display:none" aria-hidden="true"><option value="minimal">minimal</option><option value="standard">standard</option><option value="full">full</option></select>
 <p id="profile-desc" style="font-size:10px;color:var(--text2);margin-top:6px;line-height:1.6">标准模式 — 正常开发、多文件修改，约支持 80 轮对话</p>
 <p style="font-size:9px;color:var(--muted);margin-top:6px">💡 上下文用满后会自动总结前文，不会突然中断</p>
 </div>

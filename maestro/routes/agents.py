@@ -14,7 +14,10 @@ def handle_list(handler, parsed):
     from maestro.shared import load_agents
 
     # profile filter: only pass when explicitly requested via ?profile=minimal|standard|full
-    profile = parsed.get('query_params', {}).get('profile', None)
+    # parse query params from ParseResult (namedtuple, not dict — .get() won't work)
+    from urllib.parse import parse_qs
+    qp = parse_qs(parsed.query) if hasattr(parsed, 'query') else {}
+    profile = qp.get('profile', [None])[0]
     if profile:
         handler.send_json(load_agents(profile_complexity=profile))
     else:

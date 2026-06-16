@@ -54,6 +54,8 @@ maestro/tasks/
 maestro/logs/
 maestro/**/*.log
 maestro/**/*.db
+maestro/**/*.db-shm
+maestro/**/*.db-wal
 maestro/**/*.jsonl
 maestro/mcp_state.json
 maestro/env_status.json
