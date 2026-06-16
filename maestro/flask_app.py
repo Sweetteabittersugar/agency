@@ -433,13 +433,7 @@ def handle_chat_send(data):
 
 
 def main():
-    """启动 Flask 应用"""
-    if os.environ.get("AGENCY_USE_LEGACY") == "1":
-        from maestro.web import main as legacy_main
-
-        legacy_main()
-        return
-
+    """启动 Flask 应用（v0.4.0+ 唯一入口，web.py 已废弃）"""
     import sys
     import io
 

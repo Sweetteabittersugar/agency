@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
-Agency — Claude Code Web 前端
-  python maestro/web.py   →   http://localhost:8800
+Agency — Claude Code Web 前端（已废弃，2026-06-16）
+
+DEPRECATED: 请使用 flask_app.py 启动。此文件保留仅作参考。
+  python maestro/flask_app.py   →   http://localhost:8800
 """
 
 import os
