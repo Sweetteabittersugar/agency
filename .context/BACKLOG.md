@@ -9,11 +9,14 @@
 
 ## 📋 待做
 
-- [ ] 
+- [ ] 2026-06-16 Fable5/Mythos5 加 context_window 和 alias — models.py 补完
+- [ ] 2026-06-16 _archived 死 skill 删除 — 需手动 `rm -rf D:/ai/.claude/skills/_archived`
 
 ## 💡 想法（还没决定做不做）
 
-- [ ] 
+- [ ] 2026-06-16 HyperTool 思路 — MCP 多步调用折叠，减少往返轮次=省钱，关注标准化进展
+- [ ] 2026-06-16 MiniMax M3 tok_per_char 校准 — 新 Sparse Attention 架构可能改变 tokenizer 行为
+- [ ] 2026-06-16 memory_engine.py 图记忆改造 — MRAgent(ICML2026)方案比向量检索强 23%，远期方向
 
 ## ✅ 已完成
 

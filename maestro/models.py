@@ -77,8 +77,8 @@ PROVIDER_PRESETS = {
         "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
     },
     "zhipu": {
-        "heavy": "GLM-5.1",
-        "standard": "GLM-5.1",
+        "heavy": "GLM-5.2",
+        "standard": "GLM-5.2",
         "light": "GLM-4-Flash",
         "base_url": "https://open.bigmodel.cn/api/paas/v4",
     },
@@ -385,6 +385,14 @@ PRICING: dict[str, ModelPrice] = {
     "claude-haiku-4-5": ModelPrice(
         input=1.00, cache_read=0.10, output=5.00, cache_write=1.25, tok_per_char=0.8,
     ),
+    # Fable 5 / Mythos 5 — 2026-06-10 发布，美国政府禁止非美国用户访问（2026-06-12）
+    # ⚠️ US-ONLY: 国内 DeepSeek 路由不可达
+    "claude-fable-5": ModelPrice(
+        input=10.00, cache_read=1.00, output=50.00, cache_write=12.50, tok_per_char=0.8,
+    ),
+    "claude-mythos-5": ModelPrice(
+        input=15.00, cache_read=1.50, output=75.00, cache_write=18.75, tok_per_char=0.8,
+    ),
 
     # ── OpenAI GPT-5 — developers.openai.com ──
     # cache 自动生效（≥1024 token 前缀匹配），无 cache_write 费
@@ -480,6 +488,10 @@ PRICING: dict[str, ModelPrice] = {
 
     # ── Zhipu 智谱 — bigmodel.cn ──
     # tok_per_char=0.55: 中位水平
+    "GLM-5.2": ModelPrice(
+        # 2026-06-15 发布，1M 上下文，MIT 开源。API 定价待确认，暂按 5.1 上浮 20% 估算
+        input=1.00, cache_read=0.10, output=3.50, cache_write=1.25, tok_per_char=0.55,
+    ),
     "GLM-5.1": ModelPrice(
         input=0.83, cache_read=0.083, output=3.31, cache_write=1.0375, tok_per_char=0.55,
     ),
@@ -556,7 +568,7 @@ MODEL_TIERS = {
     "google": {"powerful": "gemini-2.5-pro", "balanced": "gemini-2.5-flash", "fast": "gemini-2.5-flash-lite"},
     "xai": {"powerful": "grok-4.3", "balanced": "grok-4.3", "fast": "grok-4-1-fast-reasoning"},
     "qwen": {"powerful": "qwen3-max", "balanced": "qwen3-max", "fast": "qwen-long"},
-    "zhipu": {"powerful": "GLM-5.1", "balanced": "GLM-5.1", "fast": "GLM-4-Flash"},
+    "zhipu": {"powerful": "GLM-5.2", "balanced": "GLM-5.2", "fast": "GLM-4-Flash"},
     "kimi": {"powerful": "kimi-k2.6", "balanced": "kimi-k2.6", "fast": "kimi-k2.6"},
     "minimax": {"powerful": "minimax-m3", "balanced": "minimax-m3", "fast": "minimax-m2.7"},
     "doubao": {"powerful": "doubao-pro-32k", "balanced": "doubao-pro-32k", "fast": "doubao-lite-32k"},
@@ -601,6 +613,7 @@ MODEL_CONTEXT_WINDOWS = {
     "qwen3.6-flash": 1_000_000,
     "qwen-long": 1_000_000,
     "qwen-turbo": 128_000,
+    "GLM-5.2": 1_000_000,  # 2026-06-15 发布
     "GLM-5.1": 200_000,
     "GLM-4.7": 200_000,
     "GLM-4.5-air": 128_000,
@@ -763,8 +776,9 @@ _MODEL_ALIAS_MAP = {
     "qwen": "qwen3-max",
     "qwen3": "qwen3-max",
     # Zhipu 系列
-    "glm": "GLM-5.1",
-    "glm-5": "GLM-5.1",
+    "glm": "GLM-5.2",
+    "glm-5": "GLM-5.2",
+    "glm-5.2": "GLM-5.2",
     "glm-4": "GLM-4.7",
     # Kimi 系列
     "kimi": "kimi-k2.6",
