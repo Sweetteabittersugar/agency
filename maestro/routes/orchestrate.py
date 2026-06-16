@@ -4,6 +4,9 @@ import json
 import os
 import re
 
+# 编排器默认模型 — 全局变量，_policy_gate / _run_pipeline_orchestrate 共用
+orchestrator_model = "deepseek-v4-pro"
+
 
 def _orch_estimate_tokens(text: str, model: str = "") -> int:
     """Token 估算——根据模型 tokenizer 特性加权。"""
@@ -232,7 +235,6 @@ def handle_orchestrate(handler, body):
         elapsed = time.time() - start_time
         in_tokens = _orch_estimate_tokens(task, orchestrator_model)
         out_tokens = len(full_output) // 2
-        orchestrator_model = "deepseek-v4-pro"
         cost, _, _ = estimate_cost(orchestrator_model, in_tokens, out_tokens)
         record_cost(
             PROJECT_ROOT,
