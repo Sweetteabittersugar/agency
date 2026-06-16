@@ -9,8 +9,7 @@
 
 ## 📋 待做
 
-- [ ] 2026-06-16 Fable5/Mythos5 加 context_window 和 alias — models.py 补完
-- [ ] 2026-06-16 _archived 死 skill 删除 — 需手动 `rm -rf D:/ai/.claude/skills/_archived`
+- [ ] 
 
 ## 💡 想法（还没决定做不做）
 

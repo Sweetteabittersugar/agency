@@ -588,6 +588,8 @@ MODEL_CONTEXT_WINDOWS = {
     "claude-opus-4-8": 1_000_000,
     "claude-sonnet-4-6": 200_000,
     "claude-haiku-4-5": 200_000,
+    "claude-fable-5": 200_000,   # US-only
+    "claude-mythos-5": 200_000,  # US-only
     "gpt-5": 400_000,
     "gpt-5-mini": 400_000,
     "gpt-5-nano": 400_000,
@@ -759,6 +761,8 @@ _MODEL_ALIAS_MAP = {
     "claude-sonnet": "claude-sonnet-4-6",
     "claude-opus": "claude-opus-4-8",
     "claude-haiku": "claude-haiku-4-5",
+    "claude-fable": "claude-fable-5",
+    "claude-mythos": "claude-mythos-5",
     # GPT 系列
     "gpt-5": "gpt-5",  # 保持不变，仅占位
     "gpt-5.1": "gpt-5",
