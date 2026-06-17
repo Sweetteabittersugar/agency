@@ -6,23 +6,25 @@ let _selectedAgents = {};
 let STARTER_AGENTS = ['coder', 'explorer', 'general-worker', 'orchestrator'];
 let currentNav = 'chat';
 
-/* ── 导航切换 (v2.0: 重定向到 Activity Bar) ── */
+/* ── 导航切换 (v3兼容 — 侧边栏已改为可折叠区域) ── */
 window.switchNav = function(nav) {
   currentNav = nav;
   try { localStorage.setItem('agency-nav', nav); } catch(e) {}
-  // v2.0: 统一走 activity bar
-  if (nav === 'dashboard' && typeof switchActivity === 'function') {
-    switchActivity('dashboard');
-  } else if (nav === 'agents' || nav === 'chat') {
-    if (typeof switchActivity === 'function') switchActivity('chat');
-  }
   if (nav === 'agents') {
+    // 展开 Agent 区域并滚动到可见
+    let sec = document.getElementById('sb-agents');
+    if (sec) {
+      let section = sec.closest('.sidebar-section');
+      if (section) section.classList.remove('collapsed');
+      sec.scrollIntoView({behavior:'smooth'});
+    }
     loadSidebarAgents(); loadSidebarSkills();
   } else if (nav === 'dashboard') {
     if (typeof toggleDashboard === 'function') toggleDashboard();
   } else if (nav === 'connect') {
     if (typeof toggleDashboard === 'function') toggleDashboard();
   }
+  // chat → 默认即展开，无需操作
 };
 
 function loadSidebarAgents() {
@@ -619,42 +621,3 @@ window.toggleSidebarSection = toggleSidebarSection;
 window.toggleSidebarSub = toggleSidebarSub;
 window.cycleTrustMode = cycleTrustMode;
 window.updateTrustBadge = updateTrustBadge;
-
-/* ── v2.0 侧边栏视图切换（每个活动独立容器，不再交叉污染） ── */
-window.renderSidebarView = function(activityId) {
-  // Hide all views
-  ['sv-chat','sv-sessions','sv-dashboard','sv-settings'].forEach(function(id) {
-    let el = document.getElementById(id);
-    if (el) el.style.display = 'none';
-  });
-  // Show target view
-  let targetId = 'sv-' + activityId;
-  let target = document.getElementById(targetId);
-  if (!target) return;
-
-  target.style.display = 'flex';
-
-  // Load content per activity
-  if (activityId === 'chat' && typeof loadSidebarAgents === 'function') {
-    loadSidebarAgents();
-  }
-  if (activityId === 'sessions' && typeof renderHistory === 'function') {
-    renderHistory();
-  }
-  if (activityId === 'dashboard') {
-    // Fetch KPI data
-    if (typeof api !== 'undefined') {
-      api.get('/api/cost/summary').then(function(d) {
-        let el = document.getElementById('sidebar-cost-val');
-        if (el && d && d.today) el.textContent = '$' + (d.today.cost || 0).toFixed(4);
-      }).catch(function(){});
-      api.get('/api/sessions/processes').then(function(d) {
-        let el = document.getElementById('sidebar-ctx-val');
-        if (el && d && d.processes) {
-          let alive = d.processes.filter(function(p) { return p.alive; }).length;
-          el.textContent = alive + '/' + d.processes.length;
-        }
-      }).catch(function(){});
-    }
-  }
-};

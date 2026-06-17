@@ -711,35 +711,3 @@ window.loadPRDiff = function() {
     })
     .catch(function(e){ container.innerHTML = '<div style="padding:12px;color:var(--danger)">错误: '+e.message+'</div>'; });
 };
-
-/* ── v2.0 设置详情 — 直接在主区渲染，不弹浮窗 ── */
-window.openSettingsDetail = function(section) {
-  // Update nav active state
-  let navItems = document.querySelectorAll('.settings-nav-item');
-  navItems.forEach(function(item) { item.classList.toggle('active', item.dataset.section === section); });
-  // Show in main area
-  let grid = document.getElementById('grid');
-  let detail = document.getElementById('settingsDetail');
-  if (!detail) {
-    detail = document.createElement('div');
-    detail.id = 'settingsDetail';
-    detail.className = 'settings-detail-view';
-    grid.parentNode.insertBefore(detail, grid);
-    grid.style.display = 'none';
-  }
-  // Copy settings content from devOverlay (kept as source, not opened as overlay)
-  let devContent = document.querySelector('#devOverlay .harness-overlay-content');
-  detail.innerHTML = '<div class="sd-header"><h2>⚙️ 设置</h2><button class="btn" onclick="closeSettingsDetail()">✕ 关闭</button></div>' +
-    '<div class="sd-body" id="sdBody"></div>';
-  if (devContent) {
-    document.getElementById('sdBody').innerHTML = devContent.innerHTML;
-  } else {
-    document.getElementById('sdBody').innerHTML = '<p style="color:var(--muted);padding:20px">设置内容加载中...</p>';
-  }
-};
-window.closeSettingsDetail = function() {
-  let detail = document.getElementById('settingsDetail');
-  if (detail) detail.remove();
-  let grid = document.getElementById('grid');
-  if (grid) grid.style.display = '';
-};
