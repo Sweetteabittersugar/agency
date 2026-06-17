@@ -886,6 +886,12 @@ button:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px soli
 .settings-nav-item:hover{background:var(--surface2);color:var(--text)}
 .settings-nav-item.active{background:rgba(16,185,129,.08);color:var(--accent);font-weight:600}
 
+/* Round 5: 四区布局下隐藏旧 sidebar——已被 #sidebarView 替代 */
+.main-area > #mainContent > .sidebar,
+.main-area > #mainContent > .sidebar-backdrop,
+.main-area > #mainContent > .sidebar + .sidebar-overlay,
+.main-area > #mainContent > #mobile-tabs { display: none !important; }
+
 /* 侧边栏折叠区 (兼容旧 sidebar-section 样式) */
 .sidebar-section-header{cursor:pointer;user-select:none}
 .sidebar-section.collapsed .section-toggle{transform:rotate(-90deg)}
