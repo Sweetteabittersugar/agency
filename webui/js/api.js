@@ -69,6 +69,29 @@
     post: function(path, body, opts) { return api('POST', path, body, opts); },
     del: function(path, opts) { return api('DELETE', path, null, opts); },
 
+    /**
+     * 带指数退避的重试请求
+     * api.retry('GET', '/api/agents', null, {}, 3)
+     */
+    retry: function(method, path, body, opts, maxRetries) {
+      maxRetries = maxRetries || 3;
+      opts = opts || {};
+      let attempt = 0;
+      let doTry = function() {
+        return api(method, path, body, opts).catch(function(err) {
+          attempt++;
+          if (attempt < maxRetries) {
+            let delay = Math.min(1000 * Math.pow(2, attempt), 15000);
+            return new Promise(function(resolve) {
+              setTimeout(function() { resolve(doTry()); }, delay);
+            });
+          }
+          throw err;
+        });
+      };
+      return doTry();
+    },
+
     // 清缓存（配置变更后调用）
     clearCache: function() { cache = {}; },
 
