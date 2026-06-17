@@ -9,6 +9,9 @@ log = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
+# ═══════════════════════════════════════════
+# System — version / settings
+# ═══════════════════════════════════════════
 
 def handle_version(handler, parsed):
     """GET /api/version"""
@@ -35,6 +38,10 @@ def handle_settings(handler, parsed):
     )
     return True
 
+
+# ═══════════════════════════════════════════
+# Skills — 列表/内容/保存/删除/切换
+# ═══════════════════════════════════════════
 
 def handle_skills(handler, parsed):
     """GET /api/skills — Skills 列表"""
@@ -136,6 +143,10 @@ def _check_mcp_running(name, args):
     except Exception:
         return False  # 无法检测时返回离线
 
+
+# ═══════════════════════════════════════════
+# MCP — 状态 / 配置
+# ═══════════════════════════════════════════
 
 def handle_mcp_status(handler, parsed):
     """GET /api/mcp/status — MCP 服务状态（扫描多个 .mcp.json）"""
@@ -424,6 +435,10 @@ def handle_skills_delete(handler, parsed):
 # ── Profile API ──
 
 
+# ═══════════════════════════════════════════
+# Profile — 当前 / 设置 / 列表
+# ═══════════════════════════════════════════
+
 def handle_profile(handler, parsed):
     """GET /api/profile — 返回当前可用 profile 列表和当前选择"""
     profiles_path = PROJECT_ROOT / "profiles.json"
@@ -506,6 +521,10 @@ def handle_profiles_list(handler, parsed):
         handler.send_json({"error": "读取配置文件失败，请检查日志"}, 500)
     return True
 
+
+# ═══════════════════════════════════════════
+# Config — API Key / Prefs / Update
+# ═══════════════════════════════════════════
 
 def handle_check_update(handler, parsed):
     """GET /api/check-update — 检查 agency-kit 新版本"""

@@ -121,6 +121,10 @@ def route_task(task, force_agent=None):
 def llm_fallback(task: str, candidates: list[dict], model: str = "deepseek-v4-flash") -> str | None:
     """用轻量模型做路由兜底。返回 agent name 或 None。
 
+    为什么需要 LLM 兜底？关键词可能覆盖不全（新 Agent 上线来不及加关键词），
+    语义 embedding 在短文本上表现不稳定。LLM 兜底作为最后一道防线只在
+    前两级置信度都低于阈值时触发，仅占 ~12% 请求量。
+
     Args:
         task: 用户输入的任务描述
         candidates: 候选 Agent 列表 [{"name": "...", "description": "..."}, ...]

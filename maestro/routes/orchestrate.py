@@ -44,7 +44,11 @@ log = logging.getLogger(__name__)
 
 
 def _policy_gate(stage: str, output: str, task_text: str, policy, coordinator) -> str | None:
-    """策略门：阶段推进前执行 Policy Checkpoint。返回错误消息或 None"""
+    """策略门：阶段推进前执行 Policy Checkpoint。返回错误消息或 None
+
+    为什么每阶段都检查成本而非只在开始时检查一次？
+    因为 pass@k 和复核可能让实际 token 远超预估，阶段间检查可以在中途拦截超支。
+    """
     task_id = task_text[:60]
 
     if stage == "plan":
@@ -140,7 +144,11 @@ def handle_route(handler, body):
 
 
 def handle_orchestrate(handler, body):
-    """POST /api/orchestrate — 智能调度 SSE 流（支持 pipeline 模式）"""
+    """POST /api/orchestrate — 智能调度 SSE 流（支持 pipeline 模式）
+
+    决策点：前端传 pipeline=true → 走五阶段管线（plan→implement→review→verify→deploy）；
+    否则走单 agent 直调。pipeline 使用 pass@k 验证（默认 k=3），失败则自动重试或升级模型。
+    """
     task = body.get("task", "")
     proj_dir = body.get("proj_dir", "")
     api_key = body.get("api_key", "")
@@ -277,7 +285,14 @@ def handle_orchestrate(handler, body):
 
 
 def _run_pipeline_orchestrate(handler, body) -> bool:
-    """五阶段管线编排 SSE 流"""
+    """五阶段管线编排 SSE 流
+
+    为什么用 PipelineStateMachine 而非线性调用？
+    每个阶段都可能通过 pass@k 多次生成+验证（默认 k=3），失败时自动模型升级
+    （如 deepseek → claude-haiku → claude-sonnet），而不是直接报错。
+    状态机保证阶段间依赖顺序（plan→implement→review→verify→deploy）的同时，
+    允许单阶段内部重试，避免从头开始。
+    """
     task = body.get("task", "")
     proj_dir = body.get("proj_dir", "")
     api_key = body.get("api_key", "")
