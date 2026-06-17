@@ -65,7 +65,7 @@ function loadMemList(){var domEl=$('mem-list');if(!domEl)return;fetch('/api/memo
 function generateAgent(){var input=$('agent-factory-input'),output=$('agent-factory-output');var req=input.value.trim();if(!req)return;output.innerHTML='<span class="spinner" style="display:inline-block;width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-right:6px;vertical-align:middle"></span>生成中…';fetch('/api/agent-generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requirement:req,api_key:apiKey||undefined,api_provider:apiProvider||undefined})}).then(function(resp){var reader=resp.body.getReader(),decoder=new TextDecoder(),buf='',txt='';function read(){reader.read().then(function(result){if(result.done){finish();return}buf+=decoder.decode(result.value,{stream:!0});buf=buf.replace(/\r\n/g,'\n');var lines=buf.split('\n');buf=lines.pop()||'';for(var i=0;i<lines.length;i++){if(lines[i].indexOf('data: ')!==0)continue;try{var d=JSON.parse(lines[i].slice(6));if(d.content)txt+=d.content;if(d.error){output.innerHTML='<span style=color:var(--danger)>'+escHtml(d.error)+'</span>';return}}catch(_){}}read()})}function finish(){output.innerHTML='<pre style=\"font-size:10px;max-height:200px;overflow:auto;background:var(--bg);padding:8px;border-radius:4px\">'+escHtml(txt)+'</pre><button class=\"new-chat-btn\" style=\"margin-top:4px\" onclick=\"saveAgent()\">保存此 Agent</button>';output._agentContent=txt}read()}).catch(function(){output.innerHTML='AI 生成中断。可能是网络问题或 API Key 无效，请检查后重试'})}
 function saveAgent(){var txt=$('agent-factory-output')._agentContent;if(!txt)return;var m=txt.match(/name:\s*"?([a-z0-9-]+)"?/i);var name=m?m[1]:('agent-'+Date.now().toString(36));fetch('/api/agent-create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,content:txt})}).then(function(r){return r.json()}).then(function(d){if(d.ok){showToast('Agent 已保存: '+name);loadAgents()}else{showToast(d.error||'保存失败，请检查文件权限或磁盘空间后重试',!0)}}).catch(function(e){showToast('保存失败: '+(e.message||'请检查网络连接后重试'),!0)})}
 function loadRemotePanel(){
-  var domEl=$('remote-panel');if(!domEl){console.debug('remote-panel not found');return}
+  var domEl=$('remote-panel');if(!domEl)return
   fetch('/api/remote/status').then(function(r){
     if(!r.ok)throw new Error('HTTP '+r.status);
     return r.json();
@@ -137,14 +137,14 @@ function openMemEditor(path,name){
   var p=path||name;
   if(!p){ showToast('无法打开：缺少文件路径','error'); return; }
   fetch('/api/memory/'+encodeURIComponent(p)).then(function(r){return r.json()}).then(function(d){
-    if(d.error){showToast(d.error,!0);return}
+    if(d.error){showToast(d.error||'操作失败，请重试',!0);return}
     var ed=$('mem-editor');
     ed.innerHTML='<div style="margin-bottom:4px;font-size:11px;color:var(--text2)">编辑: '+escHtml(d.name)+'</div><textarea class="mem-editor" id="mem-edit-area">'+escHtml(d.content)+'</textarea><div style="margin-top:6px;display:flex;gap:6px"><button class="btn" onclick="saveMemFile(\''+escHtml(p)+'\')">💾 保存</button><button class="btn" onclick="document.getElementById(\'mem-editor\').innerHTML=\'\';loadMemList()">取消</button></div>';
   }).catch(function(e){showToast('无法加载文件: '+(e.message||'请检查网络连接后刷新重试'),!0)});
 }
 function saveMemFile(name){
   var content=document.getElementById('mem-edit-area');if(!content)return;
-  fetch('/api/memory/'+encodeURIComponent(name),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:content.value})}).then(function(r){return r.json()}).then(function(d){if(d.ok){showToast('已保存: '+d.name);document.getElementById('mem-editor').innerHTML='';loadMemList()}else{showToast(d.error||'保存失败，请检查文件权限或磁盘空间后重试',!0)}}).catch(function(e){showToast('保存失败: '+e.message,!0)});
+  fetch('/api/memory/'+encodeURIComponent(name),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:content.value})}).then(function(r){return r.json()}).then(function(d){if(d.ok){showToast('已保存: '+d.name);document.getElementById('mem-editor').innerHTML='';loadMemList()}else{showToast(d.error||'保存失败，请检查文件权限或磁盘空间后重试',!0)}}).catch(function(e){console.error('保存记忆文件失败:',e);showToast('保存失败，请重试',!0)});
 }
 
 /* ── MCP 配置面板 ── */
@@ -206,7 +206,7 @@ function showProfilePicker(){
       });
       if(typeof updateProfileUI === 'function') updateProfileUI();
     }
-  }).catch(function(){});
+  }).catch(function(e){console.error('加载Profile配置失败:',e)});
 }
 
 /* ── Key 可见性切换 ── */
@@ -231,7 +231,7 @@ window.saveApiKey = function(){
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({key: apiKey, provider: apiProvider})
-    }).catch(function(){});
+    }).catch(function(e){console.error('保存API Key到服务端失败:',e)});
   }
   showToast('API Key 已保存');
 };
@@ -287,7 +287,7 @@ function clearAllHistory(){
   showDeleteConfirm(t('clearAllHistoryConfirm'), function(){
     var savedConvos = conversations.slice();
     // 服务端删除全部
-    savedConvos.forEach(function(c){ api.del('/api/conversations/'+c.id).catch(function(){}) });
+    savedConvos.forEach(function(c){ api.del('/api/conversations/'+c.id).catch(function(e){console.error('删除会话失败:',e)}) });
     conversations = [];
     // 清空所有面板
     panels.forEach(function(p){
@@ -300,7 +300,7 @@ function clearAllHistory(){
     if(typeof renderHistory === 'function') renderHistory();
     showUndoableToast(t('clearAllHistoryDone'), function(){
       conversations = savedConvos;
-      savedConvos.forEach(function(c){ api.post('/api/conversations/save',c).catch(function(){}) });
+      savedConvos.forEach(function(c){ api.post('/api/conversations/save',c).catch(function(e){console.error('恢复会话失败:',e)}) });
       renderHistory();
     }, 5000);
   });

@@ -50,7 +50,7 @@
         .then(function(d) {
           var arr = Array.isArray(d) ? d : (d.agents || d.data || []);
           if (arr.length) fill(arr);
-        }).catch(function() {});
+        }).catch(function(e){console.error('填充Agent下拉框失败:',e)});
     }
   }
 

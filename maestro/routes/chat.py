@@ -21,8 +21,8 @@ def handle_chat(handler, body):
         PROJECT_ROOT,
         CLAUDE_BIN,
         _claude_dir_path,
-        build_isolated_env,
     )
+    from maestro.app_config import build_isolated_env
     from maestro.main import simple_route
     from maestro.agent_parser import parse_agent_md
     from maestro.web_cost import record_cost

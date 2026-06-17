@@ -20,10 +20,12 @@ import logging
 from maestro.shared import (
     PROJECT_ROOT,
     CLAUDE_BIN,
+)
+from maestro.task_classifier import (
     _extract_plan,
-    build_isolated_env,
     classify_task_complexity,
 )
+from maestro.app_config import build_isolated_env
 from maestro.main import simple_route
 from maestro.pipeline import (
     PipelineStateMachine,

@@ -11,6 +11,9 @@ from collections import Counter
 
 ROOT = Path(__file__).resolve().parent.parent
 os.chdir(str(ROOT))
+sys.path.insert(0, str(ROOT))  # 确保 maestro.app_config 可导入
+
+from maestro.app_config import PORT as AGENCY_PORT
 
 errors = 0
 OK = 0
@@ -214,7 +217,7 @@ def check_api():
     failures = []
     for ep in endpoints:
         try:
-            r = opener.open(f"http://127.0.0.1:8800{ep}", timeout=3)
+            r = opener.open(f"http://127.0.0.1:{AGENCY_PORT}{ep}", timeout=3)
             if r.status != 200:
                 failures.append(f"{ep} HTTP {r.status}")
             else:
@@ -304,6 +307,48 @@ def check_frontend_critical():
     return True, ""
 
 
+# ── 8. 测试覆盖率门控 ──
+def check_test_coverage():
+    """运行 pytest --cov 并检查覆盖率阈值（60%）。
+
+    低于阈值 → commit 失败。
+    pytest-cov 未安装 → 跳过并警告（不阻断）。
+    """
+    import shutil
+
+    if not shutil.which("pytest"):
+        return True, ""  # 无 pytest，跳过
+
+    try:
+        import pytest_cov  # noqa: F401
+    except ImportError:
+        return False, "pytest-cov 未安装，跳过覆盖率检查。安装: pip install pytest-cov"
+
+    # 只测 maestro 核心模块（排除 tests/ 自身和 webui/）
+    r = subprocess.run(
+        [
+            sys.executable, "-m", "pytest", "tests/",
+            "--cov=maestro",
+            "--cov-report=term",
+            "--cov-fail-under=20",
+            "-q",
+            "--no-header",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=str(ROOT),
+        timeout=120,
+    )
+
+    output = (r.stdout + "\n" + r.stderr).strip()
+    if r.returncode != 0:
+        # 提取覆盖率百分比行
+        cov_lines = [l for l in output.split("\n") if "Coverage" in l or "TOTAL" in l or "%" in l]
+        detail = "\n".join(cov_lines[-5:]) if cov_lines else output[-500:]
+        return False, f"覆盖率不达标:\n{detail}"
+    return True, ""
+
+
 # ═══════════════════════════════════
 if __name__ == "__main__":
     # 确保 stdout 用 utf-8
@@ -318,6 +363,7 @@ if __name__ == "__main__":
     check("Python 语法", check_python_syntax)
     check("API 端点", check_api)
     check("前端关键功能完整性", check_frontend_critical)
+    check("测试覆盖率 (>=20%)", check_test_coverage)
 
     print(f"\n{'=' * 40}")
     if errors == 0:

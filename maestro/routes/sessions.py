@@ -82,7 +82,7 @@ def handle_kill(handler, body):
         handler.send_json({"ok": False, "error": "缺少 session_id"}, 400)
         return True
 
-    from maestro.claude_session import _sessions as session_registry
+    from maestro.claude_session import ClaudeSession
     from maestro.memory_engine import save_memory_file
     from maestro.shared import PROJECT_ROOT
     import logging
@@ -90,8 +90,8 @@ def handle_kill(handler, body):
     log = logging.getLogger(__name__)
 
     memories_saved = 0
-    cs = session_registry.get(sid)
-    if cs and cs.is_alive() and len(cs._transcript) >= 2:
+    cs = ClaudeSession.get(sid)
+    if cs and cs.is_alive() and len(cs.transcript) >= 2:
         try:
             memories = cs.extract_memories()
             project_root = body.get("proj_root", "") or str(

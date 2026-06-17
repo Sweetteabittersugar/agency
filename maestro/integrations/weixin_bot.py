@@ -84,6 +84,11 @@ class WeixinBot:
         self._message_handler: Optional[Callable] = None
         self._account_id: Optional[str] = None
 
+    @property
+    def running(self) -> bool:
+        """Bot 是否在运行中（替代 _running）"""
+        return self._running
+
     # ============ 登录 ============
 
     def get_qrcode(self) -> dict:

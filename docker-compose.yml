@@ -3,7 +3,7 @@ services:
   agency:
     build: .
     ports:
-      - "8800:8800"
+      - "${AGENCY_PORT:-8800}:${AGENCY_PORT:-8800}"
     volumes:
       - ./maestro/sessions:/app/maestro/sessions
       - ./maestro/worktrees:/app/maestro/worktrees

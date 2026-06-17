@@ -1,9 +1,12 @@
 """会话 Fork — 从指定位置分叉出新会话"""
 
 import json
+import logging
 import time
 import uuid
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 SESSION_DIR = Path(__file__).resolve().parent.parent / "sessions"
 
@@ -30,7 +33,8 @@ def handle_fork(handler, body):
         with open(src_file, "r", encoding="utf-8") as f:
             events = [json.loads(l.strip()) for l in f.readlines() if l.strip()]
     except Exception as e:
-        handler.send_json({"ok": False, "error": str(e)}, 500)
+        logger.error(f"读取会话文件失败: {e}", exc_info=True)
+        handler.send_json({"ok": False, "error": "读取会话文件失败，请检查日志"}, 500)
         return True
 
     # 将前端消息索引映射到 JSONL 行号
@@ -72,7 +76,8 @@ def handle_fork(handler, body):
             )
             f.write(fork_event + "\n")
     except Exception as e:
-        handler.send_json({"ok": False, "error": str(e)}, 500)
+        logger.error(f"写入分叉会话失败: {e}", exc_info=True)
+        handler.send_json({"ok": False, "error": "写入分叉会话失败，请检查日志"}, 500)
         return True
 
     handler.send_json(

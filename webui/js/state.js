@@ -82,7 +82,7 @@
 
           // 同步到现有全局变量（向后兼容）
           if (window[k] !== undefined && k !== 'theme' && k !== 'layout') {
-            try { window[k] = newVal; } catch(e) {}
+            try { window[k] = newVal; } catch(e) { console.warn('Store同步全局变量失败:',e); }
           }
         }
       }
@@ -97,7 +97,7 @@
       }
       if (_listeners['*']) {
         _listeners['*'].forEach(function(fn) {
-          try { fn(_state, k); } catch(e) {}
+          try { fn(_state, k); } catch(e) { console.warn('Store监听器执行失败:',e); }
         });
       }
     });

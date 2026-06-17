@@ -35,7 +35,8 @@ def handle_webhook(handler, body):
         handler.send_json({"error": "缺少必填字段 message。请在请求体中提供要发送的消息内容"}, 400)
         return True
 
-    from maestro.shared import CLAUDE_BIN, build_isolated_env
+    from maestro.shared import CLAUDE_BIN
+    from maestro.app_config import build_isolated_env
 
     # 会话复用
     session_id = body.get("session_id", "")

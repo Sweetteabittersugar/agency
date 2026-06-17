@@ -115,6 +115,9 @@ def _check_mcp_running(name, args):
 
     try:
         # 检查是否有匹配的 npx/node 进程
+        # shell=True required here because wmic is a Windows Management Instrumentation command,
+        # not an executable — it must be run through the shell. The query string is fully static
+        # (no user input interpolation), so injection is not a risk.
         r = subprocess.run(
             "wmic process where \"name='node.exe' or name='npx.exe'\" get commandline /format:csv",
             capture_output=True,
@@ -206,7 +209,8 @@ def handle_skills_save(handler, body):
         (skills_dir / "SKILL.md").write_text(content, encoding="utf-8")
         handler.send_json({"ok": True, "name": name})
     except Exception as e:
-        handler.send_json({"error": str(e)}, 500)
+        log.error(f"Skill 保存失败: {e}", exc_info=True)
+        handler.send_json({"error": "Skill 保存失败，请检查日志"}, 500)
     return True
 
 
@@ -278,7 +282,8 @@ def handle_mcp_config(handler, body):
             handler.send_json({"ok": True, "server": server_name, "enabled": enabled})
             return True
         except Exception as e:
-            handler.send_json({"error": str(e)}, 500)
+            log.error(f"MCP 配置切换失败: {e}", exc_info=True)
+            handler.send_json({"error": "MCP 配置切换失败，请检查日志"}, 500)
             return True
 
     # 全量保存模式
@@ -289,7 +294,8 @@ def handle_mcp_config(handler, body):
         )
         handler.send_json({"ok": True})
     except Exception as e:
-        handler.send_json({"error": str(e)}, 500)
+        log.error(f"MCP 配置保存失败: {e}", exc_info=True)
+        handler.send_json({"error": "MCP 配置保存失败，请检查日志"}, 500)
     return True
 
 
@@ -399,7 +405,8 @@ def handle_skills_delete(handler, parsed):
                     shutil.rmtree(skmd.parent)
                     handler.send_json({"ok": True, "name": name})
                 except Exception as e:
-                    handler.send_json({"error": str(e)}, 500)
+                    log.error(f"Skill 删除失败: {e}", exc_info=True)
+                    handler.send_json({"error": "Skill 删除失败，请检查日志"}, 500)
                 return True
         for skmd in base.rglob("SKILL.md.disabled"):
             if skmd.parent.name == name:
@@ -407,7 +414,8 @@ def handle_skills_delete(handler, parsed):
                     shutil.rmtree(skmd.parent)
                     handler.send_json({"ok": True, "name": name})
                 except Exception as e:
-                    handler.send_json({"error": str(e)}, 500)
+                    log.error(f"Skill 删除失败: {e}", exc_info=True)
+                    handler.send_json({"error": "Skill 删除失败，请检查日志"}, 500)
                 return True
     handler.send_json({"error": "未找到该 Skill。请检查名称是否正确"}, 404)
     return True
@@ -494,7 +502,8 @@ def handle_profiles_list(handler, parsed):
         data = json.loads(profiles_path.read_text(encoding="utf-8"))
         handler.send_json(data)
     except Exception as e:
-        handler.send_json({"error": f"读取 profiles.json 失败: {e}"}, 500)
+        log.error(f"读取 profiles.json 失败: {e}", exc_info=True)
+        handler.send_json({"error": "读取配置文件失败，请检查日志"}, 500)
     return True
 
 
@@ -538,7 +547,8 @@ def handle_get_api_key(handler, parsed):
         else:
             handler.send_json({"ok": True, "has_key": False, "provider": "deepseek"})
     except Exception as e:
-        handler.send_json({"ok": False, "error": str(e)}, 500)
+        log.error(f"获取 API Key 失败: {e}", exc_info=True)
+        handler.send_json({"ok": False, "error": "获取 API Key 失败，请检查日志"}, 500)
     return True
 
 
@@ -558,7 +568,8 @@ def handle_save_api_key(handler, body):
         )
         handler.send_json({"ok": True, "saved": True})
     except Exception as e:
-        handler.send_json({"ok": False, "error": str(e)}, 500)
+        log.error(f"保存 API Key 失败: {e}", exc_info=True)
+        handler.send_json({"ok": False, "error": "保存 API Key 失败，请检查日志"}, 500)
     return True
 
 
@@ -590,5 +601,6 @@ def handle_save_prefs(handler, body):
         _PREFS_FILE.write_text(json.dumps(current, ensure_ascii=False), encoding="utf-8")
         handler.send_json({"ok": True})
     except Exception as e:
-        handler.send_json({"ok": False, "error": str(e)}, 500)
+        log.error(f"保存用户偏好失败: {e}", exc_info=True)
+        handler.send_json({"ok": False, "error": "保存用户偏好失败，请检查日志"}, 500)
     return True

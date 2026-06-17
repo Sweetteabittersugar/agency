@@ -16,7 +16,6 @@ import sys
 import json
 import threading
 # threading used by _route_lock (module-level) and route cache
-import yaml
 import time
 import hashlib
 import sqlite3
@@ -43,7 +42,7 @@ import logging
 log = logging.getLogger(__name__)
 
 # ── 路由矩阵（加权关键词）────────────────────────
-from maestro.shared import ROUTING_KEYWORDS as ROUTING
+from maestro.routing_keywords import ROUTING_KEYWORDS as ROUTING
 
 
 # ── 置信度门控阈值 ──
@@ -328,7 +327,7 @@ def route_with_fallback(task, force_agent=None):
                     llm_used = True
 
         if not llm_used:
-            from maestro.shared import load_agents
+            from maestro.agent_loader import load_agents
 
             all_agents = load_agents()
             candidate_names = {kw_agent, sem_agent}

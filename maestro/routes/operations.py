@@ -1,8 +1,11 @@
 """操作历史 — 记录 Agent 的文件/命令操作"""
 
 import json
+import logging
 import time
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 OPS_FILE = Path(__file__).resolve().parent.parent / "operations.jsonl"
 
@@ -19,8 +22,8 @@ def record_operation(agent: str, op_type: str, target: str, detail: str = ""):
     try:
         with open(OPS_FILE, "a", encoding="utf-8") as f:
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error("record_operation write failed: %s", e)
 
 
 def handle_list(handler, parsed):
@@ -37,8 +40,8 @@ def handle_list(handler, parsed):
             if line.strip():
                 ops.append(json.loads(line))
         ops.reverse()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error("handle_list load operations failed: %s", e)
 
     handler.send_json({"ok": True, "operations": ops})
     return True

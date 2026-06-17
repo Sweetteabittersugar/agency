@@ -20,9 +20,10 @@ def handle_message(from_user_id: str, text: str, context_token: str) -> str:
     try:
         import urllib.request
         import json
+        from maestro.app_config import PORT
 
         req = urllib.request.Request(
-            "http://127.0.0.1:8800/api/chat",
+            f"http://127.0.0.1:{PORT}/api/chat",
             data=json.dumps({"task": text, "session_id": f"wx_{from_user_id}"}).encode(),
             headers={"Content-Type": "application/json"},
             method="POST",

@@ -1,16 +1,16 @@
 """Flask 应用入口 — 注册所有路由，保持旧 web.py 兼容"""
 
 import sys
-import os
 import logging
 import threading
+import uuid
 from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from flask import Flask, send_from_directory
+from flask import Flask, g, request, send_from_directory
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 
@@ -20,7 +20,20 @@ from maestro.sandbox import check_docker_available
 
 app = Flask(__name__, static_folder=None)
 CORS(app, origins=["http://localhost:*", "http://127.0.0.1:*"])
-socketio = SocketIO(app, async_mode='threading', cors_allowed_origins="*")
+socketio = SocketIO(app, async_mode='threading', cors_allowed_origins=["http://localhost:*", "http://127.0.0.1:*"])
+
+# ─── 请求级 Request ID ───
+# 每个请求分配唯一 ID，贯穿日志和响应头，便于链路追踪
+@app.before_request
+def assign_request_id():
+    g.request_id = uuid.uuid4().hex[:8]
+
+@app.after_request
+def add_request_id_header(response):
+    rid = getattr(g, 'request_id', None)
+    if rid:
+        response.headers['X-Request-Id'] = rid
+    return response
 
 # ─── 导入所有路由处理函数 ───
 from maestro.routes import (
@@ -382,7 +395,7 @@ def handle_terminal_resize(data):
 
 @socketio.on('terminal_start', namespace='/ws/terminal')
 def handle_terminal_start(data):
-    from maestro.terminal import get_or_create_terminal, _terminals
+    from maestro.terminal import get_or_create_terminal
     sid = data.get('sid', '')
     cwd = data.get('cwd', str(PROJECT_ROOT))
     ts = get_or_create_terminal(sid, cwd)
@@ -449,7 +462,8 @@ def main():
     # 启动 Cron 定时任务调度器（Phase 1）
     def _cron_chat_callback(prompt, provider):
         # P2: Cron 触发时静默发送任务到 Claude。不可移除——定时任务核心回调
-        import os as _os, logging as _logging
+        import os as _os
+        import logging as _logging
         _log = _logging.getLogger(__name__)
         from maestro.ws_chat import process_chat_task
         key_map = {'deepseek':'DEEPSEEK_API_KEY','anthropic':'ANTHROPIC_API_KEY','openai':'OPENAI_API_KEY','google':'GOOGLE_API_KEY','xai':'XAI_API_KEY','qwen':'QWEN_API_KEY','zhipu':'ZHIPU_API_KEY'}

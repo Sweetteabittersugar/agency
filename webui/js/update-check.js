@@ -12,7 +12,7 @@ function checkUpdate(){
       '<code style="background:rgba(0,0,0,.15);padding:2px 8px;border-radius:4px;cursor:pointer;font-size:12px;user-select:all" onclick="copyText(\'' + escAttr(d.upgrade_cmd) + '\')" title="点击复制">' + escHtml(d.upgrade_cmd) + '</code>' +
       '<button onclick="dismissUpdate()" style="background:none;border:none;color:inherit;cursor:pointer;font-size:16px;padding:0 4px;margin-left:8px;opacity:.7" title="关闭">✕</button>';
     document.body.insertBefore(el, document.body.firstChild);
-  }).catch(function(){});
+  }).catch(function(e){console.error('检查更新失败:',e)});
 }
 
 function dismissUpdate(){

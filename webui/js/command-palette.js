@@ -60,7 +60,7 @@ var commandPalette = {
       if (e.target === self.overlay) self.close();
     });
 
-    this.input.addEventListener('input', function() { self._filter(); });
+    this.input.addEventListener('input', function() { if(self._debounceTimer)clearTimeout(self._debounceTimer);self._debounceTimer=setTimeout(function(){self._filter()},150); });
     this.input.addEventListener('keydown', function(e) { self._onKey(e); });
 
     this._registerDefaults();
@@ -416,7 +416,7 @@ var commandPalette = {
     var idx = themes.indexOf(cur);
     var next = themes[(idx + 1) % themes.length];
     html.setAttribute('data-theme', next);
-    try { localStorage.setItem('agency_theme', next); } catch(e) {}
+    try { localStorage.setItem('agency_theme', next); } catch(e) { console.warn('保存主题失败:',e); }
     var labels = {dark:'暗色', light:'亮色', 'high-contrast':'高对比度'};
     showToast('主题: ' + (labels[next] || next));
   },
@@ -449,7 +449,7 @@ var commandPalette = {
     var self = this;
     this._keyHandler = function(e) {
       var custom = {};
-      try{ custom = JSON.parse(localStorage.getItem('custom_shortcuts') || '{}'); }catch(e){}
+      try{ custom = JSON.parse(localStorage.getItem('custom_shortcuts') || '{}'); }catch(e){ console.warn('加载自定义快捷键失败:',e); }
       function matchShortcut(action, defaultKeys){
         var keys = custom[action] || defaultKeys;
         var parts = keys.split('+');
@@ -551,7 +551,7 @@ function updateShortcutBindings(){
   try {
     var savedTheme = localStorage.getItem('agency_theme');
     if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
-  } catch(e) {}
+  } catch(e) { console.warn('恢复主题失败:',e); }
   // 延迟初始化，确保其他模块已就绪
   setTimeout(function() { commandPalette.init(); }, 200);
 })();

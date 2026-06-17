@@ -20,7 +20,7 @@ function setTrustMode(mode){
     method:'POST',
     headers:{'Content-Type':'application/json','X-Agency-Trust-Mode':mode},
     body:JSON.stringify({decision:'config',tool_name:'trust_mode',risk:mode,reason:'用户切换信任模式'})
-  }).catch(function(){});
+  }).catch(function(e){console.error('发送信任模式决策失败:',e)});
 }
 
 function updateTrustModeUI(){

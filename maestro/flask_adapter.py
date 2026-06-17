@@ -1,7 +1,10 @@
 """Flask 适配器 — 让现有路由处理函数在 Flask 上运行，零业务逻辑改动"""
 
+import logging
 from flask import request, Response, jsonify
 import json
+
+logger = logging.getLogger(__name__)
 
 
 class _Parsed(dict):
@@ -111,9 +114,11 @@ def adapt_handler(old_handler_func):
             try:
                 old_handler_func(adapter, parsed)
             except Exception as e:
-                return jsonify({"ok": False, "error": str(e)}), 500
+                logger.error(f"适配器执行失败: {e}", exc_info=True)
+                return jsonify({"ok": False, "error": "操作失败，请检查日志"}, 500)
         except Exception as e:
-            return jsonify({"ok": False, "error": str(e)}), 500
+            logger.error(f"适配器执行失败: {e}", exc_info=True)
+            return jsonify({"ok": False, "error": "操作失败，请检查日志"}, 500)
 
         if adapter._using_sse and adapter._sse_buffer:
             # SSE 流式响应 — 从缓冲区生成

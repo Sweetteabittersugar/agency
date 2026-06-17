@@ -14,7 +14,7 @@ try{apiProvider=localStorage.getItem('agency_api_provider')||'deepseek'}catch(_)
 try{
   fetch('/api/config/key').then(function(r){return r.json()}).then(function(d){
     if(d.has_key){ apiKey=d.key||apiKey; apiProvider=d.provider||apiProvider; }
-  }).catch(function(){});
+  }).catch(function(e){console.error('加载API Key配置失败:',e);});
 }catch(_){}
 try{authToken=localStorage.getItem('agency_auth_token')||''}catch(_){}
 
@@ -34,14 +34,14 @@ try{authToken=localStorage.getItem('agency_auth_token')||''}catch(_){}
         if(k==='agency_profile')agencyProfile=prefs[k];
       }
     });
-  }).catch(function(){});
+  }).catch(function(e){console.error('加载服务端偏好失败:',e)});
 })();
 
 // 通用偏好同步：任何 localStorage 变更后调用，异步上传到服务端
 window.syncPrefs = function(key, value){
   try{
     var payload={};payload[key]=value;
-    fetch('/api/config/prefs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(function(){});
+    fetch('/api/config/prefs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(function(e){console.error('同步偏好失败:',e)});
   }catch(_){}
 };
 
@@ -79,7 +79,7 @@ pInput&&pInput.addEventListener('change',function(){projDir=pInput.value.trim();
 
 // ── Agent 搜索绑定 ──
 var agentSearchEl=$('agent-search');
-if(agentSearchEl)agentSearchEl.addEventListener('input',function(){var q=agentSearchEl.value.toLowerCase();renderAgents(agents.filter(function(a){return a.name.includes(q)||(a.description||'').includes(q)||(a.keywords||[]).some(function(k){return k.includes(q)})}))});
+if(agentSearchEl){var _asTimer=null;agentSearchEl.addEventListener('input',function(){if(_asTimer)clearTimeout(_asTimer);_asTimer=setTimeout(function(){var q=agentSearchEl.value.toLowerCase();renderAgents(agents.filter(function(a){return a.name.includes(q)||(a.description||'').includes(q)||(a.keywords||[]).some(function(k){return k.includes(q)})}))},150)})}
 
 // ── 侧边栏导航 ──
 (function initSidebarNav(){
@@ -108,7 +108,7 @@ function setProfile(level){
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({level: level})
-  }).catch(function(){});
+  }).catch(function(e){console.error('保存Profile失败:',e)});
   showToast(t('profileChanged').replace('{name}', PROFILE_LABELS[level]).replace('{rounds}', PROFILE_ROUNDS[level]));
 }
 function updateProfileUI(){
@@ -147,7 +147,7 @@ function loadProfileDescriptions(){
       loadedProfileDescriptions[k] = profiles[k].description || PROFILE_DESC_FALLBACK[k] || '';
     });
     updateProfileUI();
-  }).catch(function(){});
+  }).catch(function(e){console.error('加载Profile描述失败:',e)});
 }
 
 // ── 初始加载 ──
@@ -172,7 +172,7 @@ api.get('/api/conversations').then(function(d){
           else if(m.role==='assistant'){var bubble=addMsg(p,'assistant',typeof renderMD==='function'?renderMD(m.content):m.content);if(typeof highlightCode==='function')highlightCode(bubble)}
         });
         renderHistory();
-      }).catch(function(){});
+      }).catch(function(e){console.error('加载会话失败:',e)});
     });
     if(typeof refreshUI==='function')setTimeout(refreshUI,300);
   }else{
@@ -526,7 +526,7 @@ window.doGlobalSearch = function() {
       '</div>';
     }).join('');
     res.innerHTML += '<div style="font-size:9px;color:var(--muted);padding:8px;text-align:center">扫描 ' + d.total + ' 个会话，找到 ' + d.results.length + ' 条</div>';
-  }).catch(function(e){ res.innerHTML = '<div style="color:var(--danger);font-size:12px;padding:12px">搜索失败: ' + e.message + '</div>'; });
+  }).catch(function(e){ console.error('全局搜索失败:',e); res.innerHTML = '<div style="color:var(--danger);font-size:12px;padding:12px">操作失败，请重试</div>'; });
 };
 
 /* P1-3: 全局搜索结果点击——根据来源类型执行实际跳转，而非仅弹 toast */

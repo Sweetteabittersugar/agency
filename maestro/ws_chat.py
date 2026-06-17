@@ -3,7 +3,8 @@
 Phase 2: 聊天 SSE → WebSocket 升级"""
 # 不可移除——此模块是 /ws/chat namespace 的核心处理逻辑
 
-import json, time, os, logging
+import time
+import logging
 
 
 def _ws_estimate_tokens(text: str, model: str = "") -> int:
@@ -60,7 +61,8 @@ def process_chat_task(data, emit_callback):
         return {'ok': False, 'error': '未配置 API Key'}
 
     from maestro.main import simple_route
-    from maestro.shared import PROJECT_ROOT, build_isolated_env
+    from maestro.shared import PROJECT_ROOT
+    from maestro.app_config import build_isolated_env
     from maestro.claude_session import get_or_create
     from maestro.models import resolve_model
 
@@ -139,7 +141,7 @@ def process_chat_task(data, emit_callback):
     # estimate_cost() 只在无 Claude 进程时做 fallback（如读历史 JSONL）
     cost = done_data.get('cost', 0)
     from maestro.models import check_compaction
-    comp = check_compaction(model_used, cs._total_in_tokens)
+    comp = check_compaction(model_used, cs.in_tokens)
 
     # Phase 2: 费用记录——写入 Web 费用日志
     # 2026-06 修复：参数顺序对齐 web_cost.record_cost 签名 (project_root, time_str, model, ...)
@@ -167,9 +169,9 @@ def process_chat_task(data, emit_callback):
         'ok': True,
         'model': model_used,
         'agent': agent_name,
-        'total_in': cs._total_in_tokens,
-        'total_out': cs._total_out_tokens,
-        'total_cost': cs._total_cost,
+        'total_in': cs.in_tokens,
+        'total_out': cs.out_tokens,
+        'total_cost': cs.cost,
         'in_tokens': in_tokens,
         'out_tokens': out_tokens,
         'cost': round(cost, 6),

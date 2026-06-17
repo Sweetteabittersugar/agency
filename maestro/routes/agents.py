@@ -11,7 +11,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 def handle_list(handler, parsed):
     """GET /api/agents — 所有 Agent 列表"""
-    from maestro.shared import load_agents
+    from maestro.agent_loader import load_agents
 
     # profile filter: only pass when explicitly requested via ?profile=minimal|standard|full
     # parse query params from ParseResult (namedtuple, not dict — .get() won't work)
@@ -92,7 +92,8 @@ def handle_update(handler, body):
         (iso_dir / f"{name}.md").write_text(content, encoding="utf-8")
         handler.send_json({"ok": True, "name": name})
     except Exception as e:
-        handler.send_json({"error": str(e)}, 500)
+        log.error(f"Agent 更新失败: {e}", exc_info=True)
+        handler.send_json({"error": "Agent 更新失败，请检查日志"}, 500)
     return True
 
 

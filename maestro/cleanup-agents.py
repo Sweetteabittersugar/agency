@@ -38,6 +38,9 @@ def log(msg: str):
 
 def get_claude_processes() -> list[dict]:
     """通过 PowerShell 获取所有 claude.exe 进程详情"""
+    # shell=True required: PowerShell CLI command must run via shell. The cmd string is fully
+    # static with no user input — the only dynamic part is the process name 'claude.exe' which
+    # is a compile-time constant. See also _search_process() below for the same pattern.
     ps_cmd = (
         "powershell -NoProfile -ExecutionPolicy Bypass -Command "
         '"Get-CimInstance Win32_Process -Filter \\"Name=\'claude.exe\'\\" | '
@@ -117,6 +120,10 @@ def _search_process(method):
       - 匹配类型: "launch" 用 _launch_{task_id} 模式, "direct" 用 {task_id} 模式
     """
     proc_name, pattern, _match_type = method
+    # shell=True required: same reason as get_claude_processes() — PowerShell CLI must be run
+    # through the shell. The proc_name and pattern are validated by the caller: proc_name comes
+    # from a fixed list of known process names (see find_task_processes()), and pattern is
+    # either a task_id validated by regex in find_task_processes() or a build-time constant.
     ps_cmd = (
         "powershell -NoProfile -ExecutionPolicy Bypass -Command "
         f'"Get-CimInstance Win32_Process -Filter \\"Name=\'{proc_name}\'\\" | '

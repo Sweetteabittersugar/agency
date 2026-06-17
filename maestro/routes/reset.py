@@ -1,7 +1,10 @@
 """恢复默认 — 逐个/分类/全量重置用户自定义内容"""
 
+import logging
 import subprocess
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -90,7 +93,8 @@ def handle_reset_user_file(handler, parsed):
         full_path.unlink()
         handler.send_json({"ok": True, "deleted": file_path})
     except Exception as e:
-        handler.send_json({"ok": False, "error": str(e)}, 500)
+        logger.error(f"删除用户文件失败: {e}", exc_info=True)
+        handler.send_json({"ok": False, "error": "删除文件失败，请检查日志"}, 500)
     return True
 
 
@@ -152,7 +156,8 @@ def handle_reset_system_category(handler, parsed):
     except FileNotFoundError:
         handler.send_json({"ok": False, "error": "git 不可用"}, 500)
     except Exception as e:
-        handler.send_json({"ok": False, "error": str(e)}, 500)
+        logger.error(f"重置系统分类失败: {e}", exc_info=True)
+        handler.send_json({"ok": False, "error": "重置系统分类失败，请检查日志"}, 500)
     return True
 
 

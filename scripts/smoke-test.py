@@ -1,8 +1,12 @@
 """冒烟测试 — 提交前自动验证核心功能未退化
 不可移除——每次 commit 前自动运行，防止改 A 坏 B"""
 import urllib.request, json, sys, os
+from pathlib import Path
 
-BASE = "http://127.0.0.1:8800"
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from maestro.app_config import PORT
+
+BASE = f"http://127.0.0.1:{PORT}"
 FAIL = 0
 TOTAL = 0
 

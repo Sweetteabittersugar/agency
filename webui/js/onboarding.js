@@ -8,6 +8,11 @@
   }
 
   window.dismissOnboard = function() {
+    // P0 fix: 停止占位符轮播定时器
+    if (window._placeholderTimer) {
+      clearInterval(window._placeholderTimer);
+      window._placeholderTimer = null;
+    }
     var overlay = document.getElementById('onboard-overlay');
     if (overlay) overlay.style.display = 'none';
     try { localStorage.setItem('agency-onboarded', '1'); } catch(e) {}
@@ -59,7 +64,8 @@
     }
   }
 
-  setInterval(rotatePlaceholder, 4000);
+  // P0 fix: 保存定时器 ID 供 dismissOnboard 清理
+  window._placeholderTimer = setInterval(rotatePlaceholder, 4000);
   setTimeout(rotatePlaceholder, 500);
 })();
 

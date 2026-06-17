@@ -1,7 +1,10 @@
 """首次配置向导路由"""
 
+import logging
 import os
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 def _find_key():

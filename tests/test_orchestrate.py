@@ -117,18 +117,18 @@ class TestTaskClassification:
     """classify_task_complexity() 返回 'simple'/'normal'/'complex'"""
 
     def test_simple(self):
-        from maestro.shared import classify_task_complexity
+        from maestro.task_classifier import classify_task_complexity
         result = classify_task_complexity("修复一个小bug")
         assert result in ("simple", "normal", "complex")
 
     def test_complex(self):
-        from maestro.shared import classify_task_complexity
+        from maestro.task_classifier import classify_task_complexity
         result = classify_task_complexity(
             "设计完整的微服务系统，包含认证、数据库、缓存、消息队列"
         )
         assert result in ("simple", "normal", "complex")
 
     def test_empty(self):
-        from maestro.shared import classify_task_complexity
+        from maestro.task_classifier import classify_task_complexity
         result = classify_task_complexity("")
         assert result in ("simple", "normal", "complex")

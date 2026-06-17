@@ -361,7 +361,8 @@ def _call_haiku(
     prompt: str, api_key: str = "", api_provider: str = "deepseek", timeout: int = 30
 ) -> str:
     """调用轻量模型（haiku 级别）"""
-    from maestro.shared import CLAUDE_BIN, build_isolated_env
+    from maestro.shared import CLAUDE_BIN
+    from maestro.app_config import build_isolated_env
 
     if not CLAUDE_BIN:
         log.warning("Claude CLI 不可用，跳过 pass@k 验证")

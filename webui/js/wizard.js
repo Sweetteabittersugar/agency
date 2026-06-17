@@ -3,7 +3,7 @@ var setupData=null,_setupStep=0,_demoMode=false,_wizardProvider='',_wizardRegion
 fetch('/api/setup/status').then(function(r){return r.json()}).then(function(d){
   setupData=d;
   if(d.needs_setup){showSetupStep(0)}
-}).catch(function(){});
+}).catch(function(e){console.error('加载安装状态失败:',e)});
 
 function showSetupStep(step){
   _setupStep=step;
@@ -324,7 +324,7 @@ function setupFinish(){
         apiKey=setupData._api_key||'';apiProvider=setupData._api_provider||'deepseek';
         localStorage.setItem('agency_api_key',apiKey);localStorage.setItem('agency_api_provider',apiProvider);
         // 同步到服务端，防止重启丢失
-        if(apiKey){fetch('/api/config/key',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:apiKey,provider:apiProvider})}).catch(function(){})}
+        if(apiKey){fetch('/api/config/key',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:apiKey,provider:apiProvider})}).catch(function(e){console.error('同步API Key失败:',e)})}
         if(remoteToken){authToken=remoteToken;localStorage.setItem('agency_auth_token',remoteToken)}
         _demoMode=false;
         showToast('配置完成！发送一条消息试试吧 🚀');

@@ -149,7 +149,7 @@ function loadCostOverview(){
     drawModelBars(d.by_model||[]);
     drawOpusRatio(d.by_model||[]);
     renderCostAlerts(d.alerts||[]);
-  }).catch(function(e){console.debug('loadCostOverview failed',e)});
+  }).catch(function(e){console.error('loadCostOverview failed',e)});
 }
 function drawCostTrend(byDate){
   var c=document.getElementById('cost-trend-canvas');if(!c)return;
@@ -237,10 +237,10 @@ function showPermToast(data){
   setTimeout(function(){if(document.body.contains(t)){sendPermDecision(data,'deny');t.remove()}},30000);
 }
 function sendPermDecision(data,decision){
-  api.post('/api/permissions/decision',{tool_name:data.tool_name,decision:decision,risk:data.risk||{},reason:decision}).catch(function(){});
+  api.post('/api/permissions/decision',{tool_name:data.tool_name,decision:decision,risk:data.risk||{},reason:decision}).catch(function(e){console.error('权限决策失败:',e)});
 }
 function addAllowRule(data){
-  api.post('/api/permissions/allowlist',{rule:data.tool_name}).then(function(){showToast('已添加规则: '+data.tool_name)}).catch(function(){});
+  api.post('/api/permissions/allowlist',{rule:data.tool_name}).then(function(){showToast('已添加规则: '+data.tool_name)}).catch(function(e){console.error('添加允许规则失败:',e)});
 }
 function loadPermHistory(){
   api.get('/api/permissions/history?limit=100').then(function(d){
@@ -270,7 +270,7 @@ function loadContextDetail(){
       html+='输入 '+(d.input_tokens||0).toLocaleString()+' · 输出 '+(d.output_tokens||0).toLocaleString()+' · 费用 $'+(d.cost_est?d.cost_est.total.toFixed(6):'0')+(d.last_update?' · '+d.last_update:'');
       detail.innerHTML=html;
     }
-  }).catch(function(){var domEl=$('hctx-detail');if(domEl)domEl.innerHTML='无法加载上下文数据。服务可能未启动，请刷新页面重试'});
+  }).catch(function(e){console.error('加载上下文详情失败:',e);var domEl=$('hctx-detail');if(domEl)domEl.innerHTML='无法加载上下文数据。服务可能未启动，请刷新页面重试'});
   if(_ctxTimer)clearInterval(_ctxTimer);
   _ctxTimer=setInterval(function(){if($('harnessOverlay').classList.contains('on'))loadContextDetail()},10000);
 }
@@ -286,14 +286,14 @@ function loadSubagents(){
     domEl.innerHTML=html}else{domEl.innerHTML='<span style="color:var(--muted)">暂无 SubAgent 记录</span>'}
     if(_subTimer)clearInterval(_subTimer);
     _subTimer=setInterval(function(){if($('harnessOverlay').classList.contains('on'))loadSubagents()},5000);
-  }).catch(function(){var domEl=$('hsub-tree');if(domEl)domEl.innerHTML='无法加载子任务列表。服务可能未启动，请刷新页面重试'});
+  }).catch(function(e){console.error('加载 SubAgent 列表失败:',e);var domEl=$('hsub-tree');if(domEl)domEl.innerHTML='无法加载子任务列表。服务可能未启动，请刷新页面重试'});
 }
 function loadHooksLog(){
   var hlogs=window._hlogs||[];
   api.get('/api/harness/events?limit=50').then(function(d){
     var events=d.events||[],domEl=$('hhooks-log');if(!domEl)return;
     if(events.length){domEl.innerHTML=events.map(function(e){return'<div style="padding:3px 6px;margin:1px 0;font-size:10px;border-left:2px solid var(--accent);background:var(--surface2)"><strong>'+escHtml(e.type)+'</strong> <span style="color:var(--muted)">'+new Date(e.ts*1000).toLocaleTimeString()+'</span></div>'}).join('')}else{domEl.innerHTML='暂无 Hook 事件'}
-  }).catch(function(){var domEl=$('hhooks-log');if(domEl)domEl.innerHTML='无法加载 Hook 事件。服务可能未启动，请刷新页面重试'});
+  }).catch(function(e){console.error('加载 Hook 事件失败:',e);var domEl=$('hhooks-log');if(domEl)domEl.innerHTML='无法加载 Hook 事件。服务可能未启动，请刷新页面重试'});
 }
 function loadMCPDetail(){
   api.get('/api/mcp/status').then(function(d){
@@ -301,14 +301,14 @@ function loadMCPDetail(){
     var servers=d.servers||[];
     var html=servers.length?servers.map(function(s){return'<div style="padding:8px 10px;margin:4px 0;background:var(--surface2);border-radius:var(--radius-sm)"><div style="font-weight:600;font-size:12px">'+escHtml(s.name)+' <span style="font-size:9px;color:'+(s.running?'var(--accent)':'var(--muted)')+'">● '+(s.running?'活跃':'离线')+'</span></div><div style="font-size:10px;color:var(--muted)">'+escHtml(s.command||'')+(s.args||[]).join(' ')+'</div></div>'}).join(''):'暂无 MCP 服务器';
     domEl.innerHTML=html;if(sel)sel.innerHTML=html;
-  }).catch(function(){var domEl=$('hmcp-list');if(domEl)domEl.innerHTML='无法加载 MCP 状态。服务可能未启动，请刷新页面重试'});
+  }).catch(function(e){console.error('加载 MCP 列表失败:',e);var domEl=$('hmcp-list');if(domEl)domEl.innerHTML='无法加载 MCP 状态。服务可能未启动，请刷新页面重试'});
 }
 function loadDashboardPermissionAudit(){
   api.get('/api/permissions/audit?limit=50').then(function(d){
     var domEl=document.getElementById('perm-audit-list');if(!domEl)return;
     var logs=d.logs||[],stats=d.stats||{};
     if(logs.length){domEl.innerHTML='<div style="margin-bottom:4px;font-size:10px;color:var(--text2)">总计 '+(stats.total||logs.length)+' · 允许 '+(stats.allowed||0)+' · 拒绝 '+(stats.denied||0)+'</div>'+logs.slice(0,20).map(function(l){var color=l.decision==='allow'?'var(--accent)':'var(--danger)';return'<div style="padding:2px 6px;margin:1px 0;font-size:10px;border-left:2px solid '+color+'"><span style="color:'+color+'">'+(l.decision==='allow'?'✓':'✗')+'</span> '+escHtml(l.tool_name||'?')+' <span style="color:var(--muted)">'+escHtml(l.time||'')+'</span></div>'}).join('')}else{domEl.innerHTML='暂无审计记录'}
-  }).catch(function(){var domEl=document.getElementById('perm-audit-list');if(domEl)domEl.innerHTML='无法加载审计日志'});
+  }).catch(function(e){console.error('加载审计日志失败:',e);var domEl=document.getElementById('perm-audit-list');if(domEl)domEl.innerHTML='无法加载审计日志'});
 }
 function loadEnvStatus(){
   api.get("/api/harness/status").then(function(d){
@@ -359,7 +359,7 @@ function loadEnvStatus(){
     html+='</div>';
     if(d.error)html+='<div style="padding:6px 10px;margin:4px 0;background:rgba(248,113,113,.1);border-left:2px solid var(--danger);border-radius:3px;font-size:10px;color:var(--danger)">'+escHtml(d.error)+'</div>';
     domEl.innerHTML=html;
-  }).catch(function(){var domEl=document.getElementById("henv-status");if(domEl)domEl.innerHTML="无法加载环境状态。服务可能未启动，请刷新页面重试"});
+  }).catch(function(e){console.error('加载环境状态失败:',e);var domEl=document.getElementById("henv-status");if(domEl)domEl.innerHTML="无法加载环境状态。服务可能未启动，请刷新页面重试"});
 }
 
 /* ── 测试运行器 ── */
@@ -372,17 +372,17 @@ function runTest(){
   var body={url:url};
   var od=localStorage.getItem('agency_output_dir');if(od)body.output_dir=od;
   apiFetch('/api/test/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){return r.json()}).then(function(d){
-    if(d.error){showToast(d.error,true);if(btn){btn.disabled=false;btn.textContent='▶ 开始测试'};return}
+    if(d.error){showToast(d.error||'操作失败，请重试',true);if(btn){btn.disabled=false;btn.textContent='▶ 开始测试'};return}
     _testRunId=d.run_id;if(statusEl)statusEl.textContent='运行中: '+_testRunId;
     pollTestStatus();
-  }).catch(function(e){showToast('启动测试失败: '+e.message,true);if(btn){btn.disabled=false;btn.textContent='▶ 开始测试'}});
+  }).catch(function(e){console.error('启动测试失败:',e);showToast('启动测试失败，请检查网络连接',true);if(btn){btn.disabled=false;btn.textContent='▶ 开始测试'}});
 }
 function pollTestStatus(){
   if(!_testRunId)return;
   if(_testPollTimer)clearTimeout(_testPollTimer);
   apiFetch('/api/test/status/'+_testRunId).then(function(r){return r.json()}).then(function(d){
     var results=$('test-results'),screenshot=$('test-screenshot'),statusEl=$('test-status'),btn=$('test-run-btn');
-    if(d.error){showToast(d.error,true);if(btn){btn.disabled=false;btn.textContent='▶ 开始测试'};return}
+    if(d.error){showToast(d.error||'操作失败，请重试',true);if(btn){btn.disabled=false;btn.textContent='▶ 开始测试'};return}
     if(d.status==='running'){
       if(statusEl)statusEl.textContent='运行中…';
       _testPollTimer=setTimeout(pollTestStatus,2000);
@@ -529,7 +529,7 @@ window.loadWorktrees = function() {
       });
     }
     list.innerHTML = html;
-  }).catch(function(e){ list.innerHTML = '<span style="color:var(--danger)">加载失败: ' + e.message + '</span>'; });
+  }).catch(function(e){ console.error('加载工作树失败:',e); list.innerHTML = '<span style="color:var(--danger)">加载失败，请重试</span>'; });
 };
 
 window.createWorktree = function() {
@@ -574,6 +574,21 @@ window.addEventListener('beforeunload', function() {
   if (window._ctxTimer) { clearInterval(window._ctxTimer); window._ctxTimer = null; }
   if (window._subTimer) { clearInterval(window._subTimer); window._subTimer = null; }
   if (window._testPollTimer) { clearTimeout(window._testPollTimer); window._testPollTimer = null; }
+});
+
+// visibilitychange: 页面隐藏时暂停轮询定时器，避免后台耗电 (P0 fix)
+document.addEventListener('visibilitychange', function() {
+  if (document.hidden) {
+    if (window._ctxTimer) { clearInterval(window._ctxTimer); window._ctxTimer = null; }
+    if (window._subTimer) { clearInterval(window._subTimer); window._subTimer = null; }
+  } else {
+    // 页面重新可见 → 如果仪表盘还开着，重新加载（函数内部会重建定时器）
+    var ov = document.getElementById('harnessOverlay');
+    if (ov && ov.classList.contains('on')) {
+      if (!window._ctxTimer && typeof loadContextDetail === 'function') loadContextDetail();
+      if (!window._subTimer && typeof loadSubagents === 'function') loadSubagents();
+    }
+  }
 });
 
 // ES module bridge

@@ -1,6 +1,7 @@
 """会话回放 API — 从 JSONL 重建完整会话事件时间线（P2-2 事件溯源）"""
 
-import json, logging
+import json
+import logging
 from pathlib import Path
 
 log = logging.getLogger(__name__)

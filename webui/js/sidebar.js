@@ -40,9 +40,10 @@ function loadSidebarDashboard() {
     var total = d.total_cost || (d.total && d.total.cost) || 0;
     var el = document.getElementById('sidebar-cost-summary');
     if (el) el.innerHTML = '<div style="display:flex;justify-content:space-between;padding:8px;"><span>今日费用</span><strong>$' + Number(total).toFixed(4) + '</strong></div>';
-  }).catch(function() {
+  }).catch(function(e) {
     var el = document.getElementById('sidebar-cost-summary');
     if (el) el.textContent = '无法加载';
+    console.error('加载费用概览失败:', e);
   });
   api.get('/api/operations').then(function(d) {
     var ops = (d.operations || []).slice(0, 3);
@@ -53,9 +54,10 @@ function loadSidebarDashboard() {
     }).join('');
     var el = document.getElementById('sidebar-ops-summary');
     if (el) el.innerHTML = html || '<div style="padding:8px;color:var(--muted);font-size:11px;">暂无操作</div>';
-  }).catch(function() {
+  }).catch(function(e) {
     var el = document.getElementById('sidebar-ops-summary');
     if (el) el.textContent = '无法加载';
+    console.error('加载操作记录失败:', e);
   });
 }
 
@@ -65,17 +67,19 @@ function loadSidebarConnect() {
     if (el) el.innerHTML =
       '<span style="color:' + (d.logged_in ? 'var(--success)' : 'var(--muted)') + '">' + (d.logged_in ? '✅ 已连接' : '⚪ 未连接') + '</span>' +
       (d.logged_in ? '' : '<br><a href="#" onclick="toggleDashboard();return false" style="font-size:11px;color:var(--accent);">去登录 →</a>');
-  }).catch(function() {
+  }).catch(function(e) {
     var el = document.getElementById('sidebar-wx-status');
     if (el) el.textContent = '加载失败';
+    console.error('加载微信状态失败:', e);
   });
   api.get('/api/mcp/status').then(function(d) {
     var servers = d.servers || [];
     var el = document.getElementById('sidebar-mcp-status');
     if (el) el.innerHTML = servers.length + ' 个服务器' + (servers.length ? '' : ' (未配置)');
-  }).catch(function() {
+  }).catch(function(e) {
     var el = document.getElementById('sidebar-mcp-status');
     if (el) el.textContent = '无法加载';
+    console.error('加载 MCP 状态失败:', e);
   });
 }
 
@@ -89,7 +93,7 @@ function checkDemoBanner() {
         banner.style.display = 'block';
       }
     })
-    .catch(function() {});
+    .catch(function(e){console.error('检查Demo配置失败:',e)});
 }
 
 window.dismissDemoBanner = function() {
@@ -167,7 +171,7 @@ function batchDeleteAgents(){
       renderAgents(agents);
     }, 5000, function(){
       names.forEach(function(n){
-        api.post('/api/agent-delete', {name: n}).catch(function(){});
+        api.post('/api/agent-delete', {name: n}).catch(function(e){console.error('删除Agent失败:',e)});
       });
     });
   });
@@ -319,7 +323,7 @@ function showDemoActionPopup(label){
 function deleteAgent(name){if(agents.length<=3){showToast(t('minAgents'),false,'warn');return}showDeleteConfirm(t('confirmDelete')+' ('+escHtml(name)+')',function(){var agentData=agents.find(function(a){return a.name===name});if(!agentData)return;var idx=agents.indexOf(agentData);agents.splice(idx,1);renderAgents(agents);showUndoableToast(t('agentDeleted')+' '+name,function(){agents.splice(idx,0,agentData);renderAgents(agents)},5000,function(){api.post('/api/agent-delete',{name:name}).then(function(d){if(!d.ok){showToast(d.error||t('error'),true);loadAgents()}}).catch(function(e){showToast(t('error')+': '+e.message,true);loadAgents()})})})}
 function viewAgentPrompt(name){currentPromptAgent=name;$('apm-title').textContent='编辑: '+name;$('apm-textarea').value='加载中…';$('apm-footer').innerHTML='<button class="new-chat-btn" onclick="saveAgentPrompt()" style="font-size:11px;padding:5px 14px;width:auto">💾 保存</button><button class="btn" onclick="clearAgentPromptText()" style="font-size:11px;padding:5px 8px">🗑 清空</button><button class="btn" onclick="closeAgentPrompt()">取消</button>';$('agentPromptOverlay').classList.add('on');api.get('/api/agents/'+encodeURIComponent(name)).then(function(d){if(d.error){showToast(d.error,!0);return}$('apm-textarea').value=d.content;$('apm-textarea')._originalContent=d.content}).catch(function(e){showToast('无法加载 Agent 内容: '+(e.message||'请检查网络连接后刷新重试'),!0)})}
 function closeAgentPrompt(){$('agentPromptOverlay').classList.remove('on');currentPromptAgent='';$('apm-footer').innerHTML='<button class="new-chat-btn" onclick="saveAgentPrompt()" style="font-size:11px;padding:5px 14px;width:auto">💾 保存</button><button class="btn" onclick="closeAgentPrompt()">取消</button>'}
-function saveAgentPrompt(){var content=$('apm-textarea').value;var oldContent=$('apm-textarea')._originalContent||'';if(!currentPromptAgent||!content)return;api.post('/api/agent-update',{name:currentPromptAgent,content:content}).then(function(d){if(d.ok){$('apm-textarea')._originalContent=content;closeAgentPrompt();loadAgents();showUndoableToast(t('promptSaved'),function(){api.post('/api/agent-update',{name:currentPromptAgent,content:oldContent}).then(function(){loadAgents()}).catch(function(){})},5000)}else{showToast(d.error||t('saveFail'),true)}}).catch(function(e){showToast(t('saveFail')+': '+(e.message||''),true)})}
+function saveAgentPrompt(){var content=$('apm-textarea').value;var oldContent=$('apm-textarea')._originalContent||'';if(!currentPromptAgent||!content)return;api.post('/api/agent-update',{name:currentPromptAgent,content:content}).then(function(d){if(d.ok){$('apm-textarea')._originalContent=content;closeAgentPrompt();loadAgents();showUndoableToast(t('promptSaved'),function(){api.post('/api/agent-update',{name:currentPromptAgent,content:oldContent}).then(function(){loadAgents()}).catch(function(e){console.error('恢复Agent内容失败:',e)})},5000)}else{showToast(d.error||t('saveFail'),true)}}).catch(function(e){showToast(t('saveFail')+': '+(e.message||''),true)})}
 function loadSidebarSkills(){
   if(!isFeatureUnlocked('skills')){
     var domEl=$('sidebar-skills-list');if(domEl)domEl.innerHTML='<div style="text-align:center;padding:30px 16px;color:var(--muted)"><div style="font-size:28px;margin-bottom:8px">🔒</div><p style="font-size:12px">'+t('featureLocked').replace('{day}', FEATURE_UNLOCK_DAYS['skills']||7)+'</p></div>';
@@ -370,7 +374,7 @@ function renderHistory(){historyList.innerHTML=conversations.slice(0,30).map(fun
 window.searchHistory=function(q){if(!q||!q.trim()){renderHistory();return}api.get('/api/sessions/search?q='+encodeURIComponent(q.trim())).then(function(d){var results=d.results||[];if(!results.length){historyList.innerHTML='<div class="empty-state"><div class="es-icon">🔍</div><div class="es-text">未找到匹配的对话</div></div>';return}var html='';results.forEach(function(r){var ts=new Date(r.ts*1000).toLocaleString('zh-CN');html+='<div class="history-item" onclick="loadSessionSearch(\''+r.session_id+'\')" style="cursor:pointer"><div style="display:flex;align-items:center"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">📄 '+escHtml(r.session_id)+'</span></div><div class="time">'+escHtml(ts)+' · '+escHtml(r.type)+'</div><div class="preview">'+escHtml(r.snippet)+'</div></div>'});historyList.innerHTML=html}).catch(function(){historyList.innerHTML='<div class="empty-state"><div class="es-icon">⚠</div><div class="es-text">搜索失败</div></div>'})}
 window.loadSessionSearch=function(sessionId){api.get('/api/sessions/'+sessionId).then(function(data){if(!data.events||!data.events.length){showToast('会话为空');return}var p=getFocusedPanel();p.currentConvo={id:Date.now(),title:'搜索: '+sessionId.slice(0,8),messages:[],sessionId:sessionId};p.dom.messages.innerHTML='';p.dom.route.innerHTML='';data.events.forEach(function(evt){if(evt.type==='user_message'){var task=evt.data.task||'';addMsg(p,'user',task);p.currentConvo.messages.push({role:'user',content:task})}else if(evt.type==='agent_response'){var resp=evt.data.response||'';var b=addMsg(p,'assistant',typeof renderMD==='function'?renderMD(resp):resp);if(typeof renderMD==='function')highlightCode(b);p.currentConvo.messages.push({role:'assistant',content:resp})}else if(evt.type==='route_decision'){if(evt.data.agent){p._lastAgent=evt.data.agent;p.dom.route.innerHTML='<span style="color:var(--accent);font-size:9px">📌 '+escHtml(evt.data.agent)+'</span>'}}});p.dom.messages.scrollTop=p.dom.messages.scrollHeight}).catch(function(){showToast('加载会话失败')})}
 function loadConvo(id){var c=conversations.find(function(x){return x.id===Number(id)});if(!c)return;var p=getFocusedPanel();p.currentConvo={id:c.id,title:c.title,messages:c.messages.slice(),sessionId:c.sessionId||''};p.dom.messages.innerHTML='';p.dom.route.innerHTML='';c.messages.forEach(function(m){addMsg(p,m.role,m.content)});p.dom.messages.scrollTop=p.dom.messages.scrollHeight;setTimeout(function(){p.dom.messages.querySelectorAll('.bubble').forEach(highlightCode)},100)}
-function delConvo(id,e){e.stopPropagation();var convo=conversations.find(function(c){return c.id===Number(id)||String(c.id)===String(id)});if(!convo)return;showDeleteConfirm(t('confirmDelete'),function(){/* 软删除：标记 archived=true 移到归档区，不真删 */var idx=conversations.indexOf(convo);conversations.splice(idx,1);api.del('/api/conversations/'+id).catch(function(){});panels.forEach(function(p){if(String(p.currentConvo.id)===String(id)){p.currentConvo={id:Date.now(),title:'',messages:[],sessionId:''};p.dom.messages.innerHTML='<div class="empty-panel"><div class="logo">👋</div><h3>'+t('chatEmptyTitle')+'</h3></div>';p.dom.route.innerHTML='<span style="color:var(--muted);font-size:9px">'+t('routeEmpty')+'</span>'}});renderHistory();showUndoableToast(t('convDeleted'),function(){conversations.splice(idx,0,convo);api.post('/api/conversations/save',convo).catch(function(){});renderHistory()},5000)})}
+function delConvo(id,e){e.stopPropagation();var convo=conversations.find(function(c){return c.id===Number(id)||String(c.id)===String(id)});if(!convo)return;showDeleteConfirm(t('confirmDelete'),function(){/* 软删除：标记 archived=true 移到归档区，不真删 */var idx=conversations.indexOf(convo);conversations.splice(idx,1);api.del('/api/conversations/'+id).catch(function(e){console.error('删除会话失败:',e)});panels.forEach(function(p){if(String(p.currentConvo.id)===String(id)){p.currentConvo={id:Date.now(),title:'',messages:[],sessionId:''};p.dom.messages.innerHTML='<div class="empty-panel"><div class="logo">👋</div><h3>'+t('chatEmptyTitle')+'</h3></div>';p.dom.route.innerHTML='<span style="color:var(--muted);font-size:9px">'+t('routeEmpty')+'</span>'}});renderHistory();showUndoableToast(t('convDeleted'),function(){conversations.splice(idx,0,convo);api.post('/api/conversations/save',convo).catch(function(e){console.error('恢复对话失败:',e)});renderHistory()},5000)})}
 function viewSkillDetail(name){
   var skill=allSkills.find(function(s){return s.name===name});
   if(!skill)return;

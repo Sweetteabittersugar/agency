@@ -1,8 +1,11 @@
 """对话持久化 — 服务端存储，替代前端 localStorage"""
 
 import json
+import logging
 import time
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 CONVOS_FILE = Path(__file__).resolve().parent.parent / "conversations.json"
 MAX_CONVOS = 50
@@ -12,7 +15,8 @@ def _load():
     if CONVOS_FILE.exists():
         try:
             return json.loads(CONVOS_FILE.read_text(encoding="utf-8"))
-        except Exception:
+        except Exception as e:
+            logger.error("conversations._load json decode failed: %s", e)
             return []
     return []
 

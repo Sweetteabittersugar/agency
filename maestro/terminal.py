@@ -6,7 +6,6 @@
 import os
 import sys
 import logging
-import threading
 
 log = logging.getLogger(__name__)
 

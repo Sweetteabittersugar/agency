@@ -1,7 +1,11 @@
 """GitHub PR 集成 API（Phase 3）
 提供 PR diff 拉取和列表，依赖 GitHub token"""
 
-import json, os, urllib.request, urllib.error, logging
+import json
+import os
+import urllib.request
+import urllib.error
+import logging
 
 log = logging.getLogger(__name__)
 

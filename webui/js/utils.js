@@ -301,7 +301,7 @@ function isFeatureUnlocked(name){
 function checkNewUnlocks(){
   var day = getUserDay();
   var seen = {};
-  try{ seen = JSON.parse(localStorage.getItem('agency_unlock_seen') || '{}'); }catch(e){}
+  try{ seen = JSON.parse(localStorage.getItem('agency_unlock_seen') || '{}'); }catch(e){ console.warn('解析解锁记录失败:',e); }
   var newUnlocks = [];
   var ks = Object.keys(FEATURE_SCHEDULE);
   for(var i=0;i<ks.length;i++){
@@ -345,7 +345,7 @@ var WORKFLOW_TEMPLATES = [
   {icon:'⚡',label:{zh:'性能分析',en:'Performance'},content:'@coder 请分析以下代码的性能瓶颈：\n场景：\n数据量：'}
 ];
 function getCustomTemplates(){
-  try{ return JSON.parse(localStorage.getItem('agency_custom_templates') || '[]'); }catch(e){ return []; }
+  try{ return JSON.parse(localStorage.getItem('agency_custom_templates') || '[]'); }catch(e){ console.warn('加载自定义模板失败:',e); return []; }
 }
 function saveCustomTemplates(list){
   localStorage.setItem('agency_custom_templates', JSON.stringify(list));

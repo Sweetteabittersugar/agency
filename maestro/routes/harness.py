@@ -129,6 +129,7 @@ def handle_context(handler, parsed):
                     }
                 )
     except Exception as e:
+        log.error(f"上下文分析失败: {e}", exc_info=True)
         handler.send_json({"total_tokens": 0, "error": str(e)[:100], "should_compact": False})
     return True
 
@@ -136,7 +137,7 @@ def handle_context(handler, parsed):
 def handle_subagents(handler, parsed):
     """GET /api/harness/subagents — 子 Agent 任务树"""
     from maestro.harness.jsonl_parser import find_latest_session
-    from maestro.shared import _scan_subagents
+    from maestro.task_classifier import _scan_subagents
 
     sid = parse_qs(parsed.query).get("session", [""])[0]
     proj = str(PROJECT_ROOT)

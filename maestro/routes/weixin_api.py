@@ -1,9 +1,12 @@
 """微信 Bot API — Web 管理端点"""
 
 import json
+import logging
 import threading
 import urllib.request
 from maestro.integrations.weixin_bot import WeixinBot
+
+logger = logging.getLogger(__name__)
 
 _bot = None
 _bot_thread = None
@@ -25,7 +28,7 @@ def handle_status(handler, parsed):
             "ok": True,
             "logged_in": bool(bot.token),
             "bot_id": bot.bot_id,
-            "running": bot._running,
+            "running": bot.running,
             "login_state": _login_status["state"],
             "login_message": _login_status["message"],
             "qrcode_img_content": _login_status.get("qrcode_img_content", ""),
@@ -89,6 +92,7 @@ def handle_login_start(handler, body):
 
         handler.send_json({"ok": True, "qrcode_img_content": qrcode_img, "message": "请扫码"})
     except Exception as e:
+        logger.error("weixin login_start failed: %s", e)
         _login_status = {
             "state": "error",
             "qrcode_img_content": "",
@@ -106,15 +110,17 @@ def handle_start(handler, body):
         handler.send_json({"ok": False, "error": "未登录，请先扫码"})
         return
 
-    if bot._running:
+    if bot.running:
         handler.send_json({"ok": True, "message": "已在运行中"})
         return
 
     def handle_msg(from_user, text, ctx_token):
         try:
+            from maestro.app_config import PORT as _PORT
+
             data = json.dumps({"task": text, "session_id": f"wx_{from_user}"}).encode()
             req = urllib.request.Request(
-                "http://127.0.0.1:8800/api/chat",
+                f"http://127.0.0.1:{_PORT}/api/chat",
                 data=data,
                 headers={"Content-Type": "application/json"},
                 method="POST",
@@ -135,7 +141,7 @@ def handle_start(handler, body):
 
 def handle_stop(handler, body):
     bot = _get_bot()
-    if bot and bot._running:
+    if bot and bot.running:
         bot.stop()
         handler.send_json({"ok": True, "message": "Bot 已停止"})
     else:

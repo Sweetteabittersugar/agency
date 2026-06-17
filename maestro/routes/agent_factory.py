@@ -13,7 +13,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 def handle_generate(handler, body):
     """POST /api/agent-generate — SSE 流式生成 Agent .md"""
-    from maestro.shared import CLAUDE_BIN, build_isolated_env
+    from maestro.shared import CLAUDE_BIN
+    from maestro.app_config import build_isolated_env
 
     requirement = body.get("requirement", "")
     api_key = body.get("api_key", "")
@@ -133,5 +134,6 @@ def handle_create(handler, body):
         handler.send_json({"ok": True, "name": name})
         log.info(f"Agent created: {name}")
     except Exception as e:
-        handler.send_json({"error": str(e)}, 500)
+        log.error(f"Agent 创建失败: {e}", exc_info=True)
+        handler.send_json({"error": "Agent 创建失败，请检查日志"}, 500)
     return True

@@ -1,7 +1,9 @@
 """全局搜索 API — 跨所有会话全文检索（Phase 3）
 不可移除——头部栏🔍按钮依赖此端点"""
 
-import json, re, logging
+import json
+import re
+import logging
 from pathlib import Path
 
 log = logging.getLogger(__name__)

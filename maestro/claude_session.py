@@ -30,6 +30,38 @@ MAX_SESSIONS = 4
 class ClaudeSession:
     """单个持久化 Claude 进程，stdin/stdout 双向 stream-json"""
 
+    # ── 公开 API：替代跨模块 _private 访问 ──
+
+    @classmethod
+    def get(cls, session_id: str) -> "ClaudeSession | None":
+        """按 ID 查找现有会话（不创建）。替代直接访问 _sessions"""
+        return _sessions.get(session_id)
+
+    @property
+    def in_tokens(self) -> int:
+        """累计输入 token（替代 _total_in_tokens）"""
+        return self._total_in_tokens
+
+    @property
+    def out_tokens(self) -> int:
+        """累计输出 token（替代 _total_out_tokens）"""
+        return self._total_out_tokens
+
+    @property
+    def cost(self) -> float:
+        """累计费用 USD（替代 _total_cost）"""
+        return self._total_cost
+
+    @property
+    def transcript(self) -> list:
+        """对话记录拷贝，防止外部误改（替代 _transcript）"""
+        return list(self._transcript)
+
+    @property
+    def model(self) -> str:
+        """检测到的模型名（替代 _detected_model）"""
+        return self._detected_model or "unknown"
+
     def __init__(self, session_id: str, project_root: str, env: dict):
         self.session_id = session_id
         self.project_root = project_root
@@ -304,9 +336,9 @@ def list_sessions() -> list[dict]:
                 "turns": s._total_turns,
                 "alive": s.is_alive(),
                 "age_seconds": round(time.time() - s._created, 1),
-                "model": s._detected_model or "unknown",
-                "total_tokens": s._total_in_tokens + s._total_out_tokens,
-                "total_cost": round(s._total_cost, 6),
+                "model": s.model,
+                "total_tokens": s.in_tokens + s.out_tokens,
+                "total_cost": round(s.cost, 6),
                 "compaction": s.compaction_status(),
             }
             for sid, s in _sessions.items()

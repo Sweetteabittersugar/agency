@@ -1,8 +1,11 @@
 """路由反馈 — 用户纠正路由错误，系统学习改进"""
 
 import json
+import logging
 import time
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 FEEDBACK_FILE = Path(__file__).resolve().parent.parent / "routing_feedback.jsonl"
 
@@ -51,7 +54,8 @@ def get_feedback_stats():
                 line = line.strip()
                 if line:
                     entries.append(json.loads(line))
-    except Exception:
+    except Exception as e:
+        logger.error("routing_feedback read failed: %s", e)
         return {"total": 0, "top_mistakes": [], "error": "读取失败"}
 
     from collections import Counter

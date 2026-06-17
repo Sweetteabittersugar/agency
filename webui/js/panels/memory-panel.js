@@ -42,8 +42,9 @@ function searchMemory() {
       });
       content.innerHTML = html;
     })
-    .catch(function() {
+    .catch(function(e) {
       content.innerHTML = '<p style="color:#e74c3c;">搜索失败，请检查服务</p>';
+      console.error('记忆搜索失败:', e);
     });
 }
 
@@ -72,8 +73,9 @@ function loadMemoryTimeline() {
       });
       content.innerHTML = html;
     })
-    .catch(function() {
+    .catch(function(e) {
       content.innerHTML = '<p style="color:#e74c3c;">加载失败</p>';
+      console.error('加载记忆时间线失败:', e);
     });
 }
 
@@ -100,8 +102,9 @@ function loadMemoryFiles() {
       });
       content.innerHTML = html;
     })
-    .catch(function() {
+    .catch(function(e) {
       content.innerHTML = '<p style="color:#e74c3c;">加载失败</p>';
+      console.error('加载记忆文件列表失败:', e);
     });
 }
 
