@@ -6,12 +6,12 @@ window.safeSetItem = function(key, value) {
 
 /* Agency — 基础工具函数 */
 function $(id){return document.getElementById(id)}
-function escHtml(s){var d=document.createElement('div');d.textContent=s??'';return d.innerHTML}
+function escHtml(s){let d=document.createElement('div');d.textContent=s??'';return d.innerHTML}
 function showToast(m,err,level,duration){
   if(typeof m==='object'&&m!==null&&m.undo){
     return showUndoableToast(m.msg||'',m.undo,m.duration||5000,m.commit);
   }
-  var t=document.createElement('div');t.className='toast'+(err?' error':'')+(level==='warn'?' warn':'');t.textContent=m;document.body.appendChild(t);duration=duration||3000;setTimeout(function(){t.style.opacity='0';t.style.transition='opacity .3s'},duration-500);setTimeout(function(){t.remove()},duration);return t
+  let t=document.createElement('div');t.className='toast'+(err?' error':'')+(level==='warn'?' warn':'');t.textContent=m;document.body.appendChild(t);duration=duration||3000;setTimeout(function(){t.style.opacity='0';t.style.transition='opacity .3s'},duration-500);setTimeout(function(){t.remove()},duration);return t
 }
 function apiFetch(url, opts){
   opts=Object.assign({},opts);
@@ -32,17 +32,17 @@ function apiFetch(url, opts){
 function copyText(text){
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(text).then(function(){showToast('已复制')}).catch(function(){
-      var ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showToast('已复制');
+      let ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showToast('已复制');
     });
   } else {
-    var ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showToast('已复制');
+    let ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showToast('已复制');
   }
 }
-function getFocusedPanel(){if(focusedPid){var p=panels.find(function(x){return x.id===focusedPid});if(p&&p.dom.wrapper.classList.contains('on'))return p}var start=curPage*perPage;var panel=panels[start]||panels[0];if(!panel)panel=addPanel();return panel}
+function getFocusedPanel(){if(focusedPid){let p=panels.find(function(x){return x.id===focusedPid});if(p&&p.dom.wrapper.classList.contains('on'))return p}let start=curPage*perPage;let panel=panels[start]||panels[0];if(!panel)panel=addPanel();return panel}
 function highlightCode(domEl){if(!domEl)return;domEl.querySelectorAll('pre code').forEach(function(b){if(window.hljs)try{hljs.highlightElement(b)}catch(_){}})}
 
 /* ── Provider 数据库 ── */
-var PROVIDER_DB={
+let PROVIDER_DB={
   deepseek:{name:'DeepSeek',desc:'性价比极高，中文能力强',region:'cn',price_tier:'free',api_base:'https://api.deepseek.com',default_model:'deepseek-v4-flash',register_url:'https://platform.deepseek.com/api_keys',free_credit:'500万 Token 免费额度',est_monthly:{free:'$0',mid:'$2-10',high:'$10-50'}},
   qwen:{name:'通义千问',desc:'阿里云出品，生态完善',region:'cn',price_tier:'free',api_base:'https://dashscope.aliyuncs.com/compatible-mode/v1',default_model:'qwen3-max',register_url:'https://dashscope.console.aliyun.com/',free_credit:'新用户百万 Token 免费',est_monthly:{free:'$0',mid:'$3-15',high:'$15-80'}},
   // 2026-06 旧模型清理：kimi 入口已删除
@@ -76,7 +76,7 @@ function getDemoSkills(){
   ];
 }
 function getDemoHistory(){
-  var now=Date.now();
+  let now=Date.now();
   return [
     {id:now-3600000,title:'写一个网页爬虫抓取新闻标题',messages:[{role:'user',content:'帮我写一个Python爬虫，抓取Hacker News首页标题'},{role:'assistant',content:'这是基于 requests + BeautifulSoup 的爬虫实现…'}],time:new Date(now-3600000).toLocaleDateString('zh-CN')},
     {id:now-7200000,title:'审查用户认证模块的安全性',messages:[{role:'user',content:'审查这段用户认证代码的安全性'},{role:'assistant',content:'发现3个安全问题：1.密码未加盐 2.SQL注入风险…'}],time:new Date(now-7200000).toLocaleDateString('zh-CN')}
@@ -84,8 +84,8 @@ function getDemoHistory(){
 }
 
 /* ── i18n 轻量国际化 ── */
-var _lang=(navigator.language||'zh').slice(0,2)==='zh'?'zh':'en';
-var L={
+let _lang=(navigator.language||'zh').slice(0,2)==='zh'?'zh':'en';
+let L={
   loading:{zh:'加载中…',en:'Loading…'},
   error:{zh:'出错了',en:'Error'},
   empty:{zh:'暂无数据',en:'No data'},
@@ -246,16 +246,16 @@ var L={
   wizardConfigDone:{zh:'🎉 配置完成！所有功能已解锁，开始使用吧 🚀',en:'🎉 Setup complete! All features unlocked — start creating 🚀'},
   featureUnlockHint:{zh:'✅ 所有功能已解锁',en:'✅ All features unlocked'},
 };
-function t(key){var entry=L[key];return entry?(_lang==='zh'?entry.zh:entry.en):key}
+function t(key){let entry=L[key];return entry?(_lang==='zh'?entry.zh:entry.en):key}
 
 /* ── 删除确认弹窗 (替换原生confirm) ── */
 function showDeleteConfirm(message, onConfirm, onCancel){
-  var overlay=document.createElement('div');
+  let overlay=document.createElement('div');
   overlay.className='confirm-overlay';
   overlay.innerHTML='<div class="confirm-box"><p>'+escHtml(message)+'</p><div class="btn-row"><button class="btn btn-cancel">'+t('cancel')+'</button><button class="btn btn-delete danger-delay">'+t('delete')+'</button></div></div>';
   document.body.appendChild(overlay);
-  var cancelBtn=overlay.querySelector('.btn-cancel');
-  var deleteBtn=overlay.querySelector('.btn-delete');
+  let cancelBtn=overlay.querySelector('.btn-cancel');
+  let deleteBtn=overlay.querySelector('.btn-delete');
   cancelBtn.focus();
   function cleanup(){overlay.remove();}
   cancelBtn.addEventListener('click',function(){cleanup();if(onCancel)onCancel()});
@@ -266,55 +266,55 @@ function showDeleteConfirm(message, onConfirm, onCancel){
 }
 
 /* ── 渐进式功能暴露 ── */
-var FEATURE_SCHEDULE = {
+let FEATURE_SCHEDULE = {
   day0:       { minDay:0,  features:['chat','settings'],                           desc:{zh:'基础聊天 + Key 配置',en:'Basic chat + Key config'} },
   day1_2:     { minDay:0,  features:['dashboard','agents'],                        desc:{zh:'仪表盘 + Agent 列表',en:'Dashboard + Agent list'} },
   day3_5:     { minDay:0,  features:['routing','multipanel'],                      desc:{zh:'智能调度 + 多面板',en:'Smart routing + Multi-panel'} },
   day7:       { minDay:0,  features:['agent-factory','skills','profiles'],         desc:{zh:'Agent 工厂 + Skill 编辑 + Profile',en:'Agent factory + Skill edit + Profile'} },
 };
-var FEATURE_UNLOCK_DAYS = {};
+let FEATURE_UNLOCK_DAYS = {};
 (function(){
-  var ks = Object.keys(FEATURE_SCHEDULE);
-  for(var i=0;i<ks.length;i++){
-    var s = FEATURE_SCHEDULE[ks[i]];
-    for(var j=0;j<s.features.length;j++){
+  let ks = Object.keys(FEATURE_SCHEDULE);
+  for(let i=0;i<ks.length;i++){
+    let s = FEATURE_SCHEDULE[ks[i]];
+    for(let j=0;j<s.features.length;j++){
       FEATURE_UNLOCK_DAYS[s.features[j]] = s.minDay;
     }
   }
 })();
 function getUserDay(){
-  var first = localStorage.getItem('agency_first_visit');
+  let first = localStorage.getItem('agency_first_visit');
   if(!first){
-    var now = new Date().toISOString().slice(0,10);
+    let now = new Date().toISOString().slice(0,10);
     localStorage.setItem('agency_first_visit', now);
     first = now;
   }
-  var diff = Math.floor((Date.now() - new Date(first).getTime()) / 86400000);
+  let diff = Math.floor((Date.now() - new Date(first).getTime()) / 86400000);
   return Math.max(0, diff);
 }
 function isFeatureUnlocked(name){
   if(localStorage.getItem('agency_unlock_all') === 'true') return true;
-  var minDay = FEATURE_UNLOCK_DAYS[name];
+  let minDay = FEATURE_UNLOCK_DAYS[name];
   if(minDay === undefined) return true;
   return getUserDay() >= minDay;
 }
 function checkNewUnlocks(){
-  var day = getUserDay();
-  var seen = {};
+  let day = getUserDay();
+  let seen = {};
   try{ seen = JSON.parse(localStorage.getItem('agency_unlock_seen') || '{}'); }catch(e){ console.warn('解析解锁记录失败:',e); }
-  var newUnlocks = [];
-  var ks = Object.keys(FEATURE_SCHEDULE);
-  for(var i=0;i<ks.length;i++){
-    var s = FEATURE_SCHEDULE[ks[i]];
+  let newUnlocks = [];
+  let ks = Object.keys(FEATURE_SCHEDULE);
+  for(let i=0;i<ks.length;i++){
+    let s = FEATURE_SCHEDULE[ks[i]];
     if(day >= s.minDay && !seen[ks[i]]){
-      for(var j=0;j<s.features.length;j++){ newUnlocks.push(s.features[j]); }
+      for(let j=0;j<s.features.length;j++){ newUnlocks.push(s.features[j]); }
       seen[ks[i]] = true;
     }
   }
   if(newUnlocks.length > 0){
     localStorage.setItem('agency_unlock_seen', JSON.stringify(seen));
-    var labelMap = {chat:'基础聊天',settings:'设置面板',dashboard:'仪表盘',agents:'Agent列表',routing:'智能调度',multipanel:'多面板','agent-factory':'Agent工厂',skills:'Skill编辑',profiles:'Profile切换'};
-    var names = newUnlocks.map(function(f){ return labelMap[f] || f; });
+    let labelMap = {chat:'基础聊天',settings:'设置面板',dashboard:'仪表盘',agents:'Agent列表',routing:'智能调度',multipanel:'多面板','agent-factory':'Agent工厂',skills:'Skill编辑',profiles:'Profile切换'};
+    let names = newUnlocks.map(function(f){ return labelMap[f] || f; });
     showToast(t('newFeatureUnlocked').replace('{name}', names.join('、')));
   }
   // Profile 自动选择
@@ -324,7 +324,7 @@ function checkNewUnlocks(){
 /* ── Profile 自动选择 ── */
 function autoSelectProfile(day){
   if(localStorage.getItem('profile_manual') === 'true') return;
-  var cur = localStorage.getItem('agency_profile') || 'standard';
+  let cur = localStorage.getItem('agency_profile') || 'standard';
   if(day >= 7 && cur !== 'full'){
     showToast(t('profileRecommendFull').replace('{n}', day), false, 'warn', 5000);
   } else if(day >= 3 && cur === 'minimal'){
@@ -336,7 +336,7 @@ function autoSelectProfile(day){
 }
 
 /* ── 工作流模板 ── */
-var WORKFLOW_TEMPLATES = [
+let WORKFLOW_TEMPLATES = [
   {icon:'🆕',label:{zh:'写新功能',en:'New Feature'},content:'@coder 请帮我实现以下功能：\n功能描述：\n技术栈：\n具体要求：'},
   {icon:'🐛',label:{zh:'修 Bug',en:'Fix Bug'},content:'@coder 请修复以下 Bug：\nBug 描述：\n复现步骤：\n期望行为：'},
   {icon:'🔍',label:{zh:'代码审查',en:'Code Review'},content:'@reviewer 请审查以下代码，重点关注：\n1. 安全问题\n2. 性能问题\n3. 代码规范'},
@@ -357,10 +357,10 @@ function escAttr(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;')
 
 /* ── Tooltip 帮助系统 ── */
 function initTooltips(){
-  var activeTooltip = null;
+  let activeTooltip = null;
   function createTooltip(text, target){
     removeTooltip();
-    var tip = document.createElement('div');
+    let tip = document.createElement('div');
     tip.className = 'agency-tooltip';
     tip.textContent = text;
     document.body.appendChild(tip);
@@ -371,10 +371,10 @@ function initTooltips(){
     return tip;
   }
   function positionTooltip(tip, target){
-    var rect = target.getBoundingClientRect();
-    var tw = tip.offsetWidth, th = tip.offsetHeight;
-    var vw = window.innerWidth, vh = window.innerHeight;
-    var top = rect.bottom + 6, left = rect.left + rect.width / 2 - tw / 2;
+    let rect = target.getBoundingClientRect();
+    let tw = tip.offsetWidth, th = tip.offsetHeight;
+    let vw = window.innerWidth, vh = window.innerHeight;
+    let top = rect.bottom + 6, left = rect.left + rect.width / 2 - tw / 2;
     if(top + th > vh - 10){ top = rect.top - th - 6; tip.classList.add('tip-above'); }
     else { tip.classList.remove('tip-above'); }
     if(left < 6){ left = 6; }
@@ -388,20 +388,20 @@ function initTooltips(){
   }
   // Desktop: hover
   document.addEventListener('mouseover', function(e){
-    var el = e.target.closest('[data-tooltip]');
+    let el = e.target.closest('[data-tooltip]');
     if(!el) return;
     if(window.innerWidth < 768) return; // mobile uses click
-    var text = el.getAttribute('data-tooltip');
+    let text = el.getAttribute('data-tooltip');
     if(text) createTooltip(t(text) || text, el);
   });
   document.addEventListener('mouseout', function(e){
-    var el = e.target.closest('[data-tooltip]');
+    let el = e.target.closest('[data-tooltip]');
     if(el && window.innerWidth >= 768) removeTooltip();
   });
   // Mobile: click
   document.addEventListener('click', function(e){
     if(window.innerWidth >= 768) return;
-    var el = e.target.closest('[data-tooltip]');
+    let el = e.target.closest('[data-tooltip]');
     if(!el){
       removeTooltip();
       return;
@@ -410,7 +410,7 @@ function initTooltips(){
       removeTooltip();
       return;
     }
-    var text = el.getAttribute('data-tooltip');
+    let text = el.getAttribute('data-tooltip');
     if(text) createTooltip(t(text) || text, el);
     e.stopPropagation();
   });
@@ -424,7 +424,7 @@ function initTooltips(){
 /* ── 文件路径检测 ── */
 function detectFilePath(text){
   if(!text) return null;
-  var m = text.match(/^(\/[a-zA-Z0-9_\-\.\/\\]+)/);
+  let m = text.match(/^(\/[a-zA-Z0-9_\-\.\/\\]+)/);
   if(m) return m[1];
   m = text.match(/^([A-Za-z]:\\[a-zA-Z0-9_\-\.\/\\]+)/);
   if(m) return m[1];

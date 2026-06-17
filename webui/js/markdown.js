@@ -1,5 +1,5 @@
 /* Markdown 渲染 — 基于 marked.js */
-var renderMD = (function() {
+let renderMD = (function() {
   'use strict';
 
   if (typeof marked !== 'undefined') {

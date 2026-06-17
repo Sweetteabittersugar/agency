@@ -3,7 +3,7 @@
   'use strict';
 
   // ===== 状态定义 =====
-  var _state = {
+  let _state = {
     // 面板
     panels: [],
     perPage: 4,
@@ -42,14 +42,14 @@
   };
 
   // ===== 订阅者 =====
-  var _listeners = {};
+  let _listeners = {};
 
   /**
    * 获取状态（返回副本，不可直接修改）
    */
   function getState(key) {
     if (key) {
-      var val = _state[key];
+      let val = _state[key];
       return (val && typeof val === 'object' && !Array.isArray(val))
         ? Object.assign({}, val)
         : (Array.isArray(val) ? val.slice() : val);
@@ -63,7 +63,7 @@
    * Store.set({theme: 'light', layout: 2})
    */
   function setState(key, value) {
-    var changes = {};
+    let changes = {};
 
     if (typeof key === 'object') {
       changes = key;
@@ -71,11 +71,11 @@
       changes[key] = value;
     }
 
-    var changedKeys = [];
-    for (var k in changes) {
+    let changedKeys = [];
+    for (let k in changes) {
       if (changes.hasOwnProperty(k) && _state.hasOwnProperty(k)) {
-        var oldVal = _state[k];
-        var newVal = changes[k];
+        let oldVal = _state[k];
+        let newVal = changes[k];
         if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
           _state[k] = newVal;
           changedKeys.push(k);
@@ -115,7 +115,7 @@
     if (!_listeners[key]) _listeners[key] = [];
     _listeners[key].push(fn);
     return function unsubscribe() {
-      var idx = _listeners[key].indexOf(fn);
+      let idx = _listeners[key].indexOf(fn);
       if (idx >= 0) _listeners[key].splice(idx, 1);
     };
   }
@@ -124,20 +124,20 @@
    * 一次性监听
    */
   function once(key, fn) {
-    var unsub = on(key, function(val, k) {
+    let unsub = on(key, function(val, k) {
       unsub();
       fn(val, k);
     });
   }
 
   // ===== 持久化 =====
-  var PERSIST_KEYS = ['theme', 'lang', 'layout', 'agencyProfile', 'devMode', 'apiProvider', 'outputDir'];
+  let PERSIST_KEYS = ['theme', 'lang', 'layout', 'agencyProfile', 'devMode', 'apiProvider', 'outputDir'];
 
   function _persist(keys) {
     keys.forEach(function(k) {
       if (PERSIST_KEYS.indexOf(k) >= 0) {
         try {
-          var val = _state[k];
+          let val = _state[k];
           localStorage.setItem('agency-' + k, typeof val === 'object' ? JSON.stringify(val) : String(val));
         } catch(e) {}
       }
@@ -150,7 +150,7 @@
   function restore() {
     PERSIST_KEYS.forEach(function(k) {
       try {
-        var raw = localStorage.getItem('agency-' + k);
+        let raw = localStorage.getItem('agency-' + k);
         if (raw !== null) {
           try { _state[k] = JSON.parse(raw); } catch(e) { _state[k] = raw; }
         }
@@ -162,7 +162,7 @@
    * 与现有全局变量同步（页面加载时调用一次）
    */
   function syncFromGlobals() {
-    var keys = ['panels', 'agents', 'apiKey', 'apiProvider', 'authToken',
+    let keys = ['panels', 'agents', 'apiKey', 'apiProvider', 'authToken',
                 'outputDir', 'agencyProfile', 'devMode', 'orchMode'];
     keys.forEach(function(k) {
       if (window[k] !== undefined) {

@@ -7,17 +7,17 @@ function renderOperationsTab(container) {
 }
 function loadOperations() {
   api.get('/api/operations').then(function(d) {
-    var list = document.getElementById('ops-list');
+    let list = document.getElementById('ops-list');
     if (!list) return;
-    var ops = d.operations || [];
+    let ops = d.operations || [];
     if (!ops.length) { list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">暂无操作记录</div>'; return; }
-    var typeLabels = {chat_session:'💬 会话', file_write:'📝 写入文件', file_delete:'🗑 删除文件', command_run:'⚡ 执行命令'};
-    var html = '<div style="display:flex;flex-direction:column;gap:4px;max-height:400px;overflow-y:auto">';
+    let typeLabels = {chat_session:'💬 会话', file_write:'📝 写入文件', file_delete:'🗑 删除文件', command_run:'⚡ 执行命令'};
+    let html = '<div style="display:flex;flex-direction:column;gap:4px;max-height:400px;overflow-y:auto">';
     ops.forEach(function(op) {
-      var ts = new Date(op.ts * 1000);
-      var timeStr = ts.toLocaleString();
-      var typeLabel = typeLabels[op.type] || op.type;
-      var detail = op.detail ? '<div style="font-size:9px;color:var(--muted);margin-top:2px">' + escHtml(op.detail) + '</div>' : '';
+      let ts = new Date(op.ts * 1000);
+      let timeStr = ts.toLocaleString();
+      let typeLabel = typeLabels[op.type] || op.type;
+      let detail = op.detail ? '<div style="font-size:9px;color:var(--muted);margin-top:2px">' + escHtml(op.detail) + '</div>' : '';
       html += '<div style="padding:8px 10px;background:var(--surface2);border-radius:6px;border-left:3px solid var(--accent)">';
       html += '<div style="display:flex;justify-content:space-between;align-items:center">';
       html += '<span style="font-weight:600;font-size:12px">' + typeLabel + ' <span style="color:var(--accent);font-size:11px">' + escHtml(op.agent) + '</span></span>';
@@ -30,7 +30,7 @@ function loadOperations() {
     html += '</div>';
     list.innerHTML = html;
   }).catch(function() {
-    var list = document.getElementById('ops-list');
+    let list = document.getElementById('ops-list');
     if (list) list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">加载失败</div>';
   });
 }

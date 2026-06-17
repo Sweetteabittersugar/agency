@@ -1,52 +1,52 @@
 /* Agency — 开发者设置面板 */
-function saveApiKey(){var newKey=$('api-key').value.trim();var newProvider=$('api-provider').value;var oldKey=apiKey;var oldProvider=apiProvider;apiKey=newKey;apiProvider=newProvider;localStorage.setItem('agency_api_provider',apiProvider);if(apiKey){localStorage.setItem('agency_api_key',apiKey)}else{localStorage.removeItem('agency_api_key')}$('api-status').textContent=apiKey?'已保存':'已清除';showUndoableToast(t('configSaved'),function(){apiKey=oldKey;apiProvider=oldProvider;localStorage.setItem('agency_api_provider',oldProvider);$('api-key').value=oldKey;$('api-provider').value=oldProvider;if(oldKey){localStorage.setItem('agency_api_key',oldKey)}else{localStorage.removeItem('agency_api_key')}$('api-status').textContent=oldKey?'已保存':'已清除'},5000)}
-function toggleDevOverlay(){devMode=!devMode;var ov=$('devOverlay'),btn=$('devBtn');ov.classList.toggle('on',devMode);btn.classList.toggle('on',devMode);if(devMode){var ak=$('api-key');if(ak&&apiKey)ak.value=apiKey;var ap=$('api-provider');if(ap&&apiProvider)ap.value=apiProvider;loadMemList();loadRemotePanel();loadIntegrationPanel();loadCompactionConfig();loadCronJobs();setTimeout(initSettingsAccordion,200)}}
+function saveApiKey(){let newKey=$('api-key').value.trim();let newProvider=$('api-provider').value;let oldKey=apiKey;let oldProvider=apiProvider;apiKey=newKey;apiProvider=newProvider;localStorage.setItem('agency_api_provider',apiProvider);if(apiKey){localStorage.setItem('agency_api_key',apiKey)}else{localStorage.removeItem('agency_api_key')}$('api-status').textContent=apiKey?'已保存':'已清除';showUndoableToast(t('configSaved'),function(){apiKey=oldKey;apiProvider=oldProvider;localStorage.setItem('agency_api_provider',oldProvider);$('api-key').value=oldKey;$('api-provider').value=oldProvider;if(oldKey){localStorage.setItem('agency_api_key',oldKey)}else{localStorage.removeItem('agency_api_key')}$('api-status').textContent=oldKey?'已保存':'已清除'},5000)}
+function toggleDevOverlay(){devMode=!devMode;let ov=$('devOverlay'),btn=$('devBtn');ov.classList.toggle('on',devMode);btn.classList.toggle('on',devMode);if(devMode){let ak=$('api-key');if(ak&&apiKey)ak.value=apiKey;let ap=$('api-provider');if(ap&&apiProvider)ap.value=apiProvider;loadMemList();loadRemotePanel();loadIntegrationPanel();loadCompactionConfig();loadCronJobs();setTimeout(initSettingsAccordion,200)}}
 
 /* ── 设置面板折叠分组 ── */
-var _settingsAccordionDone=false;
+let _settingsAccordionDone=false;
 function initSettingsAccordion(){
   if(_settingsAccordionDone)return;
-  var container=document.querySelector('#devOverlay .harness-overlay-content');
+  let container=document.querySelector('#devOverlay .harness-overlay-content');
   if(!container)return;
-  var sections=container.querySelectorAll('.settings-section');
+  let sections=container.querySelectorAll('.settings-section');
   if(!sections.length)return;
 
   // 分组映射：h3 文本关键词 -> group key
-  var groupMap={
+  let groupMap={
     'API Key':'api','MCP':'api','集成':'api','远端':'api',
     '主题':'appearance','Profile':'appearance',
     '信任模式':'security','功能解锁':'security',
     '记忆':'data','输出目录':'data','配置管理':'data','恢复默认':'data','清空':'data','快捷键':'data','默认 Agent':'data'
   };
-  var groups={api:{icon:'🔑',title:'API 与 Provider',sections:[]},appearance:{icon:'🎨',title:'外观',sections:[]},security:{icon:'🛡️',title:'安全',sections:[]},data:{icon:'💾',title:'数据管理',sections:[]}};
-  var uncategorized=[];
+  let groups={api:{icon:'🔑',title:'API 与 Provider',sections:[]},appearance:{icon:'🎨',title:'外观',sections:[]},security:{icon:'🛡️',title:'安全',sections:[]},data:{icon:'💾',title:'数据管理',sections:[]}};
+  let uncategorized=[];
 
   // 先分类、同时从 DOM 分离
-  var secArr=Array.prototype.slice.call(sections);
+  let secArr=Array.prototype.slice.call(sections);
   secArr.forEach(function(sec){
     sec.remove();
-    var h3=sec.querySelector('h3');
-    var title=h3?h3.textContent.trim():'';
-    var cleanTitle=title.replace(/^[^一-龥a-zA-Z]+/,'');
-    var matched=false;
-    for(var k in groupMap){
+    let h3=sec.querySelector('h3');
+    let title=h3?h3.textContent.trim():'';
+    let cleanTitle=title.replace(/^[^一-龥a-zA-Z]+/,'');
+    let matched=false;
+    for(let k in groupMap){
       if(cleanTitle.indexOf(k)===0){groups[groupMap[k]].sections.push(sec);matched=true;break}
     }
     if(!matched)uncategorized.push(sec);
   });
 
   // 构建折叠组 HTML
-  var wrapper=document.createElement('div');
-  var groupKeys=['api','appearance','security','data'];
+  let wrapper=document.createElement('div');
+  let groupKeys=['api','appearance','security','data'];
   groupKeys.forEach(function(key){
-    var g=groups[key];
+    let g=groups[key];
     if(!g.sections.length)return;
-    var groupDiv=document.createElement('div');
+    let groupDiv=document.createElement('div');
     groupDiv.className='settings-group';
     groupDiv.innerHTML='<div class="settings-group-header"><span class="settings-group-icon">▼</span> '+g.icon+' '+g.title+'</div><div class="settings-group-body"></div>';
-    var body=groupDiv.querySelector('.settings-group-body');
+    let body=groupDiv.querySelector('.settings-group-body');
     g.sections.forEach(function(sec){body.appendChild(sec)});
-    var header=groupDiv.querySelector('.settings-group-header');
+    let header=groupDiv.querySelector('.settings-group-header');
     header.addEventListener('click',function(){
       this.parentNode.classList.toggle('collapsed');
     });
@@ -61,16 +61,16 @@ function initSettingsAccordion(){
   _settingsAccordionDone=true;
 }
 
-function loadMemList(){var domEl=$('mem-list');if(!domEl)return;fetch('/api/memory').then(function(r){return r.json()}).then(function(d){var files=d.files||[];domEl.innerHTML=files.length?files.map(function(f){return'<div class="mem-file" onclick="openMemEditor(\''+escHtml(f.path)+'\',\''+escHtml(f.name)+'\')"><span class="icon">📄</span><span>'+escHtml(f.name)+'</span><span style="color:var(--muted);font-size:10px;margin-left:auto">'+(f.size||0)+'B</span></div>'}).join(''):'暂无记忆文件'}).catch(function(){domEl.innerHTML='无法加载记忆文件列表。服务可能未启动，请刷新页面重试'})}
-function generateAgent(){var input=$('agent-factory-input'),output=$('agent-factory-output');var req=input.value.trim();if(!req)return;output.innerHTML='<span class="spinner" style="display:inline-block;width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-right:6px;vertical-align:middle"></span>生成中…';fetch('/api/agent-generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requirement:req,api_key:apiKey||undefined,api_provider:apiProvider||undefined})}).then(function(resp){var reader=resp.body.getReader(),decoder=new TextDecoder(),buf='',txt='';function read(){reader.read().then(function(result){if(result.done){finish();return}buf+=decoder.decode(result.value,{stream:!0});buf=buf.replace(/\r\n/g,'\n');var lines=buf.split('\n');buf=lines.pop()||'';for(var i=0;i<lines.length;i++){if(lines[i].indexOf('data: ')!==0)continue;try{var d=JSON.parse(lines[i].slice(6));if(d.content)txt+=d.content;if(d.error){output.innerHTML='<span style=color:var(--danger)>'+escHtml(d.error)+'</span>';return}}catch(_){}}read()})}function finish(){output.innerHTML='<pre style=\"font-size:10px;max-height:200px;overflow:auto;background:var(--bg);padding:8px;border-radius:4px\">'+escHtml(txt)+'</pre><button class=\"new-chat-btn\" style=\"margin-top:4px\" onclick=\"saveAgent()\">保存此 Agent</button>';output._agentContent=txt}read()}).catch(function(){output.innerHTML='AI 生成中断。可能是网络问题或 API Key 无效，请检查后重试'})}
-function saveAgent(){var txt=$('agent-factory-output')._agentContent;if(!txt)return;var m=txt.match(/name:\s*"?([a-z0-9-]+)"?/i);var name=m?m[1]:('agent-'+Date.now().toString(36));fetch('/api/agent-create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,content:txt})}).then(function(r){return r.json()}).then(function(d){if(d.ok){showToast('Agent 已保存: '+name);loadAgents()}else{showToast(d.error||'保存失败，请检查文件权限或磁盘空间后重试',!0)}}).catch(function(e){showToast('保存失败: '+(e.message||'请检查网络连接后重试'),!0)})}
+function loadMemList(){let domEl=$('mem-list');if(!domEl)return;fetch('/api/memory').then(function(r){return r.json()}).then(function(d){let files=d.files||[];domEl.innerHTML=files.length?files.map(function(f){return'<div class="mem-file" onclick="openMemEditor(\''+escHtml(f.path)+'\',\''+escHtml(f.name)+'\')"><span class="icon">📄</span><span>'+escHtml(f.name)+'</span><span style="color:var(--muted);font-size:10px;margin-left:auto">'+(f.size||0)+'B</span></div>'}).join(''):'暂无记忆文件'}).catch(function(){domEl.innerHTML='无法加载记忆文件列表。服务可能未启动，请刷新页面重试'})}
+function generateAgent(){let input=$('agent-factory-input'),output=$('agent-factory-output');let req=input.value.trim();if(!req)return;output.innerHTML='<span class="spinner" style="display:inline-block;width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-right:6px;vertical-align:middle"></span>生成中…';fetch('/api/agent-generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requirement:req,api_key:apiKey||undefined,api_provider:apiProvider||undefined})}).then(function(resp){let reader=resp.body.getReader(),decoder=new TextDecoder(),buf='',txt='';function read(){reader.read().then(function(result){if(result.done){finish();return}buf+=decoder.decode(result.value,{stream:!0});buf=buf.replace(/\r\n/g,'\n');let lines=buf.split('\n');buf=lines.pop()||'';for(let i=0;i<lines.length;i++){if(lines[i].indexOf('data: ')!==0)continue;try{let d=JSON.parse(lines[i].slice(6));if(d.content)txt+=d.content;if(d.error){output.innerHTML='<span style=color:var(--danger)>'+escHtml(d.error)+'</span>';return}}catch(_){}}read()})}function finish(){output.innerHTML='<pre style=\"font-size:10px;max-height:200px;overflow:auto;background:var(--bg);padding:8px;border-radius:4px\">'+escHtml(txt)+'</pre><button class=\"new-chat-btn\" style=\"margin-top:4px\" onclick=\"saveAgent()\">保存此 Agent</button>';output._agentContent=txt}read()}).catch(function(){output.innerHTML='AI 生成中断。可能是网络问题或 API Key 无效，请检查后重试'})}
+function saveAgent(){let txt=$('agent-factory-output')._agentContent;if(!txt)return;let m=txt.match(/name:\s*"?([a-z0-9-]+)"?/i);let name=m?m[1]:('agent-'+Date.now().toString(36));fetch('/api/agent-create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,content:txt})}).then(function(r){return r.json()}).then(function(d){if(d.ok){showToast('Agent 已保存: '+name);loadAgents()}else{showToast(d.error||'保存失败，请检查文件权限或磁盘空间后重试',!0)}}).catch(function(e){showToast('保存失败: '+(e.message||'请检查网络连接后重试'),!0)})}
 function loadRemotePanel(){
-  var domEl=$('remote-panel');if(!domEl)return
+  let domEl=$('remote-panel');if(!domEl)return
   fetch('/api/remote/status').then(function(r){
     if(!r.ok)throw new Error('HTTP '+r.status);
     return r.json();
   }).then(function(d){
-    var html='';
+    let html='';
     if(d.enabled){
       html+='<div style=\"background:rgba(34,211,160,.08);border:1px solid var(--accent);border-radius:6px;padding:8px 10px;margin-bottom:8px\">';
       html+='<div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:4px\"><span style=\"color:var(--accent);font-weight:600\">已启用</span><button class=\"btn\" onclick=\"toggleRemote(false)\" style=\"font-size:10px\">关闭</button></div>';
@@ -95,7 +95,7 @@ function toggleRemote(on){
   }).catch(function(e){showToast('远程操作失败: '+(e.message||'请检查网络连接'),!0);console.error(e)});
 }
 function setRemoteToken(){
-  var t=$('remote-token-input').value.trim();if(!t)return;
+  let t=$('remote-token-input').value.trim();if(!t)return;
   fetch('/api/remote/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:true,token:t})}).then(function(r){return r.json()}).then(function(d){
     if(d.ok){authToken=d.token;localStorage.setItem('agency_auth_token',d.token);$('remote-token-input').value='';showToast('密码已更新');}
     else showToast(d.error||'密码更新失败。可能服务未启动，请刷新页面重试',!0);
@@ -108,14 +108,14 @@ function genRemoteToken(){
   }).catch(function(e){showToast('密码生成失败: '+(e.message||'请检查网络连接'),!0)});
 }
 function copyRemoteUrl(){
-  var domEl=$('remote-url');if(!domEl)return;
-  var url=domEl.value||domEl.textContent||'';if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(function(){showToast('已复制连接地址')}).catch(function(){domEl.select();document.execCommand('copy');showToast('已复制连接地址')})}else{domEl.select();document.execCommand('copy');showToast('已复制连接地址')}
+  let domEl=$('remote-url');if(!domEl)return;
+  let url=domEl.value||domEl.textContent||'';if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(function(){showToast('已复制连接地址')}).catch(function(){domEl.select();document.execCommand('copy');showToast('已复制连接地址')})}else{domEl.select();document.execCommand('copy');showToast('已复制连接地址')}
 }
 function loadIntegrationPanel(){
-  var domEl=$('integration-panel');if(!domEl)return;
+  let domEl=$('integration-panel');if(!domEl)return;
   fetch('/api/remote/status').then(function(r){return r.json()}).then(function(d){
-    var baseUrl=d.url||('http://'+d.ip+':'+d.port),hookUrl=baseUrl+'/api/webhook/generic';
-    var html='<div style=\"margin-bottom:12px\">';
+    let baseUrl=d.url||('http://'+d.ip+':'+d.port),hookUrl=baseUrl+'/api/webhook/generic';
+    let html='<div style=\"margin-bottom:12px\">';
     html+='<p style=\"font-size:10px;color:var(--text2);margin-bottom:8px\">外部服务通过 Webhook 调用 Agency</p>';
     html+='<div style=\"background:var(--surface2);border-radius:6px;padding:8px 10px;margin-bottom:6px\">';
     html+='<div style=\"font-weight:600;font-size:11px;color:var(--accent);margin-bottom:4px\">通用 Webhook</div>';
@@ -129,26 +129,26 @@ function loadIntegrationPanel(){
     html+='<p style=\"font-size:10px;color:var(--muted);margin-top:8px\">飞书/微信接入请在各平台配置此 Webhook 地址</p>';
     html+='</div>';
     domEl.innerHTML=html;
-    var btn=document.getElementById('hook-copy-btn');
+    let btn=document.getElementById('hook-copy-btn');
     if(btn)btn.onclick=function(){copyText(hookUrl)};
   }).catch(function(){domEl.innerHTML='无法加载集成面板数据。服务可能未启动，请刷新页面重试'});
 }
 function openMemEditor(path,name){
-  var p=path||name;
+  let p=path||name;
   if(!p){ showToast('无法打开：缺少文件路径','error'); return; }
   fetch('/api/memory/'+encodeURIComponent(p)).then(function(r){return r.json()}).then(function(d){
     if(d.error){showToast(d.error||'操作失败，请重试',!0);return}
-    var ed=$('mem-editor');
+    let ed=$('mem-editor');
     ed.innerHTML='<div style="margin-bottom:4px;font-size:11px;color:var(--text2)">编辑: '+escHtml(d.name)+'</div><textarea class="mem-editor" id="mem-edit-area">'+escHtml(d.content)+'</textarea><div style="margin-top:6px;display:flex;gap:6px"><button class="btn" onclick="saveMemFile(\''+escHtml(p)+'\')">💾 保存</button><button class="btn" onclick="document.getElementById(\'mem-editor\').innerHTML=\'\';loadMemList()">取消</button></div>';
   }).catch(function(e){showToast('无法加载文件: '+(e.message||'请检查网络连接后刷新重试'),!0)});
 }
 function saveMemFile(name){
-  var content=document.getElementById('mem-edit-area');if(!content)return;
+  let content=document.getElementById('mem-edit-area');if(!content)return;
   fetch('/api/memory/'+encodeURIComponent(name),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:content.value})}).then(function(r){return r.json()}).then(function(d){if(d.ok){showToast('已保存: '+d.name);document.getElementById('mem-editor').innerHTML='';loadMemList()}else{showToast(d.error||'保存失败，请检查文件权限或磁盘空间后重试',!0)}}).catch(function(e){console.error('保存记忆文件失败:',e);showToast('保存失败，请重试',!0)});
 }
 
 /* ── MCP 配置面板 ── */
-var MCP_DESCRIPTIONS = {
+let MCP_DESCRIPTIONS = {
   'playwright': '浏览器自动化',
   'context7': '文档查询',
   'github': 'GitHub API',
@@ -157,14 +157,14 @@ var MCP_DESCRIPTIONS = {
 };
 
 function loadMCPConfig(){
-  var domEl=$('mcp-config-list');if(!domEl)return;
+  let domEl=$('mcp-config-list');if(!domEl)return;
   fetch('/api/mcp/status').then(function(r){return r.json()}).then(function(d){
-    var servers=d.servers||[];
+    let servers=d.servers||[];
     if(!servers.length){domEl.innerHTML='<span style="color:var(--muted);font-size:10px">未检测到 MCP 服务。请检查 .mcp.json 配置</span>';return}
     domEl.innerHTML=servers.map(function(s){
-      var desc=MCP_DESCRIPTIONS[s.name]||s.name;
-      var dotColor=s.running?'var(--accent)':'var(--danger)';
-      var checked=s.enabled!==false?'checked':'';
+      let desc=MCP_DESCRIPTIONS[s.name]||s.name;
+      let dotColor=s.running?'var(--accent)':'var(--danger)';
+      let checked=s.enabled!==false?'checked':'';
       return '<label class="mcp-row" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:11px">'+
         '<input type="checkbox" '+checked+' onchange="toggleMCPServer(\''+escAttr(s.name)+'\',this.checked)" style="accent-color:var(--accent)">'+
         '<span style="flex:1">'+escHtml(s.name)+'</span>'+
@@ -185,15 +185,15 @@ function toggleMCPServer(name,enabled){
 function showProfilePicker(){
   // 在设置面板打开时刷新 profile 列表
   fetch('/api/profile').then(function(r){return r.json()}).then(function(d){
-    var sel = document.getElementById('profile-select');
-    var profiles = d.profiles || {};
-    var keys = Object.keys(profiles);
+    let sel = document.getElementById('profile-select');
+    let profiles = d.profiles || {};
+    let keys = Object.keys(profiles);
     if(!keys.length) keys = ['minimal','standard','full'];
     if(sel){
       sel.innerHTML = keys.map(function(k){
-        var p = profiles[k] || {};
-        var label = PROFILE_LABELS[k] || k;
-        var icon = PROFILE_ICONS[k] || '';
+        let p = profiles[k] || {};
+        let label = PROFILE_LABELS[k] || k;
+        let icon = PROFILE_ICONS[k] || '';
         return '<option value="'+escHtml(k)+'">'+icon+' '+escHtml(label)+' — '+escHtml(p.description||p.trigger||k)+'</option>';
       }).join('');
       sel.value = agencyProfile;
@@ -212,8 +212,8 @@ function showProfilePicker(){
 /* ── Key 可见性切换 ── */
 /* 保存 API Key — localStorage + 服务端双写，防止 pywebview 不持久化 */
 window.saveApiKey = function(){
-  var ak = document.getElementById('api-key');
-  var ap = document.getElementById('api-provider');
+  let ak = document.getElementById('api-key');
+  let ap = document.getElementById('api-provider');
   if (ak && ak.value.trim()) {
     apiKey = ak.value.trim();
     localStorage.setItem('agency_api_key', apiKey);
@@ -235,27 +235,27 @@ window.saveApiKey = function(){
   }
   showToast('API Key 已保存');
 };
-function toggleKeyVisibility(){var inp=$('api-key');var btn=$('key-toggle-btn');if(inp.type==='password'){inp.type='text';btn.textContent='🙈'}else{inp.type='password';btn.textContent='👁'}}
+function toggleKeyVisibility(){let inp=$('api-key');let btn=$('key-toggle-btn');if(inp.type==='password'){inp.type='text';btn.textContent='🙈'}else{inp.type='password';btn.textContent='👁'}}
 
 /* ── Provider 切换提示 ── */
 function onProviderChange(){showToast(t('providerSwitchWarn'),false,'warn',3000)}
 
 /* ── 功能解锁 UI ── */
 function renderFeatureUnlock(){
-  var domEl = document.getElementById('feature-unlock-content');
+  let domEl = document.getElementById('feature-unlock-content');
   if(!domEl) return;
-  var day = getUserDay();
-  var unlocked = localStorage.getItem('agency_unlock_all') === 'true';
-  var keys = Object.keys(FEATURE_SCHEDULE);
-  var labelMap = {chat:'基础聊天',settings:'设置面板',dashboard:'仪表盘',agents:'Agent列表',routing:'智能调度',multipanel:'多面板','agent-factory':'Agent工厂',skills:'Skill编辑',profiles:'Profile切换'};
-  var html = '<p style="font-size:10px;color:var(--muted);margin-bottom:8px">'+t('currentDay').replace('{day}', day)+'</p>';
+  let day = getUserDay();
+  let unlocked = localStorage.getItem('agency_unlock_all') === 'true';
+  let keys = Object.keys(FEATURE_SCHEDULE);
+  let labelMap = {chat:'基础聊天',settings:'设置面板',dashboard:'仪表盘',agents:'Agent列表',routing:'智能调度',multipanel:'多面板','agent-factory':'Agent工厂',skills:'Skill编辑',profiles:'Profile切换'};
+  let html = '<p style="font-size:10px;color:var(--muted);margin-bottom:8px">'+t('currentDay').replace('{day}', day)+'</p>';
   html += '<table class="feature-unlock-table">';
-  var hasLocked = false;
-  for(var i=0;i<keys.length;i++){
-    var s = FEATURE_SCHEDULE[keys[i]];
-    var isUnlocked = unlocked || day >= s.minDay;
+  let hasLocked = false;
+  for(let i=0;i<keys.length;i++){
+    let s = FEATURE_SCHEDULE[keys[i]];
+    let isUnlocked = unlocked || day >= s.minDay;
     if(!isUnlocked) hasLocked = true;
-    var featuresStr = s.features.map(function(f){ return labelMap[f] || f; }).join(' + ');
+    let featuresStr = s.features.map(function(f){ return labelMap[f] || f; }).join(' + ');
     html += '<tr><td class="fu-icon">'+(isUnlocked?'✅':'🔒')+'</td>';
     html += '<td><div class="fu-features">'+escHtml(featuresStr)+'</div><div class="fu-desc">'+(s.desc[_lang]||s.desc.zh)+'</div></td>';
     html += '<td class="fu-day">Day '+s.minDay+'</td>';
@@ -277,7 +277,7 @@ function toggleUnlockAll(on){
   if(typeof loadSidebarSkills === 'function') loadSidebarSkills();
 }
 function showLockedHint(el, featureName){
-  var minDay = FEATURE_UNLOCK_DAYS[featureName] || 7;
+  let minDay = FEATURE_UNLOCK_DAYS[featureName] || 7;
   el.setAttribute('data-locked-hint', t('featureLocked').replace('{day}', minDay));
   el.classList.add('locked-feature');
 }
@@ -285,7 +285,7 @@ function showLockedHint(el, featureName){
 /* ── 清空全部对话历史 ── */
 function clearAllHistory(){
   showDeleteConfirm(t('clearAllHistoryConfirm'), function(){
-    var savedConvos = conversations.slice();
+    let savedConvos = conversations.slice();
     // 服务端删除全部
     savedConvos.forEach(function(c){ api.del('/api/conversations/'+c.id).catch(function(e){console.error('删除会话失败:',e)}) });
     conversations = [];
@@ -309,10 +309,10 @@ function clearAllHistory(){
 /* ── 全局 Agent 粘性 ── */
 function renderStickyAgentDropdown(containerEl){
   if(!containerEl) return;
-  var list = (typeof agents !== 'undefined' ? agents : []);
+  let list = (typeof agents !== 'undefined' ? agents : []);
   if(typeof _demoMode !== 'undefined' && _demoMode) list = getDemoAgents();
-  var cur = localStorage.getItem('sticky_agent') || '';
-  var html = '<p style="font-size:10px;color:var(--muted);margin-bottom:6px">' + t('stickyAgentDesc') + '</p>';
+  let cur = localStorage.getItem('sticky_agent') || '';
+  let html = '<p style="font-size:10px;color:var(--muted);margin-bottom:6px">' + t('stickyAgentDesc') + '</p>';
   html += '<select class="proj-input" id="sticky-agent-select" onchange="setStickyAgent(this.value)" style="width:100%;margin-bottom:4px">';
   html += '<option value="">' + t('stickyAgentNone') + '</option>';
   list.forEach(function(a){
@@ -334,13 +334,13 @@ function setStickyAgent(name){
 /* ── 自定义快捷键编辑器 ── */
 function renderShortcutEditor(containerEl){
   if(!containerEl) return;
-  var custom = {};
+  let custom = {};
   try{ custom = JSON.parse(localStorage.getItem('custom_shortcuts') || '{}'); }catch(e){}
-  var html = '<div style="max-height:400px;overflow-y:auto">';
-  for(var i=0; i<KEYBOARD_SHORTCUTS.length; i++){
-    var ks = KEYBOARD_SHORTCUTS[i];
-    var actionId = ks.action;
-    var curKeys = custom[actionId] || ks.keys;
+  let html = '<div style="max-height:400px;overflow-y:auto">';
+  for(let i=0; i<KEYBOARD_SHORTCUTS.length; i++){
+    let ks = KEYBOARD_SHORTCUTS[i];
+    let actionId = ks.action;
+    let curKeys = custom[actionId] || ks.keys;
     html += '<div class="shortcut-row" style="display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:4px;background:var(--surface2);border-radius:var(--radius)">';
     html += '<span style="flex:1;font-size:11px;color:var(--text)">' + escHtml(ks.desc) + '</span>';
     html += '<code class="shortcut-keys" style="background:var(--bg);padding:2px 8px;border-radius:4px;font-size:11px;font-family:JetBrains Mono,monospace;color:var(--accent);min-width:80px;text-align:center;cursor:pointer" onclick="captureShortcutKey(\'' + escAttr(actionId) + '\', this)" data-action="' + escAttr(actionId) + '">' + escHtml(curKeys) + '</code>';
@@ -353,12 +353,12 @@ function renderShortcutEditor(containerEl){
 }
 
 function captureShortcutKey(actionId, displayEl){
-  var overlay = document.createElement('div');
+  let overlay = document.createElement('div');
   overlay.className = 'confirm-overlay';
   overlay.innerHTML = '<div class="confirm-box" style="text-align:center"><p style="font-size:14px;margin-bottom:8px">' + t('pressNewShortcut') + '</p><p style="font-size:11px;color:var(--muted);margin-bottom:12px">' + t('shortcutCapture') + '</p><div class="btn-row"><button class="btn btn-cancel" id="shortcut-capture-cancel">' + t('cancel') + '</button></div></div>';
   document.body.appendChild(overlay);
 
-  var cancelBtn = overlay.querySelector('#shortcut-capture-cancel');
+  let cancelBtn = overlay.querySelector('#shortcut-capture-cancel');
   function closeCapture(){
     overlay.remove();
     document.removeEventListener('keydown', handler);
@@ -370,11 +370,11 @@ function captureShortcutKey(actionId, displayEl){
     if(e.key === 'Escape'){ closeCapture(); return; }
     if(e.key === 'Control' || e.key === 'Shift' || e.key === 'Alt' || e.key === 'Meta') return;
     e.preventDefault();
-    var parts = [];
+    let parts = [];
     if(e.ctrlKey || e.metaKey) parts.push('Ctrl');
     if(e.altKey) parts.push('Alt');
     if(e.shiftKey) parts.push('Shift');
-    var key = e.key;
+    let key = e.key;
     if(key === ' ') key = 'Space';
     else if(key.length === 1) key = key.toUpperCase();
     else if(key === 'ArrowUp') key = '↑';
@@ -382,14 +382,14 @@ function captureShortcutKey(actionId, displayEl){
     else if(key === 'ArrowLeft') key = '←';
     else if(key === 'ArrowRight') key = '→';
     parts.push(key);
-    var newKeys = parts.join('+');
+    let newKeys = parts.join('+');
 
     // Conflict detection
-    var custom = {};
+    let custom = {};
     try{ custom = JSON.parse(localStorage.getItem('custom_shortcuts') || '{}'); }catch(e){}
-    for(var i=0; i<KEYBOARD_SHORTCUTS.length; i++){
-      var ks = KEYBOARD_SHORTCUTS[i];
-      var existing = custom[ks.action] || ks.keys;
+    for(let i=0; i<KEYBOARD_SHORTCUTS.length; i++){
+      let ks = KEYBOARD_SHORTCUTS[i];
+      let existing = custom[ks.action] || ks.keys;
       if(ks.action !== actionId && existing === newKeys){
         showToast(t('shortcutConflict').replace('{key}', newKeys).replace('{action}', ks.desc), true);
         closeCapture();
@@ -421,14 +421,14 @@ function renderResetSection(container) {
   fetch('/api/reset/status')
     .then(function(r) { return r.json(); })
     .then(function(data) {
-      var html = '<div style="padding:8px 0;">';
+      let html = '<div style="padding:8px 0;">';
 
       html += '<h4 style="margin:0 0 8px;font-size:13px;">用户自定义</h4>';
       html += '<p style="color:var(--muted);font-size:11px;margin:0 0 10px;">删除 user/ 目录下的自定义内容。系统文件不受影响。</p>';
 
-      var customs = data.user_customizations || {};
-      var agents = customs.agents || [];
-      var skills = customs.skills || [];
+      let customs = data.user_customizations || {};
+      let agents = customs.agents || [];
+      let skills = customs.skills || [];
 
       if (agents.length + skills.length === 0) {
         html += '<p style="color:var(--muted);font-size:11px;padding:8px;background:var(--bg);border-radius:4px;">暂无用户自定义内容</p>';
@@ -460,9 +460,9 @@ function renderResetSection(container) {
       html += '<h4 style="margin:0 0 8px;font-size:13px;">恢复系统默认</h4>';
       html += '<p style="color:var(--muted);font-size:11px;margin:0 0 10px;">将系统 Agent/Skill 恢复到初始版本（需要 git）。</p>';
 
-      var sysCats = data.system_categories || {};
-      var agentCats = sysCats.agents || [];
-      var skillCats = sysCats.skills || [];
+      let sysCats = data.system_categories || {};
+      let agentCats = sysCats.agents || [];
+      let skillCats = sysCats.skills || [];
 
       if (agentCats.length > 0) {
         html += '<div style="margin-bottom:6px;font-size:12px;font-weight:600;">Agent 分类</div>';
@@ -506,7 +506,7 @@ window.resetUserFile = function(path) {
     .then(function(data) {
       if (data.ok) {
         showToast('已删除', false, 'success');
-        var container = document.getElementById('reset-container');
+        let container = document.getElementById('reset-container');
         if (container) renderResetSection(container);
       } else {
         alert('删除失败: ' + (data.error || '未知'));
@@ -521,7 +521,7 @@ window.resetUserAll = function() {
     .then(function(data) {
       if (data.ok) {
         showToast('已清空 ' + data.count + ' 个自定义文件', false, 'success');
-        var container = document.getElementById('reset-container');
+        let container = document.getElementById('reset-container');
         if (container) renderResetSection(container);
       }
     });
@@ -562,17 +562,17 @@ window.fullReset = function() {
 
 /* ── 压缩比例配置 ── */
 /* 10 个常用模型列表，与 saveCompactionConfig 共享 */
-var COMPACTION_MODELS=["deepseek-v4-pro","deepseek-v4-flash","claude-opus-4-8","claude-sonnet-4-6","claude-haiku-4-5","gpt-5","gpt-5-mini","gpt-5-nano","gemini-2.5-pro","gemini-2.5-flash","grok-4.3","qwen3-max","GLM-5.1"]; // 2026.06 更新
+let COMPACTION_MODELS=["deepseek-v4-pro","deepseek-v4-flash","claude-opus-4-8","claude-sonnet-4-6","claude-haiku-4-5","gpt-5","gpt-5-mini","gpt-5-nano","gemini-2.5-pro","gemini-2.5-flash","grok-4.3","qwen3-max","GLM-5.1"]; // 2026.06 更新
 
 /* 加载压缩配置并填充 UI */
 function loadCompactionConfig(){
-  var list=document.getElementById("cmp-model-list");
+  let list=document.getElementById("cmp-model-list");
   // 首先生成模型输入框（避免重复生成）
   if(list&&!list._generated){
     list._generated=true;
-    var html='';
+    let html='';
     COMPACTION_MODELS.forEach(function(m){
-      var key=m.replace(/[^a-z0-9-]/g,"");
+      let key=m.replace(/[^a-z0-9-]/g,"");
       html+='<div style="font-size:10px;padding-top:2px">'+escHtml(m)+'</div>';
       html+='<div style="display:flex;gap:4px">';
       // 暗色主题：动态生成的模型压缩比例输入框
@@ -584,18 +584,18 @@ function loadCompactionConfig(){
   }
   // 从服务端加载当前配置
   fetch('/api/settings/compaction').then(function(r){return r.json()}).then(function(d){
-    var dw=document.getElementById("cmp-d-warn"),df=document.getElementById("cmp-d-force");
+    let dw=document.getElementById("cmp-d-warn"),df=document.getElementById("cmp-d-force");
     if(dw&&df){
       // 输入为小数（如 0.70），直接用 parseFloat
       dw.value=(d.defaults&&typeof d.defaults.warn==='number')?d.defaults.warn:0.70;
       df.value=(d.defaults&&typeof d.defaults.force==='number')?d.defaults.force:0.85;
     }
-    var models=d.models||{};
+    let models=d.models||{};
     COMPACTION_MODELS.forEach(function(m){
-      var key=m.replace(/[^a-z0-9-]/g,"");
-      var wk=document.getElementById("cmp-w-"+key),fk=document.getElementById("cmp-f-"+key);
+      let key=m.replace(/[^a-z0-9-]/g,"");
+      let wk=document.getElementById("cmp-w-"+key),fk=document.getElementById("cmp-f-"+key);
       if(wk&&fk){
-        var cfg=models[m]||{};
+        let cfg=models[m]||{};
         // 留空表示跟随全局，不填默认值
         wk.value=typeof cfg.warn==='number'?cfg.warn:'';
         fk.value=typeof cfg.force==='number'?cfg.force:'';
@@ -603,32 +603,32 @@ function loadCompactionConfig(){
     });
   }).catch(function(){
     // 服务端不可用时填入默认值
-    var dw=document.getElementById("cmp-d-warn"),df=document.getElementById("cmp-d-force");
+    let dw=document.getElementById("cmp-d-warn"),df=document.getElementById("cmp-d-force");
     if(dw&&!dw.value)dw.value=0.70;
     if(df&&!df.value)df.value=0.85;
   });
 }
 
 window.saveCompactionConfig = function(){
-  var dw=document.getElementById("cmp-d-warn"),df=document.getElementById("cmp-d-force");
+  let dw=document.getElementById("cmp-d-warn"),df=document.getElementById("cmp-d-force");
   if(!dw||!df)return;
   // 输入值已经是小数（如 0.70），直接用 parseFloat，不再 /100
-  var defs={warn:parseFloat(dw.value)||0.70,force:parseFloat(df.value)||0.85};
-  var models={};
+  let defs={warn:parseFloat(dw.value)||0.70,force:parseFloat(df.value)||0.85};
+  let models={};
   COMPACTION_MODELS.forEach(function(m){
-    var wid="cmp-w-"+m.replace(/[^a-z0-9-]/g,""),fid="cmp-f-"+m.replace(/[^a-z0-9-]/g,"");
-    var wk=document.getElementById(wid),fk=document.getElementById(fid);
+    let wid="cmp-w-"+m.replace(/[^a-z0-9-]/g,""),fid="cmp-f-"+m.replace(/[^a-z0-9-]/g,"");
+    let wk=document.getElementById(wid),fk=document.getElementById(fid);
     if(!wk||!fk)return;
-    var wv=wk.value.trim(),fv=fk.value.trim();
+    let wv=wk.value.trim(),fv=fk.value.trim();
     // 空值表示跟随全局，不纳入 models
     if(!wv&&!fv)return;
-    var w=wv?parseFloat(wv):defs.warn;
-    var f=fv?parseFloat(fv):defs.force;
+    let w=wv?parseFloat(wv):defs.warn;
+    let f=fv?parseFloat(fv):defs.force;
     if(w!==defs.warn||f!==defs.force)models[m]={warn:w,force:f};
   });
   fetch("/api/settings/compaction",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({defaults:defs,models:models})})
   .then(function(r){return r.json()}).then(function(d){
-    var msg=document.getElementById("cmp-save-msg");
+    let msg=document.getElementById("cmp-save-msg");
     if(d.ok){
       if(msg)msg.textContent="已保存";
       showToast("压缩配置已保存");
@@ -638,7 +638,7 @@ window.saveCompactionConfig = function(){
     }
   })
   .catch(function(){
-    var msg=document.getElementById("cmp-save-msg");
+    let msg=document.getElementById("cmp-save-msg");
     if(msg)msg.textContent="保存失败";
     showToast("保存失败",!0);
   });
@@ -648,9 +648,9 @@ window.saveCompactionConfig = function(){
 
 function loadCronJobs() {
   fetch('/api/cron').then(function(r){ return r.json(); }).then(function(d) {
-    var list = document.getElementById('cron-jobs-list');
+    let list = document.getElementById('cron-jobs-list');
     if (!list) return;
-    var jobs = d.jobs || [];
+    let jobs = d.jobs || [];
     if (!jobs.length) {
       list.innerHTML = '<div style="font-size:10px;color:var(--muted)">暂无定时任务</div>';
       return;
@@ -666,8 +666,8 @@ function loadCronJobs() {
 }
 
 window.addCronJob = function() {
-  var prompt = document.getElementById('cron-new-prompt');
-  var expr = document.getElementById('cron-new-expr');
+  let prompt = document.getElementById('cron-new-prompt');
+  let expr = document.getElementById('cron-new-expr');
   if (!prompt || !expr || !prompt.value.trim()) return;
   fetch('/api/cron', {
     method: 'POST',
@@ -687,10 +687,10 @@ window.deleteCronJob = function(id) {
 
 /* Phase 3: GitHub PR Diff */
 window.loadPRDiff = function() {
-  var owner = document.getElementById("pr-owner").value.trim();
-  var repo = document.getElementById("pr-repo").value.trim();
-  var prNum = document.getElementById("pr-number").value.trim();
-  var container = document.getElementById("pr-diff-container");
+  let owner = document.getElementById("pr-owner").value.trim();
+  let repo = document.getElementById("pr-repo").value.trim();
+  let prNum = document.getElementById("pr-number").value.trim();
+  let container = document.getElementById("pr-diff-container");
   if (!owner || !repo || !prNum) { showToast("请填写 owner/repo/PR#"); return; }
   container.style.display = "block";
   container.innerHTML = '<div style="padding:12px;color:var(--muted)">加载中…</div>';
@@ -698,8 +698,8 @@ window.loadPRDiff = function() {
     .then(function(r){ return r.json(); })
     .then(function(d){
       if (!d.ok) { container.innerHTML = '<div style="padding:12px;color:var(--danger)">'+escHtml(d.error)+'</div>'; return; }
-      var lines = d.diff.split(String.fromCharCode(10));  /* 跨平台换行处理 */
-      var html = '<div style="padding:8px;font-family:monospace;font-size:10px;line-height:1.6;white-space:pre-wrap;max-height:280px;overflow:auto">';
+      let lines = d.diff.split(String.fromCharCode(10));  /* 跨平台换行处理 */
+      let html = '<div style="padding:8px;font-family:monospace;font-size:10px;line-height:1.6;white-space:pre-wrap;max-height:280px;overflow:auto">';
       lines.forEach(function(l){
         if (l.startsWith("+") && !l.startsWith("+++")) html += '<div style="background:#1a3a1a;color:#7d7">'+escHtml(l)+'</div>';
         else if (l.startsWith("-") && !l.startsWith("---")) html += '<div style="background:#3a1a1a;color:#f88">'+escHtml(l)+'</div>';

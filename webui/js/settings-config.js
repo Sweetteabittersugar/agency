@@ -2,7 +2,7 @@
 
 /* ── 配置导出 ── */
 function exportConfig(){
-  var config = {
+  let config = {
     version: 1,
     exported_at: new Date().toISOString(),
     agents: typeof agents !== 'undefined' ? agents : [],
@@ -19,9 +19,9 @@ function exportConfig(){
     custom_templates: getCustomTemplates()
   };
   // 预览摘要
-  var preview = document.getElementById('config-export-preview');
+  let preview = document.getElementById('config-export-preview');
   if(preview){
-    var previewHTML = '<div class="config-export-preview"><div style="font-weight:600;margin-bottom:4px">'+t('exportPreview')+'</div>';
+    let previewHTML = '<div class="config-export-preview"><div style="font-weight:600;margin-bottom:4px">'+t('exportPreview')+'</div>';
     previewHTML += '<div class="preview-row"><span>Agent</span><span class="preview-val">'+(config.agents.length||0)+' 个</span></div>';
     previewHTML += '<div class="preview-row"><span>Skills</span><span class="preview-val">'+(config.skills.length||0)+' 个</span></div>';
     previewHTML += '<div class="preview-row"><span>自定义模板</span><span class="preview-val">'+(config.custom_templates.length||0)+' 个</span></div>';
@@ -29,9 +29,9 @@ function exportConfig(){
     previewHTML += '</div>';
     preview.innerHTML = previewHTML;
   }
-  var blob = new Blob([JSON.stringify(config, null, 2)], {type:'application/json'});
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
+  let blob = new Blob([JSON.stringify(config, null, 2)], {type:'application/json'});
+  let url = URL.createObjectURL(blob);
+  let a = document.createElement('a');
   a.href = url;
   a.download = 'agency-config.json';
   document.body.appendChild(a);
@@ -43,16 +43,16 @@ function exportConfig(){
 
 /* ── 配置导入 ── */
 function importConfig(){
-  var input = document.createElement('input');
+  let input = document.createElement('input');
   input.type = 'file';
   input.accept = '.json';
   input.onchange = function(e){
-    var file = e.target.files[0];
+    let file = e.target.files[0];
     if(!file) return;
-    var reader = new FileReader();
+    let reader = new FileReader();
     reader.onload = function(ev){
       try{
-        var imported = JSON.parse(ev.target.result);
+        let imported = JSON.parse(ev.target.result);
         showImportDiff(imported);
       }catch(err){
         showToast(t('error')+': JSON 格式无效', true);
@@ -63,7 +63,7 @@ function importConfig(){
   input.click();
 }
 function showImportDiff(imported){
-  var current = {
+  let current = {
     agents: typeof agents !== 'undefined' ? agents : [],
     skills: typeof allSkills !== 'undefined' ? allSkills : [],
     preferences: {
@@ -78,46 +78,46 @@ function showImportDiff(imported){
     custom_templates: getCustomTemplates()
   };
 
-  var diffs = [];
+  let diffs = [];
   // agents
-  var impAgents = imported.agents || [];
-  var curAgents = current.agents;
+  let impAgents = imported.agents || [];
+  let curAgents = current.agents;
   impAgents.forEach(function(ia){
-    var ca = curAgents.find(function(a){return a.name===ia.name});
+    let ca = curAgents.find(function(a){return a.name===ia.name});
     if(!ca){
       diffs.push({type:'new',section:'Agent',name:ia.name,val:ia.description||''});
     }
   });
   // skills
-  var impSkills = imported.skills || [];
-  var curSkills = current.skills;
+  let impSkills = imported.skills || [];
+  let curSkills = current.skills;
   impSkills.forEach(function(is){
-    var cs = curSkills.find(function(s){return s.name===is.name});
+    let cs = curSkills.find(function(s){return s.name===is.name});
     if(!cs){
       diffs.push({type:'new',section:'Skill',name:is.name,val:is.description||''});
     }
   });
   // preferences
-  var impPrefs = imported.preferences || {};
-  var curPrefs = current.preferences;
+  let impPrefs = imported.preferences || {};
+  let curPrefs = current.preferences;
   Object.keys(impPrefs).forEach(function(k){
     if(impPrefs[k] !== curPrefs[k]){
       diffs.push({type:'change',section:'偏好',name:k,old:curPrefs[k]||'(空)',val:impPrefs[k]||'(空)'});
     }
   });
   // custom templates
-  var impTpls = imported.custom_templates || [];
-  var curTpls = current.custom_templates;
+  let impTpls = imported.custom_templates || [];
+  let curTpls = current.custom_templates;
   impTpls.forEach(function(it){
-    var ct = curTpls.find(function(t){return t.label===it.label});
+    let ct = curTpls.find(function(t){return t.label===it.label});
     if(!ct){
       diffs.push({type:'new',section:'模板',name:it.label||it.content.slice(0,20),val:it.content||''});
     }
   });
 
-  var overlay = document.createElement('div');
+  let overlay = document.createElement('div');
   overlay.className = 'config-diff-overlay';
-  var html = '<div class="config-diff-modal">';
+  let html = '<div class="config-diff-modal">';
   html += '<div class="config-diff-header"><span>'+t('importDiff')+' ('+diffs.length+' 项)</span><button class="btn" id="diff-close-btn">✕</button></div>';
   html += '<div class="config-diff-body">';
   if(diffs.length === 0){
@@ -159,10 +159,10 @@ function showImportDiff(imported){
 }
 
 function applyDiffItem(idx, decision){
-  var overlay = document.querySelector('.config-diff-overlay');
+  let overlay = document.querySelector('.config-diff-overlay');
   if(!overlay) return;
   overlay._decisions[idx] = decision;
-  var item = document.getElementById('diff-item-'+idx);
+  let item = document.getElementById('diff-item-'+idx);
   if(item){
     item.style.opacity = decision==='replace'||decision==='import'?'.6':'.3';
     item.style.borderLeftColor = decision==='replace'||decision==='import'?'var(--accent)':'var(--muted)';
@@ -170,16 +170,16 @@ function applyDiffItem(idx, decision){
 }
 
 function applyAllDiffs(){
-  var overlay = document.querySelector('.config-diff-overlay');
+  let overlay = document.querySelector('.config-diff-overlay');
   if(!overlay) return;
-  var diffs = overlay._diffs;
-  for(var i=0;i<diffs.length;i++) overlay._decisions[i]='replace';
+  let diffs = overlay._diffs;
+  for(let i=0;i<diffs.length;i++) overlay._decisions[i]='replace';
   executeImport(overlay._imported, overlay._decisions);
   overlay.remove();
 }
 
 function skipAllDiffs(){
-  var overlay = document.querySelector('.config-diff-overlay');
+  let overlay = document.querySelector('.config-diff-overlay');
   if(!overlay) return;
   overlay.remove();
   showToast(t('configImportCancel'));
@@ -187,9 +187,9 @@ function skipAllDiffs(){
 
 function executeImport(imported, decisions){
   // Apply preferences
-  var impPrefs = imported.preferences || {};
+  let impPrefs = imported.preferences || {};
   Object.keys(impPrefs).forEach(function(k){
-    var prefKey = {theme:'agency_theme',font_size:'agency_font_size',sidebar_width:'agency_sidebar_width',trust_mode:'agency_trust_mode',profile:'agency_profile',output_dir:'agency_output_dir',unlock_all:'agency_unlock_all'}[k];
+    let prefKey = {theme:'agency_theme',font_size:'agency_font_size',sidebar_width:'agency_sidebar_width',trust_mode:'agency_trust_mode',profile:'agency_profile',output_dir:'agency_output_dir',unlock_all:'agency_unlock_all'}[k];
     if(prefKey) localStorage.setItem(prefKey, impPrefs[k]);
   });
   showToast(t('configImportDone'));
@@ -199,8 +199,8 @@ function executeImport(imported, decisions){
 /* ── 配置重置 ── */
 function resetConfig(){
   showDeleteConfirm(t('confirmReset'), function(){
-    var savedKey = localStorage.getItem('agency_api_key');
-    var savedProvider = localStorage.getItem('agency_api_provider');
+    let savedKey = localStorage.getItem('agency_api_key');
+    let savedProvider = localStorage.getItem('agency_api_provider');
     localStorage.clear();
     if(savedKey) localStorage.setItem('agency_api_key', savedKey);
     if(savedProvider) localStorage.setItem('agency_api_provider', savedProvider);

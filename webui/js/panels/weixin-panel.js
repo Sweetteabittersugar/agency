@@ -9,10 +9,10 @@ function renderWeixinTab(container) {
 function loadWeixinStatus() {
   api.get('/api/weixin/status')
     .then(function(data) {
-      var panel = document.getElementById('wx-panel');
+      let panel = document.getElementById('wx-panel');
       if (!panel) return;
 
-      var html = '';
+      let html = '';
 
       html += '<div class="kpi-row">';
       html += '<div class="kpi-card"><div class="kpi-value" style="color:' + (data.logged_in ? '#27ae60' : '#e74c3c') + '">' + (data.logged_in ? '已连接' : '未连接') + '</div><div class="kpi-label">微信 Bot</div></div>';
@@ -51,13 +51,13 @@ function loadWeixinStatus() {
       panel.innerHTML = html;
     })
     .catch(function() {
-      var panel = document.getElementById('wx-panel');
+      let panel = document.getElementById('wx-panel');
       if (panel) panel.innerHTML = '<p style="color:var(--muted)">加载失败，请确保服务已启动</p>';
     });
 }
 
 window.wxStartLogin = function() {
-  var btn = document.getElementById('wx-login-btn');
+  let btn = document.getElementById('wx-login-btn');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ 获取中...'; }
   api.post('/api/weixin/login/start')
     .then(function(data) {

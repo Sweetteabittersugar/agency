@@ -1,10 +1,10 @@
 /* Agency — 版本更新横幅 */
 function checkUpdate(){
-  var banner = document.getElementById('update-banner');
+  let banner = document.getElementById('update-banner');
   if (banner || sessionStorage.getItem('agency_update_dismissed')) return;
   fetch('/api/check-update').then(function(r){return r.json()}).then(function(d){
     if (!d.has_update) return;
-    var el = document.createElement('div');
+    let el = document.createElement('div');
     el.id = 'update-banner';
     el.style.cssText = 'position:sticky;top:0;z-index:999;width:100%;background:linear-gradient(135deg,#f59e0b,#d97706);color:#1a1a2e;padding:8px 12px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.3)';
     el.innerHTML =
@@ -16,7 +16,7 @@ function checkUpdate(){
 }
 
 function dismissUpdate(){
-  var el = document.getElementById('update-banner');
+  let el = document.getElementById('update-banner');
   if (el) el.remove();
   sessionStorage.setItem('agency_update_dismissed', '1');
 }

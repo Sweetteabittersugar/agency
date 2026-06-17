@@ -3,7 +3,7 @@
   'use strict';
 
   function showOnboarding() {
-    var overlay = document.getElementById('onboard-overlay');
+    let overlay = document.getElementById('onboard-overlay');
     if (overlay) overlay.style.display = 'flex';
   }
 
@@ -13,7 +13,7 @@
       clearInterval(window._placeholderTimer);
       window._placeholderTimer = null;
     }
-    var overlay = document.getElementById('onboard-overlay');
+    let overlay = document.getElementById('onboard-overlay');
     if (overlay) overlay.style.display = 'none';
     try { localStorage.setItem('agency-onboarded', '1'); } catch(e) {}
   };
@@ -32,14 +32,14 @@
 
   // dismiss 按钮绑定保留（不依赖 DOMContentLoaded，因为覆盖层已经是 DOM 的一部分）
   document.addEventListener('DOMContentLoaded', function() {
-    var btn = document.getElementById('onboard-dismiss');
+    let btn = document.getElementById('onboard-dismiss');
     if (btn) btn.addEventListener('click', dismissOnboard);
   });
 })();
 
 // 输入框示例任务轮播
 (function() {
-  var examples = [
+  let examples = [
     '试试「帮我写一个 Python 爬虫脚本」',
     '试试「审查这段代码的安全性」',
     '试试「帮我设计一个用户登录系统」',
@@ -48,10 +48,10 @@
     '试试「帮我写 Dockerfile 部署这个项目」',
     '试试「搜索项目中所有 API 端点」'
   ];
-  var idx = 0;
+  let idx = 0;
 
   function rotatePlaceholder() {
-    var input = document.querySelector('textarea[placeholder*="输入"]')
+    let input = document.querySelector('textarea[placeholder*="输入"]')
              || document.querySelector('[placeholder*="输入"]')
              || document.querySelector('textarea');
     if (input && !input._hasCustomPlaceholder) {

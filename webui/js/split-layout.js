@@ -2,7 +2,7 @@
 (function() {
   'use strict';
 
-  var _currentLayout = 1;
+  let _currentLayout = 1;
 
   window.setLayout = function(n) {
     _currentLayout = n;
@@ -15,7 +15,7 @@
     grid.style.flexWrap = '';
     grid.className = 'grid g' + n;
     panels.forEach(function(p) {
-      var w = p.dom.wrapper;
+      let w = p.dom.wrapper;
       w.style.flex = ''; w.style.width = ''; w.style.height = ''; w.style.borderRight = '';
     });
 
@@ -25,8 +25,8 @@
   };
 
   function updateLayoutButtons(active) {
-    var btns = pageBar.querySelectorAll('.layout-btn');
-    for (var i = 0; i < btns.length; i++) {
+    let btns = pageBar.querySelectorAll('.layout-btn');
+    for (let i = 0; i < btns.length; i++) {
       btns[i].classList.toggle('active', parseInt(btns[i].dataset.layout) === active);
     }
   }
@@ -34,11 +34,11 @@
   // 填充 Agent 下拉框
   function populateAgentSelects() {
     function fill(arr) {
-      var opts = arr.map(function(a) {
+      let opts = arr.map(function(a) {
         return '<option value="' + escAttr(a.name) + '">' + escHtml(a.name) + '</option>';
       }).join('');
-      for (var i = 0; i < panels.length; i++) {
-        var sel = panels[i].dom.wrapper.querySelector('.panel-agent-select');
+      for (let i = 0; i < panels.length; i++) {
+        let sel = panels[i].dom.wrapper.querySelector('.panel-agent-select');
         if (sel) { sel.innerHTML = '<option value="">Agent...</option>' + opts; }
       }
     }
@@ -48,7 +48,7 @@
       fetch('/api/agents')
         .then(function(r) { return r.json(); })
         .then(function(d) {
-          var arr = Array.isArray(d) ? d : (d.agents || d.data || []);
+          let arr = Array.isArray(d) ? d : (d.agents || d.data || []);
           if (arr.length) fill(arr);
         }).catch(function(e){console.error('填充Agent下拉框失败:',e)});
     }
@@ -56,9 +56,9 @@
 
   // Agent 选择变更 — 填入 @agent 前缀
   window.onPanelAgentChange = function(pid, selectEl) {
-    var v = selectEl.value;
+    let v = selectEl.value;
     if (!v) return;
-    var p = panels.find(function(x) { return x.id === pid; });
+    let p = panels.find(function(x) { return x.id === pid; });
     if (!p) return;
     p.dom.input.value = '@' + v + ' ' + p.dom.input.value.replace(/^@\S+\s*/, '');
     p.dom.input.focus();
@@ -69,23 +69,23 @@
   // 分割条拖拽
   function initGutterDrag() {
     grid.addEventListener('mousedown', function(e) {
-      var gutter = e.target.closest('.split-gutter');
+      let gutter = e.target.closest('.split-gutter');
       if (!gutter) return;
       e.preventDefault();
       gutter.classList.add('dragging');
 
-      var startX = e.clientX;
-      var prev = gutter.previousElementSibling;
-      var next = gutter.nextElementSibling;
+      let startX = e.clientX;
+      let prev = gutter.previousElementSibling;
+      let next = gutter.nextElementSibling;
       if (!prev || !next) return;
-      var prevW = prev.getBoundingClientRect().width;
-      var nextW = next.getBoundingClientRect().width;
-      var totalW = prevW + nextW;
+      let prevW = prev.getBoundingClientRect().width;
+      let nextW = next.getBoundingClientRect().width;
+      let totalW = prevW + nextW;
 
       function onMove(ev) {
-        var dx = ev.clientX - startX;
-        var newPrev = Math.max(200, Math.min(totalW - 200, prevW + dx));
-        var newNext = totalW - newPrev;
+        let dx = ev.clientX - startX;
+        let newPrev = Math.max(200, Math.min(totalW - 200, prevW + dx));
+        let newNext = totalW - newPrev;
         prev.style.width = newPrev + 'px';
         next.style.width = newNext + 'px';
       }
@@ -107,9 +107,9 @@
     setTimeout(function() {
       populateAgentSelects();
       // 监听 agents 加载完成后重新填充
-      var origRenderAgents = window.renderAgents;
+      let origRenderAgents = window.renderAgents;
       if (typeof origRenderAgents === 'function') {
-        var wrapped = function(list) {
+        let wrapped = function(list) {
           origRenderAgents(list);
           agents = list;
           populateAgentSelects();
@@ -123,7 +123,7 @@
     window._pendingLayout = parseInt(localStorage.getItem('agency_layout')) || 1;
 
     // 首次使用多面板提示（仅提示一次）
-    var hintShown = localStorage.getItem('split-hint-shown');
+    let hintShown = localStorage.getItem('split-hint-shown');
     if (!hintShown && _currentLayout === 1) {
       setTimeout(function() {
         showToast('💡 试试多面板分屏？点击工具栏 ⊞ 切换布局', false);
@@ -133,9 +133,9 @@
   }
 
   // 扩展 addPanel — 新面板也加 Agent 下拉
-  var _origAddPanel = window.addPanel;
+  let _origAddPanel = window.addPanel;
   window.addPanel = function() {
-    var p = _origAddPanel();
+    let p = _origAddPanel();
     setTimeout(populateAgentSelects, 200);
     return p;
   };

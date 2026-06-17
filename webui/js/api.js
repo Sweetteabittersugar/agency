@@ -2,10 +2,10 @@
 (function() {
   'use strict';
 
-  var BASE = '';
-  var pendingRequests = {};
-  var cache = {};
-  var CACHE_TTL = 30000; // 30秒缓存
+  let BASE = '';
+  let pendingRequests = {};
+  let cache = {};
+  let CACHE_TTL = 30000; // 30秒缓存
 
   function resolveUrl(path) {
     return BASE + (path.startsWith('/') ? path : '/' + path);
@@ -18,24 +18,24 @@
 
   function api(method, path, body, opts) {
     opts = opts || {};
-    var url = resolveUrl(path);
-    var key = requestKey(method, url, body);
+    let url = resolveUrl(path);
+    let key = requestKey(method, url, body);
 
     // 去重
     if (pendingRequests[key]) { return pendingRequests[key]; }
 
     // GET 缓存
     if (method === 'GET' && !opts.noCache) {
-      var cached = cache[key];
+      let cached = cache[key];
       if (cached && (Date.now() - cached.ts < CACHE_TTL)) {
         return Promise.resolve(cached.data);
       }
     }
 
-    var fetchOpts = { method: method, headers: {'Content-Type': 'application/json'} };
+    let fetchOpts = { method: method, headers: {'Content-Type': 'application/json'} };
     if (body) { fetchOpts.body = JSON.stringify(body); }
 
-    var promise = fetch(url, fetchOpts)
+    let promise = fetch(url, fetchOpts)
       .then(function(r) {
         if (!r.ok) {
           return r.json().then(function(d) { throw new ApiError(r.status, d.error || r.statusText, d); });

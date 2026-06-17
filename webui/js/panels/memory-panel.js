@@ -16,21 +16,21 @@ function renderMemoryTab(container) {
 }
 
 function searchMemory() {
-  var q = document.getElementById('mem-search-input').value.trim();
+  let q = document.getElementById('mem-search-input').value.trim();
   if (!q) return;
-  var content = document.getElementById('mem-content');
+  let content = document.getElementById('mem-content');
   content.innerHTML = '<p style="color:var(--muted);">搜索中...</p>';
 
   api.get('/api/memory/search?q=' + encodeURIComponent(q))
     .then(function(data) {
       if (!data.ok) { content.innerHTML = '<p style="color:#e74c3c;">搜索失败</p>'; return; }
-      var results = data.results || [];
+      let results = data.results || [];
       if (results.length === 0) {
         content.innerHTML = '<p style="color:var(--muted);">未找到匹配结果</p>';
         return;
       }
-      var totalMatches = results.reduce(function(s,r){return s+r.total_matches;},0);
-      var html = '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">找到 ' + data.total_files + ' 个文件，共 ' + totalMatches + ' 处匹配</div>';
+      let totalMatches = results.reduce(function(s,r){return s+r.total_matches;},0);
+      let html = '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">找到 ' + data.total_files + ' 个文件，共 ' + totalMatches + ' 处匹配</div>';
       results.forEach(function(r) {
         html += '<div style="margin-bottom:12px;padding:10px;background:var(--bg);border-radius:8px;">';
         html += '<div style="font-weight:600;margin-bottom:6px;">' + escHtml(r.name) + ' <span style="color:var(--muted);font-weight:400;">(' + r.total_matches + '处)</span></div>';
@@ -49,21 +49,21 @@ function searchMemory() {
 }
 
 function loadMemoryTimeline() {
-  var content = document.getElementById('mem-content');
+  let content = document.getElementById('mem-content');
   content.innerHTML = '<p style="color:var(--muted);">加载时间线...</p>';
 
   api.get('/api/memory/timeline')
     .then(function(data) {
-      var entries = data.entries || [];
+      let entries = data.entries || [];
       if (entries.length === 0) {
         content.innerHTML = '<p style="color:var(--muted);">暂无记忆记录</p>';
         return;
       }
-      var html = '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">最近 ' + entries.length + ' 条记录</div>';
-      var typeEmoji = {user_message:'💬', agent_response:'🤖', route_decision:'🎯', task_complete:'✅', feedback:'📝', routing_correction:'🔄', operation:'⚙️'};
+      let html = '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">最近 ' + entries.length + ' 条记录</div>';
+      let typeEmoji = {user_message:'💬', agent_response:'🤖', route_decision:'🎯', task_complete:'✅', feedback:'📝', routing_correction:'🔄', operation:'⚙️'};
       entries.forEach(function(e) {
-        var emoji = typeEmoji[e.type] || '📌';
-        var time = new Date(e.ts * 1000).toLocaleString('zh-CN');
+        let emoji = typeEmoji[e.type] || '📌';
+        let time = new Date(e.ts * 1000).toLocaleString('zh-CN');
         html += '<div style="padding:8px 10px;margin-bottom:4px;background:var(--bg);border-radius:6px;display:flex;gap:8px;align-items:flex-start;">' +
           '<span style="font-size:16px;">' + emoji + '</span>' +
           '<div style="flex:1;">' +
@@ -80,17 +80,17 @@ function loadMemoryTimeline() {
 }
 
 function loadMemoryFiles() {
-  var content = document.getElementById('mem-content');
+  let content = document.getElementById('mem-content');
   content.innerHTML = '<p style="color:var(--muted);">加载中...</p>';
 
   api.get('/api/memory')
     .then(function(data) {
-      var files = data.files || [];
+      let files = data.files || [];
       if (files.length === 0) {
         content.innerHTML = '<p style="color:var(--muted);">暂无记忆文件</p>';
         return;
       }
-      var html = '';
+      let html = '';
       files.forEach(function(f) {
         html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;margin-bottom:4px;background:var(--bg);border-radius:6px;cursor:pointer;" onclick="openMemoryFile(\'' + escAttr(f.path) + '\',\'' + escAttr(f.name) + '\')">' +
           '<div style="display:flex;align-items:center;gap:8px;">' +
@@ -110,10 +110,10 @@ function loadMemoryFiles() {
 
 window.openMemoryFile = function(path, name, targetId) {/*targetId: sidebar=>"sidebar-mem-content", dashboard=>"mem-content"(default)*/
   targetId = targetId || 'mem-content';
-  var backFn = targetId === 'sidebar-mem-content' ? 'sidebarLoadMemoryFiles' : 'loadMemoryFiles';
+  let backFn = targetId === 'sidebar-mem-content' ? 'sidebarLoadMemoryFiles' : 'loadMemoryFiles';
   api.get('/api/memory/' + encodeURIComponent(path))
     .then(function(data) {
-      var content = document.getElementById(targetId);
+      let content = document.getElementById(targetId);
       if (!content) { console.error('openMemoryFile: #'+targetId+' not found'); return; }
       if (data.error) { content.innerHTML = '<span style="color:var(--danger)">'+escHtml(data.error)+'</span>'; return; }
       content.innerHTML =
@@ -121,7 +121,7 @@ window.openMemoryFile = function(path, name, targetId) {/*targetId: sidebar=>"si
         '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">📄 ' + escHtml(name || path) + '</div>' +
         '<pre style="padding:12px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--text);white-space:pre-wrap;max-height:400px;overflow-y:auto;">' + escHtml(data.content || '') + '</pre>';
     }).catch(function(e) {
-      var content = document.getElementById(targetId);
+      let content = document.getElementById(targetId);
       if (content) content.innerHTML = '<span style="color:var(--danger)">加载失败: '+escHtml(e.message||'未知错误')+'</span>';
     });
 };
@@ -130,15 +130,15 @@ window.openMemoryFile = openMemoryFile;
 
 /* ── 侧边栏记忆入口 ── */
 function sidebarSearchMemory(){
-  var q = (document.getElementById('sidebar-mem-search') || {}).value || '';
+  let q = (document.getElementById('sidebar-mem-search') || {}).value || '';
   if (!q.trim()) { sidebarLoadMemoryTimeline(); return; }
-  var content = document.getElementById('sidebar-mem-content');
+  let content = document.getElementById('sidebar-mem-content');
   if (!content) return;
   content.innerHTML = '<span style="color:var(--muted)">搜索中…</span>';
   api.get('/api/memory/search?q=' + encodeURIComponent(q.trim())).then(function(d) {
-    var results = d.results || [];
+    let results = d.results || [];
     if (!results.length) { content.innerHTML = '<span style="color:var(--muted)">无匹配结果</span>'; return; }
-    var html = '';
+    let html = '';
     results.forEach(function(r) {
       html += '<div style="padding:4px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:11px" onclick="openMemoryFile(\'' + escAttr(r.name||r.path||r.file||'') + '\',\'' + escAttr(r.name||r.path||'') + '\')">📄 ' + escHtml(r.name||r.path||'?') + '<br><span style="color:var(--muted);font-size:10px">' + escHtml((r.snippet||r.preview||'').slice(0,60)) + '</span></div>';
     });
@@ -146,30 +146,30 @@ function sidebarSearchMemory(){
   }).catch(function(e) { content.innerHTML = '<span style="color:var(--danger)">搜索失败</span>'; });
 }
 function sidebarLoadMemoryTimeline(){
-  var content = document.getElementById('sidebar-mem-content');
+  let content = document.getElementById('sidebar-mem-content');
   if (!content) return;
   content.innerHTML = '<span style="color:var(--muted)">加载中…</span>';
   api.get('/api/memory/timeline').then(function(d) {
-    var entries = d.entries || d.timeline || [];
+    let entries = d.entries || d.timeline || [];
     if (!entries.length) { content.innerHTML = '<span style="color:var(--muted)">暂无记忆记录</span>'; return; }
-    var html = '';
+    let html = '';
     entries.slice(0, 20).forEach(function(e) {
-      var time = (e.time||e.timestamp||'').slice(0,16) || '?';
+      let time = (e.time||e.timestamp||'').slice(0,16) || '?';
       html += '<div style="padding:3px 0;border-bottom:1px solid var(--border);font-size:10px"><span style="color:var(--muted)">' + escHtml(time) + '</span> ' + escHtml(e.msg||e.event||e.summary||'?') + '</div>';
     });
     content.innerHTML = html;
   }).catch(function(e) { content.innerHTML = '<span style="color:var(--danger)">加载失败</span>'; });
 }
 function sidebarLoadMemoryFiles(){
-  var content = document.getElementById('sidebar-mem-content');
+  let content = document.getElementById('sidebar-mem-content');
   if (!content) return;
   content.innerHTML = '<span style="color:var(--muted)">加载中…</span>';
   api.get('/api/memory').then(function(d) {
-    var files = d.files || d.memories || [];
+    let files = d.files || d.memories || [];
     if (!files.length) { content.innerHTML = '<span style="color:var(--muted)">暂无记忆文件</span>'; return; }
-    var html = '';
+    let html = '';
     files.forEach(function(f) {
-      var name = f.name || f.path || f;
+      let name = f.name || f.path || f;
       if (typeof f === 'string') name = f;
       html += '<div style="padding:3px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:11px" onclick="openMemoryFile(\'' + escAttr(f.name||f.path||f) + '\',\'' + escAttr(name) + '\',\'sidebar-mem-content\')">📄 ' + escHtml(name) + '</div>';
     });

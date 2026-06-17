@@ -1,12 +1,12 @@
 /* Agency — 仪表盘5标签页 + 成本 */
-var harnessActive=!1,_lastHarnessTab='overview',_ctxTimer=null,_subTimer=null;
+let harnessActive=!1,_lastHarnessTab='overview',_ctxTimer=null,_subTimer=null;
 function toggleDashboard(){
   if(!(typeof _demoMode!=='undefined'&&_demoMode) && !isFeatureUnlocked('dashboard')){
     showToast(t('featureLocked').replace('{day}', FEATURE_UNLOCK_DAYS['dashboard']||1), false, 'warn');
     return;
   }
   harnessActive=!harnessActive;
-  var ov=$('harnessOverlay'),btn=$('dashboardBtn');
+  let ov=$('harnessOverlay'),btn=$('dashboardBtn');
   ov.classList.toggle('on',harnessActive);
   btn.classList.toggle('on',harnessActive);
   if(harnessActive){
@@ -34,7 +34,7 @@ function renderDashboardGrid(container){
     '<div id="dash-detail" class="dash-detail" style="display:none;margin-top:12px;max-height:300px;overflow-y:auto;padding:16px;background:var(--surface2);border-radius:12px;"></div>';
   setTimeout(function(){
     document.querySelectorAll('.dash-card[data-card]').forEach(function(card){
-      var fn=window[card.getAttribute('data-load')];
+      let fn=window[card.getAttribute('data-load')];
       if(fn)fn(card);
     });
   },100);
@@ -49,17 +49,17 @@ function buildDashCard(icon,title,cardType,loadFn){
 }
 
 /* 2026-06 修复：/api/cost/summary 返回 {today, this_month}，不是 {total_cost, total_calls}。之前字段不匹配导致卡片始终显示 $0.0000 */
-function loadCostCard(card){api.get('/api/cost/summary').then(function(d){var todayCost=d.today?d.today.cost:0;var monthCost=d.this_month?d.this_month.cost:0;var monthCalls=d.this_month?d.this_month.calls:0;var monthSaved=d.this_month?d.this_month.cache_saved||0:0;var html='<div class="dash-stat">$'+Number(monthCost).toFixed(4)+'</div><div class="dash-sub">本月 '+monthCalls+' 次 · 今日 $'+Number(todayCost).toFixed(4)+'</div>';if(monthSaved>0.0001){html+='<div class="dash-sub" style="color:var(--green)">💡 缓存节省 $'+Number(monthSaved).toFixed(4)+'</div>';}card.querySelector('.dash-card-body').innerHTML=html;}).catch(function(){card.querySelector('.dash-card-body').textContent='—';});}
-function loadOpsCard(card){api.get('/api/operations').then(function(d){var count=(d.operations||[]).length;card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat">'+count+'</div><div class="dash-sub">条记录</div>';}).catch(function(){card.querySelector('.dash-card-body').textContent='—';});}
+function loadCostCard(card){api.get('/api/cost/summary').then(function(d){let todayCost=d.today?d.today.cost:0;let monthCost=d.this_month?d.this_month.cost:0;let monthCalls=d.this_month?d.this_month.calls:0;let monthSaved=d.this_month?d.this_month.cache_saved||0:0;let html='<div class="dash-stat">$'+Number(monthCost).toFixed(4)+'</div><div class="dash-sub">本月 '+monthCalls+' 次 · 今日 $'+Number(todayCost).toFixed(4)+'</div>';if(monthSaved>0.0001){html+='<div class="dash-sub" style="color:var(--green)">💡 缓存节省 $'+Number(monthSaved).toFixed(4)+'</div>';}card.querySelector('.dash-card-body').innerHTML=html;}).catch(function(){card.querySelector('.dash-card-body').textContent='—';});}
+function loadOpsCard(card){api.get('/api/operations').then(function(d){let count=(d.operations||[]).length;card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat">'+count+'</div><div class="dash-sub">条记录</div>';}).catch(function(){card.querySelector('.dash-card-body').textContent='—';});}
 /* 改用 /api/sessions/processes 内存在线会话，不再读磁盘 JSONL */
-function loadContextCard(card){api.get('/api/sessions/processes').then(function(d){var procs=d.processes||[];if(!procs.length){card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat" style="font-size:12px;color:var(--muted)">无活跃会话</div>';return}var totalTokens=0,totalCost=0,warnCount=0;procs.forEach(function(p){totalTokens+=(p.total_in||0)+(p.total_out||0);totalCost+=p.total_cost||0;if(p.compaction&&(p.compaction.warn||p.compaction.force))warnCount++;});var tokStr=totalTokens>=1e6?(totalTokens/1e6).toFixed(1)+'M':(totalTokens>=1000?Math.round(totalTokens/1000)+'K':String(totalTokens));card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat">'+procs.length+' 会话 · '+tokStr+' tokens · $'+totalCost.toFixed(2)+'</div>'+(warnCount?'<div class="dash-sub" style="color:var(--warn)">⚠ '+warnCount+' 个压缩警告</div>':'<div class="dash-sub">无压缩警告</div>');}).catch(function(){card.querySelector('.dash-card-body').textContent='—';});}
+function loadContextCard(card){api.get('/api/sessions/processes').then(function(d){let procs=d.processes||[];if(!procs.length){card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat" style="font-size:12px;color:var(--muted)">无活跃会话</div>';return}let totalTokens=0,totalCost=0,warnCount=0;procs.forEach(function(p){totalTokens+=(p.total_in||0)+(p.total_out||0);totalCost+=p.total_cost||0;if(p.compaction&&(p.compaction.warn||p.compaction.force))warnCount++;});let tokStr=totalTokens>=1e6?(totalTokens/1e6).toFixed(1)+'M':(totalTokens>=1000?Math.round(totalTokens/1000)+'K':String(totalTokens));card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat">'+procs.length+' 会话 · '+tokStr+' tokens · $'+totalCost.toFixed(2)+'</div>'+(warnCount?'<div class="dash-sub" style="color:var(--warn)">⚠ '+warnCount+' 个压缩警告</div>':'<div class="dash-sub">无压缩警告</div>');}).catch(function(){card.querySelector('.dash-card-body').textContent='—';});}
 function loadWorktreeCard(card){api.get('/api/worktrees').then(function(d){card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat">'+(d.count||0)+'</div><div class="dash-sub">活跃 worktree</div>';}).catch(function(){card.querySelector('.dash-card-body').textContent='—';});}
-function loadWeixinCard(card){api.get('/api/weixin/status').then(function(d){var status=d.logged_in?(d.running?'运行中':'已连接'):'未连接';var color=d.logged_in?'#27ae60':'#888';card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat" style="color:'+color+'">'+status+'</div>';}).catch(function(){card.querySelector('.dash-card-body').textContent='—';});}
+function loadWeixinCard(card){api.get('/api/weixin/status').then(function(d){let status=d.logged_in?(d.running?'运行中':'已连接'):'未连接';let color=d.logged_in?'#27ae60':'#888';card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat" style="color:'+color+'">'+status+'</div>';}).catch(function(){card.querySelector('.dash-card-body').textContent='—';});}
 function loadTestCard(card){card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat" style="font-size:14px;color:var(--accent);cursor:pointer;" onclick="switchNav(\'dashboard\');toggleDashboard();">▶ 开始测试</div><div class="dash-sub">验证 Agent 功能</div>';}
-function loadMCPCard(card){api.get('/api/mcp/status').then(function(d){var servers=d.servers||[];card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat">'+servers.length+'</div><div class="dash-sub">MCP 服务器</div>';}).catch(function(){card.querySelector('.dash-card-body').textContent='—';});}
-function loadSubagentsCard(card){api.get('/api/harness/subagents').then(function(d){var tasks=d.tasks||{};var total=0,active=0;for(var k in tasks){total++;if(tasks[k].status==='running')active++;}card.querySelector('.dash-stat').textContent=active+'/'+total;card.querySelector('.dash-sub').textContent='活跃/总数';}).catch(function(e){card.querySelector('.dash-stat').textContent='--';card.querySelector('.dash-sub').textContent='不可用';});}
-function loadHooksCard(card){api.get('/api/hooks/config').then(function(d){var hooks=d.hooks||d.scripts||{};var count=Array.isArray(hooks)?hooks.length:Object.keys(hooks).length;card.querySelector('.dash-stat').textContent=count;card.querySelector('.dash-sub').textContent='已注册Hook';}).catch(function(e){card.querySelector('.dash-stat').textContent='--';card.querySelector('.dash-sub').textContent='不可用';});}
-function loadMemoryCard(card){api.get('/api/memory/timeline').then(function(d){var count=(d.entries||[]).length;card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat">'+count+'</div><div class="dash-sub">条记忆</div>';}).catch(function(){card.querySelector('.dash-card-body').textContent='—';});}
+function loadMCPCard(card){api.get('/api/mcp/status').then(function(d){let servers=d.servers||[];card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat">'+servers.length+'</div><div class="dash-sub">MCP 服务器</div>';}).catch(function(){card.querySelector('.dash-card-body').textContent='—';});}
+function loadSubagentsCard(card){api.get('/api/harness/subagents').then(function(d){let tasks=d.tasks||{};let total=0,active=0;for(let k in tasks){total++;if(tasks[k].status==='running')active++;}card.querySelector('.dash-stat').textContent=active+'/'+total;card.querySelector('.dash-sub').textContent='活跃/总数';}).catch(function(e){card.querySelector('.dash-stat').textContent='--';card.querySelector('.dash-sub').textContent='不可用';});}
+function loadHooksCard(card){api.get('/api/hooks/config').then(function(d){let hooks=d.hooks||d.scripts||{};let count=Array.isArray(hooks)?hooks.length:Object.keys(hooks).length;card.querySelector('.dash-stat').textContent=count;card.querySelector('.dash-sub').textContent='已注册Hook';}).catch(function(e){card.querySelector('.dash-stat').textContent='--';card.querySelector('.dash-sub').textContent='不可用';});}
+function loadMemoryCard(card){api.get('/api/memory/timeline').then(function(d){let count=(d.entries||[]).length;card.querySelector('.dash-card-body').innerHTML='<div class="dash-stat">'+count+'</div><div class="dash-sub">条记忆</div>';}).catch(function(){card.querySelector('.dash-card-body').textContent='—';});}
 
 /* ── 仪表盘标签切换 ──
    横排标签按钮，点击切换内容面板。_lastHarnessTab 跟踪当前标签。
@@ -70,11 +70,11 @@ window.switchHarnessTab = function(tabName){
   document.querySelectorAll('.harness-overlay-tab').forEach(function(t){
     t.classList.toggle('active', t.dataset.tab === tabName);
   });
-  var c = $('harnessContent');
+  let c = $('harnessContent');
   if(!c) return;
   c.innerHTML = '';
   // 每个标签都是独立功能页，不用总览/记忆（侧边栏已有）
-  var renderers = {
+  let renderers = {
     /* 2026-06 修复：优先用独立费用面板 cost-panel.js（提供更丰富的柱状图+条形图+明细表） */
     cost: function(){
       if (typeof loadCostDashboard === 'function') {
@@ -92,24 +92,24 @@ window.switchHarnessTab = function(tabName){
     /* Phase P2: Worktree 标签页渲染 */
     worktree: function(){ renderWorktreeTab(c); },
   };
-  var fn = renderers[tabName] || renderers.overview;
+  let fn = renderers[tabName] || renderers.overview;
   fn();
 };
 
 function openDashDetail(cardType){
-  var detail=document.getElementById('dash-detail');
+  let detail=document.getElementById('dash-detail');
   /* Phase P2: worktree 加入面板函数映射 */
-var panelFns={cost:renderCostDetail,worktree:renderWorktreeTab,weixin:renderWeixinTab,operations:renderOperationsTab,memory:renderMemoryTab,mcp:renderMCPDetail,context:renderContextDetail,test:renderTestDetail,subagents:renderSubagentsDetail,hooks:renderHooksDetail};
-  var fn=panelFns[cardType];
+let panelFns={cost:renderCostDetail,worktree:renderWorktreeTab,weixin:renderWeixinTab,operations:renderOperationsTab,memory:renderMemoryTab,mcp:renderMCPDetail,context:renderContextDetail,test:renderTestDetail,subagents:renderSubagentsDetail,hooks:renderHooksDetail};
+  let fn=panelFns[cardType];
   if(fn){detail.style.display='block';fn(detail);detail.scrollIntoView({behavior:'smooth'});}
 }
 
-function renderCostDetail(container){api.get('/api/cost?days=30').then(function(d){if(!d||!d.total){container.innerHTML='<p style="color:var(--muted);padding:12px;text-align:center">暂无费用数据</p>';return}var t=d.total,td=d.today;container.innerHTML='<h3 style="margin-bottom:8px">💰 费用详情</h3><div class="cost-kpis" style="margin-bottom:10px"><div class="cost-kpi"><span class="kpi-val">$'+(td.cost||0).toFixed(4)+'</span><span class="kpi-label">今日</span></div><div class="cost-kpi"><span class="kpi-val">$'+(t.cost||0).toFixed(4)+'</span><span class="kpi-label">30天</span></div><div class="cost-kpi"><span class="kpi-val">'+(t.calls||0)+'</span><span class="kpi-label">调用</span></div></div><div style="margin-bottom:8px"><span style="font-size:11px;color:var(--muted);font-weight:600">每日费用趋势</span><canvas id="cost-trend-canvas" width="440" height="100" style="width:100%;height:100px;display:block;background:var(--bg);border-radius:6px;margin-top:4px"></canvas></div><div style="margin-bottom:8px"><span style="font-size:11px;color:var(--muted);font-weight:600">模型费用分布</span><div id="model-bars" style="background:var(--bg);border-radius:6px;padding:6px 8px;font-size:10px;min-height:60px">—</div></div><div id="opus-ratio" style="margin-bottom:8px"></div><div id="cost-alerts" style="margin-bottom:6px;font-size:10px"></div>';loadCostOverview();}).catch(function(){container.innerHTML='<p style="color:var(--muted);padding:12px;text-align:center">无法加载费用数据</p>';});}
-function renderMCPDetail(container){api.get('/api/mcp/status').then(function(d){var servers=d.servers||[];if(!servers.length){container.innerHTML='<p style="color:var(--muted);text-align:center;padding:20px">暂无 MCP 服务器</p>';return}container.innerHTML='<h3 style="margin-bottom:8px">🔌 MCP 服务器</h3>'+servers.map(function(s){return'<div style="padding:8px 10px;margin:4px 0;background:var(--bg);border-radius:6px"><div style="font-weight:600;font-size:12px">'+escHtml(s.name)+' <span style="font-size:9px;color:'+(s.running?'var(--accent)':'var(--muted)')+'">● '+(s.running?'活跃':'离线')+'</span></div><div style="font-size:10px;color:var(--muted)">'+escHtml(s.command||'')+'</div></div>'}).join('');}).catch(function(){container.innerHTML='<p style="color:var(--muted);text-align:center;padding:20px">无法加载 MCP 状态</p>';});}
-function renderSubagentsDetail(container){container.innerHTML='<h3>🤖 SubAgent 状态</h3><div id="hsub-tree" class="log-list">加载中...</div>';api.get('/api/harness/subagents').then(function(d){var tasks=d.tasks||{};var html='';for(var k in tasks){var t=tasks[k];html+='<div class="log-entry"><span class="log-time">'+h(t.status||'?')+'</span> '+h(t.name||k)+' <span style="color:#888">'+h(t.model||'')+'</span></div>';}if(!html)html='<div class="log-empty">暂无活跃 SubAgent</div>';document.getElementById('hsub-tree').innerHTML=html;}).catch(function(e){document.getElementById('hsub-tree').innerHTML='<div class="log-empty">加载失败</div>';});}
-function renderHooksDetail(container){container.innerHTML='<h3>🪝 Hook 配置</h3><div id="hhooks-log" class="log-list">加载中...</div>';api.get('/api/hooks/config').then(function(d){var hooks=d.hooks||d.scripts||{};var html='';if(Array.isArray(hooks)){hooks.forEach(function(hk){html+='<div class="log-entry">🪝 '+h(typeof hk==='string'?hk:hk.name||hk.event||'?')+'</div>';});}else{for(var k in hooks){html+='<div class="log-entry">🪝 '+h(k)+'</div>';}}if(!html)html='<div class="log-empty">暂无注册 Hook</div>';document.getElementById('hhooks-log').innerHTML=html;}).catch(function(e){document.getElementById('hhooks-log').innerHTML='<div class="log-empty">加载失败</div>';});}
+function renderCostDetail(container){api.get('/api/cost?days=30').then(function(d){if(!d||!d.total){container.innerHTML='<p style="color:var(--muted);padding:12px;text-align:center">暂无费用数据</p>';return}let t=d.total,td=d.today;container.innerHTML='<h3 style="margin-bottom:8px">💰 费用详情</h3><div class="cost-kpis" style="margin-bottom:10px"><div class="cost-kpi"><span class="kpi-val">$'+(td.cost||0).toFixed(4)+'</span><span class="kpi-label">今日</span></div><div class="cost-kpi"><span class="kpi-val">$'+(t.cost||0).toFixed(4)+'</span><span class="kpi-label">30天</span></div><div class="cost-kpi"><span class="kpi-val">'+(t.calls||0)+'</span><span class="kpi-label">调用</span></div></div><div style="margin-bottom:8px"><span style="font-size:11px;color:var(--muted);font-weight:600">每日费用趋势</span><canvas id="cost-trend-canvas" width="440" height="100" style="width:100%;height:100px;display:block;background:var(--bg);border-radius:6px;margin-top:4px"></canvas></div><div style="margin-bottom:8px"><span style="font-size:11px;color:var(--muted);font-weight:600">模型费用分布</span><div id="model-bars" style="background:var(--bg);border-radius:6px;padding:6px 8px;font-size:10px;min-height:60px">—</div></div><div id="opus-ratio" style="margin-bottom:8px"></div><div id="cost-alerts" style="margin-bottom:6px;font-size:10px"></div>';loadCostOverview();}).catch(function(){container.innerHTML='<p style="color:var(--muted);padding:12px;text-align:center">无法加载费用数据</p>';});}
+function renderMCPDetail(container){api.get('/api/mcp/status').then(function(d){let servers=d.servers||[];if(!servers.length){container.innerHTML='<p style="color:var(--muted);text-align:center;padding:20px">暂无 MCP 服务器</p>';return}container.innerHTML='<h3 style="margin-bottom:8px">🔌 MCP 服务器</h3>'+servers.map(function(s){return'<div style="padding:8px 10px;margin:4px 0;background:var(--bg);border-radius:6px"><div style="font-weight:600;font-size:12px">'+escHtml(s.name)+' <span style="font-size:9px;color:'+(s.running?'var(--accent)':'var(--muted)')+'">● '+(s.running?'活跃':'离线')+'</span></div><div style="font-size:10px;color:var(--muted)">'+escHtml(s.command||'')+'</div></div>'}).join('');}).catch(function(){container.innerHTML='<p style="color:var(--muted);text-align:center;padding:20px">无法加载 MCP 状态</p>';});}
+function renderSubagentsDetail(container){container.innerHTML='<h3>🤖 SubAgent 状态</h3><div id="hsub-tree" class="log-list">加载中...</div>';api.get('/api/harness/subagents').then(function(d){let tasks=d.tasks||{};let html='';for(let k in tasks){let t=tasks[k];html+='<div class="log-entry"><span class="log-time">'+h(t.status||'?')+'</span> '+h(t.name||k)+' <span style="color:#888">'+h(t.model||'')+'</span></div>';}if(!html)html='<div class="log-empty">暂无活跃 SubAgent</div>';document.getElementById('hsub-tree').innerHTML=html;}).catch(function(e){document.getElementById('hsub-tree').innerHTML='<div class="log-empty">加载失败</div>';});}
+function renderHooksDetail(container){container.innerHTML='<h3>🪝 Hook 配置</h3><div id="hhooks-log" class="log-list">加载中...</div>';api.get('/api/hooks/config').then(function(d){let hooks=d.hooks||d.scripts||{};let html='';if(Array.isArray(hooks)){hooks.forEach(function(hk){html+='<div class="log-entry">🪝 '+h(typeof hk==='string'?hk:hk.name||hk.event||'?')+'</div>';});}else{for(let k in hooks){html+='<div class="log-entry">🪝 '+h(k)+'</div>';}}if(!html)html='<div class="log-empty">暂无注册 Hook</div>';document.getElementById('hhooks-log').innerHTML=html;}).catch(function(e){document.getElementById('hhooks-log').innerHTML='<div class="log-empty">加载失败</div>';});}
 /* 改用 /api/sessions/processes 逐会话展示实时 token 用量，不再读磁盘 JSONL */
-function renderContextDetail(container){api.get('/api/sessions/processes').then(function(d){var procs=d.processes||[];if(!procs.length){container.innerHTML='<h3 style="margin-bottom:8px">🧠 活跃会话</h3><div style="text-align:center;padding:32px 16px;color:var(--muted)"><div style="font-size:36px;margin-bottom:8px">💤</div><div style="font-size:12px">暂无活跃会话</div><div style="font-size:10px;margin-top:4px;opacity:0.6">打开 Web 终端或启动 Agent 后面板将自动显示</div></div>';return}var totalTokens=0,totalCost=0,warnCount=0;procs.forEach(function(p){totalTokens+=(p.total_in||0)+(p.total_out||0);totalCost+=p.total_cost||0;if(p.compaction&&(p.compaction.warn||p.compaction.force))warnCount++;});var summaryTok=totalTokens>=1e6?(totalTokens/1e6).toFixed(1)+'M':(totalTokens>=1000?Math.round(totalTokens/1000)+'K':String(totalTokens));var html='<h3 style="margin-bottom:8px">🧠 活跃会话 ('+procs.length+')</h3>'+'<div style="font-size:11px;color:var(--text2);margin-bottom:10px;display:flex;gap:16px"><span>合计: '+summaryTok+' tokens</span><span>费用: $'+totalCost.toFixed(3)+'</span>'+(warnCount?'<span style="color:var(--warn)">⚠ '+warnCount+' 个压缩警告</span>':'')+'</div>';procs.forEach(function(p){var c=p.compaction||{};var used=c.used||0,cap=c.capacity||200000;var pct=cap>0?Math.min(100,Math.round(used/cap*100)):0;var barColor=c.force?'var(--danger)':c.warn?'var(--warn)':'var(--accent)';var label=c.force?'强制':c.warn?'⚠ 警告':'正常';var sid=(p.sid||'').slice(0,8);var usedStr=used>=1e6?(used/1e6).toFixed(1)+'M':(used>=1000?Math.round(used/1000)+'K':String(used));var capStr=cap>=1e6?(cap/1e6).toFixed(1)+'M':(cap>=1000?Math.round(cap/1000)+'K':String(cap));html+='<div style="padding:8px 10px;margin:6px 0;background:var(--bg);border-radius:8px;border-left:3px solid '+barColor+'">'+'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+'<span style="font-weight:600;font-size:12px">'+escHtml(p.model||'?')+'</span>'+'<span style="font-size:10px;color:var(--muted)">'+sid+'</span>'+'</div>'+'<div style="margin-bottom:3px"><div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-bottom:1px"><span>'+usedStr+' / '+capStr+'</span><span style="color:'+barColor+'">'+label+'</span></div>'+'<div class="ctx-gauge" style="height:6px"><div class="ctx-gauge-fill" style="width:'+pct+'%;background:'+barColor+'"></div></div>'+'</div>'+'<div style="font-size:10px;color:var(--text2);display:flex;gap:12px"><span>输入: '+(p.total_in||0).toLocaleString()+'</span><span>输出: '+(p.total_out||0).toLocaleString()+'</span><span>费用: $'+(p.total_cost||0).toFixed(4)+'</span></div>'+'</div>';});container.innerHTML=html;}).catch(function(){container.innerHTML='<p style="color:var(--muted);text-align:center;padding:20px">无法加载会话数据</p>';});}
+function renderContextDetail(container){api.get('/api/sessions/processes').then(function(d){let procs=d.processes||[];if(!procs.length){container.innerHTML='<h3 style="margin-bottom:8px">🧠 活跃会话</h3><div style="text-align:center;padding:32px 16px;color:var(--muted)"><div style="font-size:36px;margin-bottom:8px">💤</div><div style="font-size:12px">暂无活跃会话</div><div style="font-size:10px;margin-top:4px;opacity:0.6">打开 Web 终端或启动 Agent 后面板将自动显示</div></div>';return}let totalTokens=0,totalCost=0,warnCount=0;procs.forEach(function(p){totalTokens+=(p.total_in||0)+(p.total_out||0);totalCost+=p.total_cost||0;if(p.compaction&&(p.compaction.warn||p.compaction.force))warnCount++;});let summaryTok=totalTokens>=1e6?(totalTokens/1e6).toFixed(1)+'M':(totalTokens>=1000?Math.round(totalTokens/1000)+'K':String(totalTokens));let html='<h3 style="margin-bottom:8px">🧠 活跃会话 ('+procs.length+')</h3>'+'<div style="font-size:11px;color:var(--text2);margin-bottom:10px;display:flex;gap:16px"><span>合计: '+summaryTok+' tokens</span><span>费用: $'+totalCost.toFixed(3)+'</span>'+(warnCount?'<span style="color:var(--warn)">⚠ '+warnCount+' 个压缩警告</span>':'')+'</div>';procs.forEach(function(p){let c=p.compaction||{};let used=c.used||0,cap=c.capacity||200000;let pct=cap>0?Math.min(100,Math.round(used/cap*100)):0;let barColor=c.force?'var(--danger)':c.warn?'var(--warn)':'var(--accent)';let label=c.force?'强制':c.warn?'⚠ 警告':'正常';let sid=(p.sid||'').slice(0,8);let usedStr=used>=1e6?(used/1e6).toFixed(1)+'M':(used>=1000?Math.round(used/1000)+'K':String(used));let capStr=cap>=1e6?(cap/1e6).toFixed(1)+'M':(cap>=1000?Math.round(cap/1000)+'K':String(cap));html+='<div style="padding:8px 10px;margin:6px 0;background:var(--bg);border-radius:8px;border-left:3px solid '+barColor+'">'+'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+'<span style="font-weight:600;font-size:12px">'+escHtml(p.model||'?')+'</span>'+'<span style="font-size:10px;color:var(--muted)">'+sid+'</span>'+'</div>'+'<div style="margin-bottom:3px"><div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-bottom:1px"><span>'+usedStr+' / '+capStr+'</span><span style="color:'+barColor+'">'+label+'</span></div>'+'<div class="ctx-gauge" style="height:6px"><div class="ctx-gauge-fill" style="width:'+pct+'%;background:'+barColor+'"></div></div>'+'</div>'+'<div style="font-size:10px;color:var(--text2);display:flex;gap:12px"><span>输入: '+(p.total_in||0).toLocaleString()+'</span><span>输出: '+(p.total_out||0).toLocaleString()+'</span><span>费用: $'+(p.total_cost||0).toFixed(4)+'</span></div>'+'</div>';});container.innerHTML=html;}).catch(function(){container.innerHTML='<p style="color:var(--muted);text-align:center;padding:20px">无法加载会话数据</p>';});}
 function renderTestDetail(container){container.innerHTML='<h3 style="margin-bottom:8px">🧪 测试运行器</h3><div style="margin-bottom:8px"><input class="proj-input" id="test-url" type="text" placeholder="输入测试 URL，如 https://example.com" style="width:100%;margin-bottom:4px"><button class="new-chat-btn" onclick="runTest()" style="font-size:11px;padding:6px 16px;width:auto" id="test-run-btn">▶ 开始测试</button><span id="test-status" style="font-size:11px;color:var(--muted);margin-left:8px"></span></div><div id="test-results" style="font-size:11px;color:var(--muted);margin-top:8px"></div><div id="test-screenshot" style="margin-top:8px"></div>';_testPollTimer=null;}
 
 /* —— Demo 仪表盘卡片网格 —— */
@@ -138,11 +138,11 @@ function buildDemoCard(icon,title,stat,sub){
 function loadCostOverview(){
   api.get('/api/cost?days=30').then(function(d){
     if(!d||!d.total)return;
-    var t=d.total,td=d.today;
+    let t=d.total,td=d.today;
     if($('hov-cost-today'))$('hov-cost-today').textContent='$'+(td.cost||0).toFixed(4);
     if($('hov-cost-30d'))$('hov-cost-30d').textContent='$'+(t.cost||0).toFixed(4);
     if($('hov-calls'))$('hov-calls').textContent=t.calls||0;
-    var cache=d.cache||{};
+    let cache=d.cache||{};
     if($('hov-cache-saved'))$('hov-cache-saved').textContent='$'+(cache.saved||0).toFixed(4);
     if($('hov-cache-tokens'))$('hov-cache-tokens').textContent=((cache.read_tok||0)+(cache.write_tok||0)).toLocaleString();
     drawCostTrend(d.by_date||[]);
@@ -152,21 +152,21 @@ function loadCostOverview(){
   }).catch(function(e){console.error('loadCostOverview failed',e)});
 }
 function drawCostTrend(byDate){
-  var c=document.getElementById('cost-trend-canvas');if(!c)return;
-  var ctx=c.getContext('2d'),W=c.width,H=c.height,pad=28;
+  let c=document.getElementById('cost-trend-canvas');if(!c)return;
+  let ctx=c.getContext('2d'),W=c.width,H=c.height,pad=28;
   ctx.clearRect(0,0,W,H);
-  if(!byDate.length){ctx.fillStyle='#5f6877';ctx.font='10px sans-serif';var txt=t('dashboardEmpty');ctx.fillText(txt,W/2-ctx.measureText(txt).width/2,H/2);return}
-  var maxCost=0;byDate.forEach(function(d){maxCost=Math.max(maxCost,d.cost||0)});
+  if(!byDate.length){ctx.fillStyle='#5f6877';ctx.font='10px sans-serif';let txt=t('dashboardEmpty');ctx.fillText(txt,W/2-ctx.measureText(txt).width/2,H/2);return}
+  let maxCost=0;byDate.forEach(function(d){maxCost=Math.max(maxCost,d.cost||0)});
   if(maxCost===0)maxCost=0.01;
-  var barW=(W-pad*2)/byDate.length-2;if(barW<1)barW=1;
-  var dailyWarn=5.0;
+  let barW=(W-pad*2)/byDate.length-2;if(barW<1)barW=1;
+  let dailyWarn=5.0;
   ctx.strokeStyle='rgba(251,191,32,.3)';ctx.setLineDash([3,3]);
-  var warnY=H-pad-(dailyWarn/maxCost*(H-pad*2));
+  let warnY=H-pad-(dailyWarn/maxCost*(H-pad*2));
   ctx.beginPath();ctx.moveTo(pad,warnY);ctx.lineTo(W-pad,warnY);ctx.stroke();
   ctx.setLineDash([]);
   byDate.forEach(function(d,i){
-    var h=d.cost?((d.cost||0)/maxCost*(H-pad*2)):0;
-    var x=pad+i*((W-pad*2)/byDate.length),y=H-pad-h;
+    let h=d.cost?((d.cost||0)/maxCost*(H-pad*2)):0;
+    let x=pad+i*((W-pad*2)/byDate.length),y=H-pad-h;
     ctx.fillStyle=(d.cost||0)>dailyWarn?'#f87171':'#22d3a0';
     ctx.fillRect(x,y,barW,h);
     if(byDate.length<=14){
@@ -176,12 +176,12 @@ function drawCostTrend(byDate){
   });
 }
 function drawModelBars(models){
-  var domEl=document.getElementById('model-bars');if(!domEl)return;
+  let domEl=document.getElementById('model-bars');if(!domEl)return;
   if(!models.length){domEl.innerHTML='<div class="empty-state"><div class="es-icon">📊</div><div class="es-text">'+t('dashboardEmpty')+'</div></div>';return}
-  var totalCost=0;models.forEach(function(m){totalCost+=m.cost||0});
+  let totalCost=0;models.forEach(function(m){totalCost+=m.cost||0});
   domEl.innerHTML=models.map(function(m,i){
-    var pct=totalCost>0?((m.cost||0)/totalCost*100):0;
-    var colors=['#22d3a0','#60a5fa','#fbbf20','#f87171','#a78bfa','#34d399'];
+    let pct=totalCost>0?((m.cost||0)/totalCost*100):0;
+    let colors=['#22d3a0','#60a5fa','#fbbf20','#f87171','#a78bfa','#34d399'];
     return'<div style="display:flex;align-items:center;margin:3px 0;gap:6px">'+
       '<span style="min-width:80px;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(m.model||'?')+'</span>'+
       '<div style="flex:1;height:12px;background:var(--bg);border-radius:6px;overflow:hidden">'+
@@ -192,17 +192,17 @@ function drawModelBars(models){
   }).join('');
 }
 function drawOpusRatio(models){
-  var domEl=document.getElementById('opus-ratio');if(!domEl)return;
+  let domEl=document.getElementById('opus-ratio');if(!domEl)return;
   if(!models||!models.length){domEl.innerHTML='<div class="empty-state"><div class="es-text">'+t('dashboardEmpty')+'</div></div>';return}
-  var totalCost=0,opusCost=0,opusCalls=0,totalCalls=0;
+  let totalCost=0,opusCost=0,opusCalls=0,totalCalls=0;
   models.forEach(function(m){
     totalCost+=m.cost||0;totalCalls+=m.calls||0;
     if(/opus/i.test(m.model||'')){opusCost+=m.cost||0;opusCalls+=m.calls||0}
   });
   if(totalCost===0){domEl.innerHTML='无费用数据';return}
-  var pct=totalCost>0?(opusCost/totalCost*100):0;
-  var color=pct>10?'var(--danger)':pct>5?'var(--warn)':'var(--accent)';
-  var warning=pct>10?'<span style="color:var(--danger);font-weight:600"> ⚠ 超10%告警</span>':'';
+  let pct=totalCost>0?(opusCost/totalCost*100):0;
+  let color=pct>10?'var(--danger)':pct>5?'var(--warn)':'var(--accent)';
+  let warning=pct>10?'<span style="color:var(--danger);font-weight:600"> ⚠ 超10%告警</span>':'';
   domEl.innerHTML='<div style="display:flex;align-items:center;gap:10px;margin-top:4px">'+
     '<div style="font-size:18px;font-weight:700;color:'+color+'">'+(opusCost>0?'$'+opusCost.toFixed(4):'$0')+'</div>'+
     '<div style="flex:1">'+
@@ -217,18 +217,18 @@ function drawOpusRatio(models){
   '</div>'+warning;
 }
 function renderCostAlerts(alerts){
-  var domEl=document.getElementById('cost-alerts');if(!domEl)return;
+  let domEl=document.getElementById('cost-alerts');if(!domEl)return;
   if(!alerts||!alerts.length){domEl.innerHTML='';return}
   domEl.innerHTML=alerts.slice(0,5).map(function(a){
-    var bg=a.level==='danger'?'rgba(248,113,113,.15)':'rgba(251,191,32,.12)';
-    var border=a.level==='danger'?'#f87171':'#fbbf20';
+    let bg=a.level==='danger'?'rgba(248,113,113,.15)':'rgba(251,191,32,.12)';
+    let border=a.level==='danger'?'#f87171':'#fbbf20';
     return'<div style="padding:4px 8px;margin:2px 0;background:'+bg+';border-left:2px solid '+border+';border-radius:3px;font-size:10px">'+
       (a.level==='danger'?'🔴 ':'⚠️ ')+escHtml(a.msg)+'</div>';
   }).join('');
 }
 function showPermToast(data){
-  var t=document.createElement('div');t.className='toast warn';
-  var riskLabel=data.risk&&data.risk.level==='high'?'🔴 高风险':'🟡 中风险';
+  let t=document.createElement('div');t.className='toast warn';
+  let riskLabel=data.risk&&data.risk.level==='high'?'🔴 高风险':'🟡 中风险';
   t.innerHTML='<div><strong>'+riskLabel+'</strong> · '+escHtml(data.tool_name)+'</div><div style="font-size:10px;color:var(--muted);margin-top:2px">'+escHtml((data.tool_input||'').slice(0,100))+'</div><div class="toast-acts"><button class="allow">允许</button><button class="deny">拒绝</button><button class="always">总是允许此模式</button></div>';
   document.body.appendChild(t);
   t.querySelector('.allow').onclick=function(){sendPermDecision(data,'allow');t.remove()};
@@ -244,23 +244,23 @@ function addAllowRule(data){
 }
 function loadPermHistory(){
   api.get('/api/permissions/history?limit=100').then(function(d){
-    var domEl=$('hperm-log');if(!domEl)return;
+    let domEl=$('hperm-log');if(!domEl)return;
     if(d.history&&d.history.length){domEl.innerHTML=d.history.map(function(e){return'<div class="perm-item '+e.decision+'"><span class="pdec">'+(e.decision==='allow'?'✓':e.decision==='deny'?'✗':'⚠')+'</span> '+escHtml(e.tool||'?')+' <span style="color:var(--muted);font-size:9px">'+e.time+(e.reason?' · '+escHtml(e.reason):'')+'</span></div>'}).join('')}else{domEl.innerHTML='暂无权限记录'}
-  }).catch(function(){var domEl=$('hperm-log');if(domEl)domEl.innerHTML='无法加载权限记录。服务可能未启动，请刷新页面重试'});
+  }).catch(function(){let domEl=$('hperm-log');if(domEl)domEl.innerHTML='无法加载权限记录。服务可能未启动，请刷新页面重试'});
 }
 function loadContextDetail(){
   api.get('/api/harness/context').then(function(d){
-    var ttl=d.total_tokens||0,pct=ttl>0?Math.min(100,Math.round(ttl/500000*100)):0;
-    var fill=$('hctx-fill'),text=$('hctx-text'),cache=$('hctx-cache'),detail=$('hctx-detail');
+    let ttl=d.total_tokens||0,pct=ttl>0?Math.min(100,Math.round(ttl/500000*100)):0;
+    let fill=$('hctx-fill'),text=$('hctx-text'),cache=$('hctx-cache'),detail=$('hctx-detail');
     if(fill){fill.style.width=pct+'%';fill.className='ctx-gauge-fill'+(pct>85?' danger':pct>60?' warn':'')}
     if(text)text.textContent=ttl.toLocaleString()+' / 500K';
     if(cache)cache.textContent='缓存命中: '+(d.cache_hit_rate||0)+'% · 省 $'+(d.cost_est?d.cost_est.cache_saved.toFixed(6):'0');
     if(detail){
-      var sessions=d.sessions||[];
-      var html='';
+      let sessions=d.sessions||[];
+      let html='';
       if(sessions.length){
         sessions.forEach(function(s){
-          var spct=s.tokens>0?Math.min(100,Math.round(s.tokens/(s.max||500000)*100)):0;
+          let spct=s.tokens>0?Math.min(100,Math.round(s.tokens/(s.max||500000)*100)):0;
           html+='<div style="margin-bottom:4px">'+
             '<div style="display:flex;justify-content:space-between;font-size:9px;margin-bottom:1px"><span style="color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px">'+escHtml(s.name||s.id||'会话')+'</span><span style="color:var(--muted)">'+(s.tokens||0).toLocaleString()+'/'+Math.round((s.max||500000)/1000)+'K</span></div>'+
             '<div class="ctx-gauge" style="height:5px;margin-bottom:2px"><div class="ctx-gauge-fill'+(spct>85?' danger':spct>60?' warn':'')+'" style="width:'+spct+'%"></div></div>'+
@@ -270,64 +270,64 @@ function loadContextDetail(){
       html+='输入 '+(d.input_tokens||0).toLocaleString()+' · 输出 '+(d.output_tokens||0).toLocaleString()+' · 费用 $'+(d.cost_est?d.cost_est.total.toFixed(6):'0')+(d.last_update?' · '+d.last_update:'');
       detail.innerHTML=html;
     }
-  }).catch(function(e){console.error('加载上下文详情失败:',e);var domEl=$('hctx-detail');if(domEl)domEl.innerHTML='无法加载上下文数据。服务可能未启动，请刷新页面重试'});
+  }).catch(function(e){console.error('加载上下文详情失败:',e);let domEl=$('hctx-detail');if(domEl)domEl.innerHTML='无法加载上下文数据。服务可能未启动，请刷新页面重试'});
   if(_ctxTimer)clearInterval(_ctxTimer);
   _ctxTimer=setInterval(function(){if($('harnessOverlay').classList.contains('on'))loadContextDetail()},10000);
 }
 function loadSubagents(){
   api.get('/api/harness/subagents').then(function(d){
-    var domEl=$('hsub-tree');if(!domEl)return;
-    if(d.tree&&d.tree.length){var html='<div style="margin-bottom:6px;color:var(--text2);font-size:11px">'+d.stats.total+' 个 · '+d.stats.done+' 完成 '+(d.stats.running||0)+' 运行中 '+(d.stats.failed||0)+' 失败</div>';
+    let domEl=$('hsub-tree');if(!domEl)return;
+    if(d.tree&&d.tree.length){let html='<div style="margin-bottom:6px;color:var(--text2);font-size:11px">'+d.stats.total+' 个 · '+d.stats.done+' 完成 '+(d.stats.running||0)+' 运行中 '+(d.stats.failed||0)+' 失败</div>';
     d.tree.forEach(function(a,i){
-      var icon=a.hasOutput?'✅':(a.status==='running'?'🔄':'⬤');
-      var color=a.hasOutput?'var(--accent)':(a.status==='running'?'var(--warn)':'var(--muted)');
+      let icon=a.hasOutput?'✅':(a.status==='running'?'🔄':'⬤');
+      let color=a.hasOutput?'var(--accent)':(a.status==='running'?'var(--warn)':'var(--muted)');
       html+='<details style="margin:2px 0;background:var(--surface2);border-radius:4px;font-size:11px"><summary style="padding:4px 8px;cursor:pointer"><span style="color:'+color+'">'+icon+'</span> '+escHtml(a.name)+' <span style="color:var(--muted);font-size:10px">'+escHtml(a.type||'')+'</span></summary><div style="padding:4px 12px 8px;font-size:10px;color:var(--text2)">'+escHtml(a.description||'无描述')+'<br>项目: '+escHtml(a.project||'')+'</div></details>';
     });
     domEl.innerHTML=html}else{domEl.innerHTML='<span style="color:var(--muted)">暂无 SubAgent 记录</span>'}
     if(_subTimer)clearInterval(_subTimer);
     _subTimer=setInterval(function(){if($('harnessOverlay').classList.contains('on'))loadSubagents()},5000);
-  }).catch(function(e){console.error('加载 SubAgent 列表失败:',e);var domEl=$('hsub-tree');if(domEl)domEl.innerHTML='无法加载子任务列表。服务可能未启动，请刷新页面重试'});
+  }).catch(function(e){console.error('加载 SubAgent 列表失败:',e);let domEl=$('hsub-tree');if(domEl)domEl.innerHTML='无法加载子任务列表。服务可能未启动，请刷新页面重试'});
 }
 function loadHooksLog(){
-  var hlogs=window._hlogs||[];
+  let hlogs=window._hlogs||[];
   api.get('/api/harness/events?limit=50').then(function(d){
-    var events=d.events||[],domEl=$('hhooks-log');if(!domEl)return;
+    let events=d.events||[],domEl=$('hhooks-log');if(!domEl)return;
     if(events.length){domEl.innerHTML=events.map(function(e){return'<div style="padding:3px 6px;margin:1px 0;font-size:10px;border-left:2px solid var(--accent);background:var(--surface2)"><strong>'+escHtml(e.type)+'</strong> <span style="color:var(--muted)">'+new Date(e.ts*1000).toLocaleTimeString()+'</span></div>'}).join('')}else{domEl.innerHTML='暂无 Hook 事件'}
-  }).catch(function(e){console.error('加载 Hook 事件失败:',e);var domEl=$('hhooks-log');if(domEl)domEl.innerHTML='无法加载 Hook 事件。服务可能未启动，请刷新页面重试'});
+  }).catch(function(e){console.error('加载 Hook 事件失败:',e);let domEl=$('hhooks-log');if(domEl)domEl.innerHTML='无法加载 Hook 事件。服务可能未启动，请刷新页面重试'});
 }
 function loadMCPDetail(){
   api.get('/api/mcp/status').then(function(d){
-    var domEl=$('hmcp-list'),sel=$('mcp-status');if(!domEl)return;
-    var servers=d.servers||[];
-    var html=servers.length?servers.map(function(s){return'<div style="padding:8px 10px;margin:4px 0;background:var(--surface2);border-radius:var(--radius-sm)"><div style="font-weight:600;font-size:12px">'+escHtml(s.name)+' <span style="font-size:9px;color:'+(s.running?'var(--accent)':'var(--muted)')+'">● '+(s.running?'活跃':'离线')+'</span></div><div style="font-size:10px;color:var(--muted)">'+escHtml(s.command||'')+(s.args||[]).join(' ')+'</div></div>'}).join(''):'暂无 MCP 服务器';
+    let domEl=$('hmcp-list'),sel=$('mcp-status');if(!domEl)return;
+    let servers=d.servers||[];
+    let html=servers.length?servers.map(function(s){return'<div style="padding:8px 10px;margin:4px 0;background:var(--surface2);border-radius:var(--radius-sm)"><div style="font-weight:600;font-size:12px">'+escHtml(s.name)+' <span style="font-size:9px;color:'+(s.running?'var(--accent)':'var(--muted)')+'">● '+(s.running?'活跃':'离线')+'</span></div><div style="font-size:10px;color:var(--muted)">'+escHtml(s.command||'')+(s.args||[]).join(' ')+'</div></div>'}).join(''):'暂无 MCP 服务器';
     domEl.innerHTML=html;if(sel)sel.innerHTML=html;
-  }).catch(function(e){console.error('加载 MCP 列表失败:',e);var domEl=$('hmcp-list');if(domEl)domEl.innerHTML='无法加载 MCP 状态。服务可能未启动，请刷新页面重试'});
+  }).catch(function(e){console.error('加载 MCP 列表失败:',e);let domEl=$('hmcp-list');if(domEl)domEl.innerHTML='无法加载 MCP 状态。服务可能未启动，请刷新页面重试'});
 }
 function loadDashboardPermissionAudit(){
   api.get('/api/permissions/audit?limit=50').then(function(d){
-    var domEl=document.getElementById('perm-audit-list');if(!domEl)return;
-    var logs=d.logs||[],stats=d.stats||{};
-    if(logs.length){domEl.innerHTML='<div style="margin-bottom:4px;font-size:10px;color:var(--text2)">总计 '+(stats.total||logs.length)+' · 允许 '+(stats.allowed||0)+' · 拒绝 '+(stats.denied||0)+'</div>'+logs.slice(0,20).map(function(l){var color=l.decision==='allow'?'var(--accent)':'var(--danger)';return'<div style="padding:2px 6px;margin:1px 0;font-size:10px;border-left:2px solid '+color+'"><span style="color:'+color+'">'+(l.decision==='allow'?'✓':'✗')+'</span> '+escHtml(l.tool_name||'?')+' <span style="color:var(--muted)">'+escHtml(l.time||'')+'</span></div>'}).join('')}else{domEl.innerHTML='暂无审计记录'}
-  }).catch(function(e){console.error('加载审计日志失败:',e);var domEl=document.getElementById('perm-audit-list');if(domEl)domEl.innerHTML='无法加载审计日志'});
+    let domEl=document.getElementById('perm-audit-list');if(!domEl)return;
+    let logs=d.logs||[],stats=d.stats||{};
+    if(logs.length){domEl.innerHTML='<div style="margin-bottom:4px;font-size:10px;color:var(--text2)">总计 '+(stats.total||logs.length)+' · 允许 '+(stats.allowed||0)+' · 拒绝 '+(stats.denied||0)+'</div>'+logs.slice(0,20).map(function(l){let color=l.decision==='allow'?'var(--accent)':'var(--danger)';return'<div style="padding:2px 6px;margin:1px 0;font-size:10px;border-left:2px solid '+color+'"><span style="color:'+color+'">'+(l.decision==='allow'?'✓':'✗')+'</span> '+escHtml(l.tool_name||'?')+' <span style="color:var(--muted)">'+escHtml(l.time||'')+'</span></div>'}).join('')}else{domEl.innerHTML='暂无审计记录'}
+  }).catch(function(e){console.error('加载审计日志失败:',e);let domEl=document.getElementById('perm-audit-list');if(domEl)domEl.innerHTML='无法加载审计日志'});
 }
 function loadEnvStatus(){
   api.get("/api/harness/status").then(function(d){
-    var domEl=document.getElementById("henv-status");if(!domEl)return;
-    var html="";
-    var apiOk=d.api_key_valid!==undefined?d.api_key_valid:false;
-    var apiProvider=d.api_provider||"未知";
+    let domEl=document.getElementById("henv-status");if(!domEl)return;
+    let html="";
+    let apiOk=d.api_key_valid!==undefined?d.api_key_valid:false;
+    let apiProvider=d.api_provider||"未知";
     html+='<div style="padding:8px 10px;margin:4px 0;background:var(--surface2);border-radius:var(--radius-sm)">';
     html+='<div style="font-weight:600;font-size:12px;margin-bottom:4px">API Key</div>';
     html+='<div style="font-size:11px"><span style="color:'+(apiOk?"var(--accent)":"var(--danger)")+'">'+(apiOk?"✅ 有效":"❌ 无效")+'</span>';
     html+=' · 提供商: <span style="color:var(--text2)">'+escHtml(apiProvider)+'</span></div>';
     html+='</div>';
-    var mcpServers=d.mcp_servers||{};
+    let mcpServers=d.mcp_servers||{};
     html+='<div style="padding:8px 10px;margin:4px 0;background:var(--surface2);border-radius:var(--radius-sm)">';
     html+='<div style="font-weight:600;font-size:12px;margin-bottom:6px">MCP 服务</div>';
-    var mcpNames=Object.keys(mcpServers);
+    let mcpNames=Object.keys(mcpServers);
     if(mcpNames.length){
       mcpNames.forEach(function(name){
-        var ok=mcpServers[name];
+        let ok=mcpServers[name];
         html+='<div style="display:flex;align-items:center;gap:6px;padding:2px 0;font-size:11px">';
         html+='<span style="width:8px;height:8px;border-radius:50%;display:inline-block;background:'+(ok?"var(--accent)":"var(--danger)")+'"></span>';
         html+='<span>'+escHtml(name)+'</span>';
@@ -344,7 +344,7 @@ function loadEnvStatus(){
     html+='<div style="font-weight:600;font-size:12px;margin-bottom:2px">最后检查</div>';
     html+='<div style="font-size:10px;color:var(--muted)">'+escHtml(d.checked_at||"未检查")+'</div>';
     html+='</div>';
-    var hooksReg=d.hooks_registered||[];
+    let hooksReg=d.hooks_registered||[];
     html+='<div style="padding:8px 10px;margin:4px 0;background:var(--surface2);border-radius:var(--radius-sm)">';
     html+='<div style="font-weight:600;font-size:12px;margin-bottom:6px">Hook 注册</div>';
     if(hooksReg.length){
@@ -359,18 +359,18 @@ function loadEnvStatus(){
     html+='</div>';
     if(d.error)html+='<div style="padding:6px 10px;margin:4px 0;background:rgba(248,113,113,.1);border-left:2px solid var(--danger);border-radius:3px;font-size:10px;color:var(--danger)">'+escHtml(d.error)+'</div>';
     domEl.innerHTML=html;
-  }).catch(function(e){console.error('加载环境状态失败:',e);var domEl=document.getElementById("henv-status");if(domEl)domEl.innerHTML="无法加载环境状态。服务可能未启动，请刷新页面重试"});
+  }).catch(function(e){console.error('加载环境状态失败:',e);let domEl=document.getElementById("henv-status");if(domEl)domEl.innerHTML="无法加载环境状态。服务可能未启动，请刷新页面重试"});
 }
 
 /* ── 测试运行器 ── */
-var _testPollTimer=null,_testRunId=null;
+let _testPollTimer=null,_testRunId=null;
 function runTest(){
-  var url=($('test-url')||{}).value;if(!url){showToast('请输入测试 URL',false,'warn');return}
-  var btn=$('test-run-btn');if(btn){btn.disabled=true;btn.textContent='⏳ 测试中…'}
-  var statusEl=$('test-status');if(statusEl)statusEl.textContent='启动中…';
+  let url=($('test-url')||{}).value;if(!url){showToast('请输入测试 URL',false,'warn');return}
+  let btn=$('test-run-btn');if(btn){btn.disabled=true;btn.textContent='⏳ 测试中…'}
+  let statusEl=$('test-status');if(statusEl)statusEl.textContent='启动中…';
   _testRunId=null;
-  var body={url:url};
-  var od=localStorage.getItem('agency_output_dir');if(od)body.output_dir=od;
+  let body={url:url};
+  let od=localStorage.getItem('agency_output_dir');if(od)body.output_dir=od;
   apiFetch('/api/test/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){return r.json()}).then(function(d){
     if(d.error){showToast(d.error||'操作失败，请重试',true);if(btn){btn.disabled=false;btn.textContent='▶ 开始测试'};return}
     _testRunId=d.run_id;if(statusEl)statusEl.textContent='运行中: '+_testRunId;
@@ -381,7 +381,7 @@ function pollTestStatus(){
   if(!_testRunId)return;
   if(_testPollTimer)clearTimeout(_testPollTimer);
   apiFetch('/api/test/status/'+_testRunId).then(function(r){return r.json()}).then(function(d){
-    var results=$('test-results'),screenshot=$('test-screenshot'),statusEl=$('test-status'),btn=$('test-run-btn');
+    let results=$('test-results'),screenshot=$('test-screenshot'),statusEl=$('test-status'),btn=$('test-run-btn');
     if(d.error){showToast(d.error||'操作失败，请重试',true);if(btn){btn.disabled=false;btn.textContent='▶ 开始测试'};return}
     if(d.status==='running'){
       if(statusEl)statusEl.textContent='运行中…';
@@ -390,10 +390,10 @@ function pollTestStatus(){
     }
     if(statusEl)statusEl.textContent=d.status==='completed'?'✅ 完成':'❌ '+(d.status||'失败');
     if(btn){btn.disabled=false;btn.textContent='▶ 重新测试'}
-    var tests=d.tests||[];
-    var passed=tests.filter(function(t){return t.passed}).length;
-    var total=tests.length||1;
-    var html='<div style="display:flex;gap:12px;margin-bottom:8px">';
+    let tests=d.tests||[];
+    let passed=tests.filter(function(t){return t.passed}).length;
+    let total=tests.length||1;
+    let html='<div style="display:flex;gap:12px;margin-bottom:8px">';
     html+='<div class="cost-kpi"><span class="kpi-val" style="color:'+(passed===total?'var(--accent)':'var(--warn)')+'">'+passed+'/'+total+'</span><span class="kpi-label">通过</span></div>';
     html+='<div class="cost-kpi"><span class="kpi-val" style="color:'+(passed<total?'var(--danger)':'var(--muted)')+'">'+(total-passed)+'</span><span class="kpi-label">失败</span></div>';
     html+='</div>';
@@ -414,7 +414,7 @@ function pollTestStatus(){
     if(d.screenshot&&screenshot){
       screenshot.innerHTML='<div style="margin-top:8px"><span style="font-size:10px;color:var(--muted)">截图预览：</span><br><img src="/api/files?path='+encodeURIComponent(d.screenshot)+'" style="max-width:100%;max-height:220px;border-radius:4px;border:1px solid var(--border);margin-top:4px" onerror="this.style.display=\'none\'"></div>';
     }
-  }).catch(function(e){var statusEl=$('test-status');if(statusEl)statusEl.textContent='查询失败';var btn=$('test-run-btn');if(btn){btn.disabled=false;btn.textContent='▶ 开始测试'}});
+  }).catch(function(e){let statusEl=$('test-status');if(statusEl)statusEl.textContent='查询失败';let btn=$('test-run-btn');if(btn){btn.disabled=false;btn.textContent='▶ 开始测试'}});
 }
 
 /* ── Demo 仪表盘 ── */
@@ -452,17 +452,17 @@ function renderDemoDashboard(tab,domEl){
 }
 
 function buildDemoModelBars(){
-  var models=[
+  let models=[
     {model:'deepseek-v4',cost:1.52,calls:18},
     {model:'claude-sonnet',cost:0.98,calls:10},
     {model:'gpt-4o',cost:0.35,calls:6},
     {model:'gemini-flash',cost:0.18,calls:5},
     {model:'claude-haiku',cost:0.09,calls:3}
   ];
-  var totalCost=models.reduce(function(s,m){return s+m.cost},0);
-  var colors=['#22d3a0','#60a5fa','#fbbf20','#f87171','#a78bfa'];
+  let totalCost=models.reduce(function(s,m){return s+m.cost},0);
+  let colors=['#22d3a0','#60a5fa','#fbbf20','#f87171','#a78bfa'];
   return models.map(function(m,i){
-    var pct=totalCost>0?(m.cost/totalCost*100):0;
+    let pct=totalCost>0?(m.cost/totalCost*100):0;
     return'<div style="display:flex;align-items:center;margin:3px 0;gap:6px">'+
       '<span style="min-width:80px;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(m.model)+'</span>'+
       '<div style="flex:1;height:12px;background:var(--bg);border-radius:6px;overflow:hidden">'+
@@ -474,19 +474,19 @@ function buildDemoModelBars(){
 }
 
 function drawDemoCostTrend(){
-  var c=document.getElementById('cost-trend-canvas');if(!c)return;
-  var ctx=c.getContext('2d'),W=c.width,H=c.height,pad=28;
+  let c=document.getElementById('cost-trend-canvas');if(!c)return;
+  let ctx=c.getContext('2d'),W=c.width,H=c.height,pad=28;
   ctx.clearRect(0,0,W,H);
-  var data=[0.02,0.15,0.08,0.04,0.01,0.06,0.12,0.18,0.09,0.03,0.07,0.14,0.22,0.05];
-  var maxCost=0.25;
-  var barW=(W-pad*2)/data.length-2;
+  let data=[0.02,0.15,0.08,0.04,0.01,0.06,0.12,0.18,0.09,0.03,0.07,0.14,0.22,0.05];
+  let maxCost=0.25;
+  let barW=(W-pad*2)/data.length-2;
   ctx.strokeStyle='rgba(251,191,32,.3)';ctx.setLineDash([3,3]);
-  var warnY=H-pad-(0.2/maxCost*(H-pad*2));
+  let warnY=H-pad-(0.2/maxCost*(H-pad*2));
   ctx.beginPath();ctx.moveTo(pad,warnY);ctx.lineTo(W-pad,warnY);ctx.stroke();
   ctx.setLineDash([]);
   data.forEach(function(cost,i){
-    var h=cost/maxCost*(H-pad*2);
-    var x=pad+i*((W-pad*2)/data.length),y=H-pad-h;
+    let h=cost/maxCost*(H-pad*2);
+    let x=pad+i*((W-pad*2)/data.length),y=H-pad-h;
     ctx.fillStyle=cost>0.2?'#f87171':'#22d3a0';
     ctx.fillRect(x,y,barW,h);
     if(i%3===0){
@@ -512,11 +512,11 @@ function renderWorktreeTab(container) {
 window.loadWorktrees = function() {
   /* 从 /api/worktrees 加载活跃工作树列表 */
   fetch('/api/worktrees').then(function(r){ return r.json(); }).then(function(d){
-    var list = document.getElementById('worktree-list');
+    let list = document.getElementById('worktree-list');
     if (!list) return;
     if (!d.ok) { list.innerHTML = '<span style="color:var(--danger)">加载失败</span>'; return; }
-    var trees = d.agents || [];
-    var html = '<div style="font-size:9px;color:var(--muted);margin-bottom:4px">主仓库: ' + escHtml(d.main?.branch||'?') + ' (' + (d.main?.head||'').substring(0,7) + ')</div>';
+    let trees = d.agents || [];
+    let html = '<div style="font-size:9px;color:var(--muted);margin-bottom:4px">主仓库: ' + escHtml(d.main?.branch||'?') + ' (' + (d.main?.head||'').substring(0,7) + ')</div>';
     if (!trees.length) {
       html += '<div style="color:var(--muted);padding:12px;text-align:center;border:1px dashed var(--border);border-radius:4px">暂无活跃工作树</div>';
     } else {
@@ -534,9 +534,9 @@ window.loadWorktrees = function() {
 
 window.createWorktree = function() {
   /* 创建新工作树分支 */
-  var inp = document.getElementById('wt-new-branch');
+  let inp = document.getElementById('wt-new-branch');
   if (!inp || !inp.value.trim()) { showToast('请输入分支名'); return; }
-  var branch = inp.value.trim();
+  let branch = inp.value.trim();
   fetch('/api/worktrees/create', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -583,7 +583,7 @@ document.addEventListener('visibilitychange', function() {
     if (window._subTimer) { clearInterval(window._subTimer); window._subTimer = null; }
   } else {
     // 页面重新可见 → 如果仪表盘还开着，重新加载（函数内部会重建定时器）
-    var ov = document.getElementById('harnessOverlay');
+    let ov = document.getElementById('harnessOverlay');
     if (ov && ov.classList.contains('on')) {
       if (!window._ctxTimer && typeof loadContextDetail === 'function') loadContextDetail();
       if (!window._subTimer && typeof loadSubagents === 'function') loadSubagents();
@@ -604,11 +604,11 @@ function renderHistoryTimeline(container){
 }
 function loadSessionTimeline(){
   fetch("/api/sessions/timeline").then(function(r){return r.json()}).then(function(d){
-    var list=document.getElementById("session-timeline-list");if(!list)return;
-    var sessions=d.sessions||[];
+    let list=document.getElementById("session-timeline-list");if(!list)return;
+    let sessions=d.sessions||[];
     if(!sessions.length){list.innerHTML='<div style="color:var(--muted);padding:12px;text-align:center">暂无会话记录</div>';return}
     list.innerHTML=sessions.map(function(s){
-      var date=new Date(s.updated).toLocaleString("zh-CN");
+      let date=new Date(s.updated).toLocaleString("zh-CN");
       return '<div style="display:flex;align-items:center;gap:8px;padding:8px;margin-bottom:4px;background:var(--surface2);border-radius:4px;cursor:pointer" onclick="replaySession(\''+s.session_id+'\')">'+
         '<span style="font-size:14px">📝</span>'+
         '<div style="flex:1"><div style="font-size:11px;font-weight:600;color:var(--text)">'+escHtml(s.session_id.substring(0,12))+'…</div>'+
@@ -620,7 +620,7 @@ function loadSessionTimeline(){
 window.replaySession=function(sid){/* P2-2: 回放会话事件时间线 */
   fetch("/api/sessions/replay/"+sid).then(function(r){return r.json()}).then(function(d){
     if(!d.ok){showToast("回放失败");return}
-    var h="<div style='padding:8px;font-size:11px'>"+
+    let h="<div style='padding:8px;font-size:11px'>"+
       "<div style='font-weight:600;color:var(--text);margin-bottom:8px'>📜 "+escHtml(sid.substring(0,16))+"…</div>"+
       "<div style='display:flex;gap:12px;margin-bottom:12px;font-size:10px;color:var(--muted)'>"+
         "<span>总计 "+d.stats.total_events+" 事件</span>"+
@@ -628,13 +628,13 @@ window.replaySession=function(sid){/* P2-2: 回放会话事件时间线 */
         "<span>🤖 "+d.stats.assistant_messages+"</span>"+
         "<span>🔧 "+d.stats.tool_calls+"</span></div>";
     (d.events||[]).forEach(function(e){
-      var i=e.type=="user_message"?"👤":e.type=="assistant_message"?"🤖":e.type=="tool_call"?"🔧":"📌";
+      let i=e.type=="user_message"?"👤":e.type=="assistant_message"?"🤖":e.type=="tool_call"?"🔧":"📌";
       h+="<div style='padding:4px 0;border-bottom:1px solid var(--border);display:flex;gap:8px'>"+
         "<span style='font-size:12px'>"+i+"</span>"+
         "<div style='flex:1'><div style='font-size:9px;color:var(--accent)'>"+escHtml(e.type||"?")+"</div>"+
         "<div style='font-size:10px;color:var(--text);max-height:60px;overflow:hidden'>"+escHtml(String(e.content||"").substring(0,200))+"</div></div></div>";
     });
     h+="</div>";
-    var detail=document.getElementById("dash-detail");if(detail){detail.innerHTML=h;detail.style.display="block"}
+    let detail=document.getElementById("dash-detail");if(detail){detail.innerHTML=h;detail.style.display="block"}
   });
 };

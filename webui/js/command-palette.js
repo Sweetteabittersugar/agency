@@ -1,6 +1,6 @@
 /* Agency — 命令面板 + 全键盘快捷键 */
 
-var KEYBOARD_SHORTCUTS = [
+let KEYBOARD_SHORTCUTS = [
   {keys:'Ctrl+K',desc:'打开命令面板',action:'palette'},
   {keys:'Ctrl+N',desc:'新建面板',action:'newPanel'},
   {keys:'Ctrl+W',desc:'关闭当前面板',action:'closePanel'},
@@ -11,22 +11,22 @@ var KEYBOARD_SHORTCUTS = [
   {keys:'1 - 5',desc:'切换仪表盘标签',action:'dashTab',scope:'dashboard'}
 ];
 
-var _paletteCommands = [];
-var _paletteOpen = false;
-var _paletteIdx = -1;
-var _paletteFiltered = [];
+let _paletteCommands = [];
+let _paletteOpen = false;
+let _paletteIdx = -1;
+let _paletteFiltered = [];
 
 function registerCommand(name, description, category, action, shortcut) {
   _paletteCommands.push({name:name,description:description,category:category,action:action,shortcut:shortcut||''});
 }
 
-var commandPalette = {
+let commandPalette = {
   _built: false,
 
   init: function() {
     if (this._built) return;
     this._built = true;
-    var self = this;
+    let self = this;
 
     // ── DOM 构建 ──
     this.overlay = document.createElement('div');
@@ -84,8 +84,8 @@ var commandPalette = {
 
   // ── 注册默认命令 ──
   _registerDefaults: function() {
-    var self = this;
-    var cmds = [
+    let self = this;
+    let cmds = [
       {name:'agent', description:'浏览 Agent 列表，选择后跳转侧边栏', category:'导航', action:function() { self._showAgents(); }},
       {name:'skill', description:'浏览 Skill 列表，选择后跳转侧边栏 Skills', category:'导航', action:function() { self._showSkills(); }},
       {name:'新建面板', description:'创建新聊天面板', category:'面板', action:function() { self.close(); addPanel(); }, shortcut:'Ctrl+N'},
@@ -98,22 +98,22 @@ var commandPalette = {
       {name:'导出配置', description:'导出当前配置到 JSON 文件', category:'工具', action:function() { self._exportConfig(); }},
       {name:'快捷键帮助', description:'列出所有键盘快捷键', category:'帮助', action:function() { self._showShortcutsHelp(); }, shortcut:'Ctrl+/'},
       {name:'智能调度', keywords:['调度','路由','route','orchestrate'], description:'分析任务并路由到最优 Agent', category:'导航', action:function() { self.close(); toggleOrchMode(); }},
-      {name:'Agent 工厂', keywords:['创建','新建','factory','create','自定义'], description:'打开 Agent 工厂，创建自定义 Agent', category:'工具', action:function() { self.close(); if (!devMode) toggleDevOverlay(); setTimeout(function() { var el = document.getElementById('agent-factory-input'); if (el) { el.scrollIntoView({behavior:'smooth',block:'center'}); el.focus(); } }, 300); }},
-      {name:'MCP 管理', description:'管理 MCP 服务器配置', category:'工具', action:function() { self.close(); if (!harnessActive) toggleDashboard(); setTimeout(function() { var tab = document.querySelector('.harness-overlay-tab[data-htab="mcp"]'); if (tab) tab.click(); }, 200); }},
+      {name:'Agent 工厂', keywords:['创建','新建','factory','create','自定义'], description:'打开 Agent 工厂，创建自定义 Agent', category:'工具', action:function() { self.close(); if (!devMode) toggleDevOverlay(); setTimeout(function() { let el = document.getElementById('agent-factory-input'); if (el) { el.scrollIntoView({behavior:'smooth',block:'center'}); el.focus(); } }, 300); }},
+      {name:'MCP 管理', description:'管理 MCP 服务器配置', category:'工具', action:function() { self.close(); if (!harnessActive) toggleDashboard(); setTimeout(function() { let tab = document.querySelector('.harness-overlay-tab[data-htab="mcp"]'); if (tab) tab.click(); }, 200); }},
       {name:'帮助文档', keywords:['帮助','help','文档','doc','?'], description:'查看功能帮助与快捷键', category:'帮助', action:function() { self.close(); toggleHelpOverlay(); }},
       {name:'检查更新', keywords:['更新','update','版本','version'], description:'检查 Agency 新版本', category:'工具', action:function() { self.close(); checkUpdate(); }},
-      {name:'测试面板', description:'打开 Agent 测试面板', category:'工具', action:function() { self.close(); if (!harnessActive) toggleDashboard(); setTimeout(function() { var tab = document.querySelector('.harness-overlay-tab[data-htab="test"]'); if (tab) tab.click(); }, 200); }},
-      {name:'切换标签', description:'在仪表盘标签页间切换', category:'导航', action:function() { self.close(); if (!harnessActive) { toggleDashboard(); } else { var tabs = document.querySelectorAll('.harness-overlay-tab'); var activeIdx = -1; for (var i = 0; i < tabs.length; i++) { if (tabs[i].classList.contains('active')) { activeIdx = i; break; } } var nextIdx = (activeIdx + 1) % tabs.length; if (tabs[nextIdx]) tabs[nextIdx].click(); } }},
+      {name:'测试面板', description:'打开 Agent 测试面板', category:'工具', action:function() { self.close(); if (!harnessActive) toggleDashboard(); setTimeout(function() { let tab = document.querySelector('.harness-overlay-tab[data-htab="test"]'); if (tab) tab.click(); }, 200); }},
+      {name:'切换标签', description:'在仪表盘标签页间切换', category:'导航', action:function() { self.close(); if (!harnessActive) { toggleDashboard(); } else { let tabs = document.querySelectorAll('.harness-overlay-tab'); let activeIdx = -1; for (let i = 0; i < tabs.length; i++) { if (tabs[i].classList.contains('active')) { activeIdx = i; break; } } let nextIdx = (activeIdx + 1) % tabs.length; if (tabs[nextIdx]) tabs[nextIdx].click(); } }},
       {name:'费用追踪', description:'查看 API 使用费用', category:'工具', action:function() { self.close(); showToast('费用追踪请前往终端执行: python maestro/cost-tracker.py'); }},
     ];
-    for (var i = 0; i < cmds.length; i++) {
+    for (let i = 0; i < cmds.length; i++) {
       registerCommand(cmds[i].name, cmds[i].description, cmds[i].category, cmds[i].action, cmds[i].shortcut);
     }
   },
 
   // ── 过滤 ──
   _filter: function() {
-    var q = this.input.value.toLowerCase().trim();
+    let q = this.input.value.toLowerCase().trim();
     this.results.innerHTML = '';
 
     // 特殊处理：输入 "agent" — 直接列出 Agent
@@ -187,9 +187,9 @@ var commandPalette = {
     }
 
     // 通用模糊搜索
-    var matched = [];
-    for (var i = 0; i < _paletteCommands.length; i++) {
-      var cmd = _paletteCommands[i];
+    let matched = [];
+    for (let i = 0; i < _paletteCommands.length; i++) {
+      let cmd = _paletteCommands[i];
       if (!q || cmd.name.toLowerCase().indexOf(q) >= 0 || cmd.description.toLowerCase().indexOf(q) >= 0 || cmd.category.toLowerCase().indexOf(q) >= 0 || (cmd.keywords || []).some(function(k) { return k.indexOf(q) !== -1; })) {
         matched.push(cmd);
       }
@@ -204,31 +204,31 @@ var commandPalette = {
       this.results.innerHTML = '<div class="palette-empty">' + t('paletteNoResults') + '</div>';
       return;
     }
-    var self = this;
-    var grouped = {};
-    for (var i = 0; i < items.length; i++) {
-      var cat = items[i].category || '其他';
+    let self = this;
+    let grouped = {};
+    for (let i = 0; i < items.length; i++) {
+      let cat = items[i].category || '其他';
       if (!grouped[cat]) grouped[cat] = [];
       grouped[cat].push(items[i]);
     }
-    var cats = Object.keys(grouped);
-    var idx = 0;
-    for (var c = 0; c < cats.length; c++) {
-      var catName = cats[c];
-      var header = document.createElement('div');
+    let cats = Object.keys(grouped);
+    let idx = 0;
+    for (let c = 0; c < cats.length; c++) {
+      let catName = cats[c];
+      let header = document.createElement('div');
       header.className = 'palette-category';
       header.textContent = catName;
       this.results.appendChild(header);
 
-      for (var j = 0; j < grouped[catName].length; j++) {
-        var item = grouped[catName][j];
-        var row = document.createElement('div');
+      for (let j = 0; j < grouped[catName].length; j++) {
+        let item = grouped[catName][j];
+        let row = document.createElement('div');
         row.className = 'palette-item';
         row.setAttribute('data-idx', idx);
 
-        var nameHtml = this._highlight(item.name, query);
-        var descHtml = this._highlight(item.description, query);
-        var shortcutHtml = item.shortcut ? '<span class="palette-shortcut">' + escHtml(item.shortcut) + '</span>' : '';
+        let nameHtml = this._highlight(item.name, query);
+        let descHtml = this._highlight(item.description, query);
+        let shortcutHtml = item.shortcut ? '<span class="palette-shortcut">' + escHtml(item.shortcut) + '</span>' : '';
 
         row.innerHTML = '<span class="palette-icon">▶</span><span class="palette-name">' + nameHtml + '</span><span class="palette-desc">— ' + descHtml + '</span>' + shortcutHtml;
 
@@ -244,21 +244,21 @@ var commandPalette = {
 
   // ── 渲染 Agent 结果 ──
   _renderAgentResults: function(filter) {
-    var self = this;
-    var list = (typeof agents !== 'undefined' ? agents : []).concat(typeof _demoMode !== 'undefined' && _demoMode ? getDemoAgents() : []);
+    let self = this;
+    let list = (typeof agents !== 'undefined' ? agents : []).concat(typeof _demoMode !== 'undefined' && _demoMode ? getDemoAgents() : []);
     if (filter) list = list.filter(function(a) { return a.name.indexOf(filter) >= 0 || (a.description||'').indexOf(filter) >= 0; });
     if (list.length === 0) {
       this.results.innerHTML = '<div class="palette-empty">' + t('paletteNoResults') + '</div>';
       return;
     }
     _paletteFiltered = list;
-    var header = document.createElement('div');
+    let header = document.createElement('div');
     header.className = 'palette-category';
     header.textContent = 'Agents (' + list.length + ')';
     this.results.appendChild(header);
-    for (var i = 0; i < list.length; i++) {
-      var a = list[i];
-      var row = document.createElement('div');
+    for (let i = 0; i < list.length; i++) {
+      let a = list[i];
+      let row = document.createElement('div');
       row.className = 'palette-item';
       row.setAttribute('data-idx', i);
       row.innerHTML = '<span class="palette-icon">🤖</span><span class="palette-name">' + escHtml(a.name) + '</span><span class="palette-desc">— ' + escHtml((a.description||'').slice(0, 60)) + '</span>';
@@ -271,8 +271,8 @@ var commandPalette = {
 
   // ── 渲染 Skill 结果 ──
   _renderSkillResults: function(filter) {
-    var self = this;
-    var list = typeof allSkills !== 'undefined' ? allSkills : [];
+    let self = this;
+    let list = typeof allSkills !== 'undefined' ? allSkills : [];
     if (typeof _demoMode !== 'undefined' && _demoMode) list = getDemoSkills();
     if (filter) list = list.filter(function(s) { return s.name.indexOf(filter) >= 0 || (s.description||'').indexOf(filter) >= 0; });
     if (list.length === 0) {
@@ -280,13 +280,13 @@ var commandPalette = {
       return;
     }
     _paletteFiltered = list;
-    var header = document.createElement('div');
+    let header = document.createElement('div');
     header.className = 'palette-category';
     header.textContent = 'Skills (' + list.length + ')';
     this.results.appendChild(header);
-    for (var i = 0; i < list.length; i++) {
-      var s = list[i];
-      var row = document.createElement('div');
+    for (let i = 0; i < list.length; i++) {
+      let s = list[i];
+      let row = document.createElement('div');
       row.className = 'palette-item';
       row.setAttribute('data-idx', i);
       row.innerHTML = '<span class="palette-icon">🧩</span><span class="palette-name">' + escHtml(s.name) + '</span><span class="palette-desc">— ' + escHtml((s.description||'').slice(0, 60)) + '</span>';
@@ -300,13 +300,13 @@ var commandPalette = {
   // ── 快捷键帮助 ──
   _showShortcutsHelp: function() {
     this.results.innerHTML = '';
-    var header = document.createElement('div');
+    let header = document.createElement('div');
     header.className = 'palette-category';
     header.textContent = '键盘快捷键';
     this.results.appendChild(header);
-    for (var i = 0; i < KEYBOARD_SHORTCUTS.length; i++) {
-      var ks = KEYBOARD_SHORTCUTS[i];
-      var row = document.createElement('div');
+    for (let i = 0; i < KEYBOARD_SHORTCUTS.length; i++) {
+      let ks = KEYBOARD_SHORTCUTS[i];
+      let row = document.createElement('div');
       row.className = 'palette-item';
       row.innerHTML = '<span class="palette-icon">⌨</span><span class="palette-shortcut" style="min-width:100px">' + escHtml(ks.keys) + '</span><span class="palette-desc">' + escHtml(ks.desc) + '</span>';
       this.results.appendChild(row);
@@ -316,14 +316,14 @@ var commandPalette = {
   // ── 高亮匹配文字 ──
   _highlight: function(text, query) {
     if (!query) return escHtml(text);
-    var escaped = escHtml(text);
-    var q = escHtml(query).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    let escaped = escHtml(text);
+    let q = escHtml(query).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     return escaped.replace(new RegExp('(' + q + ')', 'gi'), '<mark>$1</mark>');
   },
 
   // ── 键盘导航 ──
   _onKey: function(e) {
-    var items = this.results.querySelectorAll('.palette-item');
+    let items = this.results.querySelectorAll('.palette-item');
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       this._paletteIdx = Math.min(this._paletteIdx + 1, items.length - 1);
@@ -342,7 +342,7 @@ var commandPalette = {
   },
 
   _updateSelection: function(items) {
-    for (var i = 0; i < items.length; i++) items[i].classList.remove('active');
+    for (let i = 0; i < items.length; i++) items[i].classList.remove('active');
     if (this._paletteIdx >= 0 && items[this._paletteIdx]) {
       items[this._paletteIdx].classList.add('active');
       items[this._paletteIdx].scrollIntoView({block:'nearest'});
@@ -366,7 +366,7 @@ var commandPalette = {
   _jumpToAgent: function(name) {
     if(typeof switchNav==='function')switchNav('agents');
     // 搜索框中填入 agent 名以过滤
-    var searchInput = document.getElementById('agent-search');
+    let searchInput = document.getElementById('agent-search');
     if (searchInput) {
       searchInput.value = name;
       searchInput.dispatchEvent(new Event('input'));
@@ -374,9 +374,9 @@ var commandPalette = {
     }
     // 高亮第一个匹配卡片
     setTimeout(function() {
-      var cards = document.querySelectorAll('.agent-card');
-      for (var i = 0; i < cards.length; i++) {
-        var n = cards[i].querySelector('.name');
+      let cards = document.querySelectorAll('.agent-card');
+      for (let i = 0; i < cards.length; i++) {
+        let n = cards[i].querySelector('.name');
         if (n && n.textContent.indexOf(name) === 0) {
           cards[i].style.transition = 'all .3s';
           cards[i].style.borderColor = 'var(--accent)';
@@ -394,9 +394,9 @@ var commandPalette = {
     if(typeof switchNav==='function')switchNav('agents');
     if (typeof loadSidebarSkills === 'function') loadSidebarSkills();
     setTimeout(function() {
-      var cards = document.querySelectorAll('.skill-card');
-      for (var i = 0; i < cards.length; i++) {
-        var divs = cards[i].querySelectorAll('div');
+      let cards = document.querySelectorAll('.skill-card');
+      for (let i = 0; i < cards.length; i++) {
+        let divs = cards[i].querySelectorAll('div');
         if (divs.length > 0 && divs[0].textContent.trim() === name) {
           cards[i].style.transition = 'all .3s';
           cards[i].style.background = 'rgba(16,185,129,.12)';
@@ -410,20 +410,20 @@ var commandPalette = {
 
   // ── 主题切换 ──
   _toggleTheme: function() {
-    var html = document.documentElement;
-    var themes = ['dark', 'light', 'high-contrast'];
-    var cur = html.getAttribute('data-theme') || 'dark';
-    var idx = themes.indexOf(cur);
-    var next = themes[(idx + 1) % themes.length];
+    let html = document.documentElement;
+    let themes = ['dark', 'light', 'high-contrast'];
+    let cur = html.getAttribute('data-theme') || 'dark';
+    let idx = themes.indexOf(cur);
+    let next = themes[(idx + 1) % themes.length];
     html.setAttribute('data-theme', next);
     try { localStorage.setItem('agency_theme', next); } catch(e) { console.warn('保存主题失败:',e); }
-    var labels = {dark:'暗色', light:'亮色', 'high-contrast':'高对比度'};
+    let labels = {dark:'暗色', light:'亮色', 'high-contrast':'高对比度'};
     showToast('主题: ' + (labels[next] || next));
   },
 
   // ── 导出配置 ──
   _exportConfig: function() {
-    var config = {
+    let config = {
       theme: document.documentElement.getAttribute('data-theme') || 'dark',
       provider: apiProvider,
       profile: agencyProfile,
@@ -432,9 +432,9 @@ var commandPalette = {
       version: '1.0',
       exportedAt: new Date().toISOString()
     };
-    var blob = new Blob([JSON.stringify(config, null, 2)], {type:'application/json'});
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
+    let blob = new Blob([JSON.stringify(config, null, 2)], {type:'application/json'});
+    let url = URL.createObjectURL(blob);
+    let a = document.createElement('a');
     a.href = url;
     a.download = 'agency-config-' + new Date().toISOString().slice(0,10) + '.json';
     document.body.appendChild(a);
@@ -446,18 +446,18 @@ var commandPalette = {
 
   // ── 全局快捷键监听 ──
   _initGlobalKeys: function() {
-    var self = this;
+    let self = this;
     this._keyHandler = function(e) {
-      var custom = {};
+      let custom = {};
       try{ custom = JSON.parse(localStorage.getItem('custom_shortcuts') || '{}'); }catch(e){ console.warn('加载自定义快捷键失败:',e); }
       function matchShortcut(action, defaultKeys){
-        var keys = custom[action] || defaultKeys;
-        var parts = keys.split('+');
-        var ctrl = parts.indexOf('Ctrl') >= 0;
-        var alt = parts.indexOf('Alt') >= 0;
-        var shift = parts.indexOf('Shift') >= 0;
-        var keyPart = parts[parts.length-1];
-        var eKey = e.key;
+        let keys = custom[action] || defaultKeys;
+        let parts = keys.split('+');
+        let ctrl = parts.indexOf('Ctrl') >= 0;
+        let alt = parts.indexOf('Alt') >= 0;
+        let shift = parts.indexOf('Shift') >= 0;
+        let keyPart = parts[parts.length-1];
+        let eKey = e.key;
         if(eKey === ' ' && keyPart === 'Space') eKey = 'Space';
         if((e.ctrlKey||e.metaKey)===ctrl && e.altKey===alt && e.shiftKey===shift && eKey===keyPart) return true;
         return false;
@@ -493,7 +493,7 @@ var commandPalette = {
       }
       if (matchShortcut('send', 'Ctrl+Enter')) {
         if (document.activeElement && document.activeElement.tagName === 'TEXTAREA') {
-          var panel = getFocusedPanel();
+          let panel = getFocusedPanel();
           if (panel && panel.dom && panel.dom.input === document.activeElement) {
             e.preventDefault();
             handleSend(panel.id);
@@ -507,15 +507,15 @@ var commandPalette = {
           self.close();
           return;
         }
-        var overlays = document.querySelectorAll('.agent-prompt-overlay.on, .confirm-overlay');
+        let overlays = document.querySelectorAll('.agent-prompt-overlay.on, .confirm-overlay');
         if (overlays.length > 0) {
           overlays[overlays.length-1].classList.remove('on');
-          var confirmEl = document.querySelector('.confirm-overlay');
+          let confirmEl = document.querySelector('.confirm-overlay');
           if (confirmEl) confirmEl.remove();
           return;
         }
         if (focusedPid) {
-          var fp = panels.find(function(x) { return x.id === focusedPid; });
+          let fp = panels.find(function(x) { return x.id === focusedPid; });
           if (fp && fp.isStreaming) {
             stopStream(focusedPid);
             return;
@@ -549,7 +549,7 @@ function updateShortcutBindings(){
 (function() {
   // 恢复已保存主题
   try {
-    var savedTheme = localStorage.getItem('agency_theme');
+    let savedTheme = localStorage.getItem('agency_theme');
     if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
   } catch(e) { console.warn('恢复主题失败:',e); }
   // 延迟初始化，确保其他模块已就绪

@@ -1,12 +1,12 @@
 /* 从 settings.js 拆分 — 信任模式与权限 */
 
 /* ── 全局信任模式 ── */
-var TRUST_MODES = {
+let TRUST_MODES = {
   cautious: { label: '谨慎模式', desc: '所有需确认操作都询问', icon: '🛡️' },
   normal:   { label: '正常模式', desc: '同类操作只问一次（24h 内记住）', icon: '⚖️' },
   trusted:  { label: '信任模式', desc: '仅拦截高危操作（rm -rf /等）', icon: '🚀' }
 };
-var trustMode = localStorage.getItem('agency_trust_mode') || 'cautious';
+let trustMode = localStorage.getItem('agency_trust_mode') || 'cautious';
 
 function getTrustMode(){ return trustMode; }
 
@@ -24,13 +24,13 @@ function setTrustMode(mode){
 }
 
 function updateTrustModeUI(){
-  var sel = document.getElementById('trust-mode-select');
+  let sel = document.getElementById('trust-mode-select');
   if(sel) sel.value = trustMode;
-  var desc = document.getElementById('trust-mode-desc');
+  let desc = document.getElementById('trust-mode-desc');
   if(desc && TRUST_MODES[trustMode]) desc.textContent = TRUST_MODES[trustMode].desc;
-  var btns = document.querySelectorAll('.trust-mode-btn');
+  let btns = document.querySelectorAll('.trust-mode-btn');
   btns.forEach(function(b){
-    var mode = b.getAttribute('data-mode');
+    let mode = b.getAttribute('data-mode');
     b.classList.toggle('active', mode === trustMode);
   });
 }
@@ -43,8 +43,8 @@ function showPermissionConfirm(toolName, risk, reason, args){
   }
   if(trustMode === 'normal'){
     fetch('/api/permissions/history?limit=10').then(function(r){return r.json()}).then(function(d){
-      var hist = d.history || [];
-      var found = hist.find(function(h){ return h.tool === toolName && h.decision === 'allow'; });
+      let hist = d.history || [];
+      let found = hist.find(function(h){ return h.tool === toolName && h.decision === 'allow'; });
       if(found){
         confirmPermission(toolName, 'allow', args);
         return;
@@ -57,8 +57,8 @@ function showPermissionConfirm(toolName, risk, reason, args){
 }
 
 function _showConfirmDialog(toolName, risk, reason, args){
-  var riskColor = risk === 'high' ? 'var(--danger)' : risk === 'medium' ? '#f0a020' : 'var(--accent)';
-  var overlay = document.createElement('div');
+  let riskColor = risk === 'high' ? 'var(--danger)' : risk === 'medium' ? '#f0a020' : 'var(--accent)';
+  let overlay = document.createElement('div');
   overlay.className = 'agent-prompt-overlay';
   overlay.style.display = 'flex';
   overlay.innerHTML =
@@ -105,12 +105,12 @@ function confirmPermission(toolName, choice, args){
 
 /* ── 权限审计面板 ── */
 function loadPermissionAudit(){
-  var domEl = document.getElementById('perm-audit-list');
+  let domEl = document.getElementById('perm-audit-list');
   if(!domEl) return;
   fetch('/api/permissions/audit?limit=50').then(function(r){return r.json()}).then(function(d){
-    var logs = d.logs || [];
-    var stats = d.stats || {};
-    var html = '<div style="margin-bottom:8px;display:flex;gap:12px;font-size:11px">'+
+    let logs = d.logs || [];
+    let stats = d.stats || {};
+    let html = '<div style="margin-bottom:8px;display:flex;gap:12px;font-size:11px">'+
       '<span style="color:var(--accent)">允许: '+stats.allowed+'</span>'+
       '<span style="color:#f0a020">询问: '+stats.asked+'</span>'+
       '<span style="color:var(--danger)">拒绝: '+stats.denied+'</span>'+
@@ -119,7 +119,7 @@ function loadPermissionAudit(){
     if(logs.length){
       html += '<div style="max-height:300px;overflow-y:auto">';
       logs.forEach(function(l){
-        var decColor = l.decision === 'allow' ? 'var(--accent)' : l.decision === 'deny' ? 'var(--danger)' : '#f0a020';
+        let decColor = l.decision === 'allow' ? 'var(--accent)' : l.decision === 'deny' ? 'var(--danger)' : '#f0a020';
         html += '<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:10px">'+
           '<span style="color:var(--muted)">'+escHtml((l.time||'').slice(-8))+'</span> '+
           '<code style="color:var(--text);font-size:10px">'+escHtml(l.tool)+'</code> '+

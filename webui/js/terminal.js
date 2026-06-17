@@ -1,23 +1,23 @@
 /* 终端管理器 — 基于 xterm.js + Socket.IO，每个面板独立终端实例
    为何用 xterm.js：成熟的终端模拟库，支持256色、Unicode */
 
-var termSockets = {};  // {pid: socket}
-var termInstances = {}; // {pid: Terminal}
+let termSockets = {};  // {pid: socket}
+let termInstances = {}; // {pid: Terminal}
 
 function toggleTerminal(pid) {
-  var panel = panels.find(function(p){ return p.id===parseInt(pid,10); }); // pid 从 onclick 来是字符串，转为数字匹配
+  let panel = panels.find(function(p){ return p.id===parseInt(pid,10); }); // pid 从 onclick 来是字符串，转为数字匹配
   if (!panel) return;
-  var container = document.getElementById('term-'+pid);
+  let container = document.getElementById('term-'+pid);
   if (!container) {
     // 首次打开：创建终端 DOM
-    var msgArea = panel.dom.messages;
+    let msgArea = panel.dom.messages;
     container = document.createElement('div');
     container.id = 'term-'+pid;
     container.className = 'panel-terminal';
     msgArea.parentNode.insertBefore(container, msgArea.nextSibling);
     initTerminal(pid, container);
     // P1-2: 面板重建后自动恢复终端展开状态，无需用户再点按钮
-    var wasOpen = false;
+    let wasOpen = false;
     try { wasOpen = localStorage.getItem('term_open_'+pid) === '1'; } catch(e){}
     if (wasOpen) {
       container.classList.add('on');
@@ -38,8 +38,8 @@ function initTerminal(pid, container) {
     return;
   }
   // P1-1: 移动端适配——小屏减小字体、增大触摸区域，防止键盘遮挡
-  var isMobile = window.innerWidth < 768;
-  var term = new Terminal({
+  let isMobile = window.innerWidth < 768;
+  let term = new Terminal({
     cursorBlink: true,
     fontSize: isMobile ? 11 : 13,
     fontFamily: '"JetBrains Mono", Consolas, monospace',
@@ -55,7 +55,7 @@ function initTerminal(pid, container) {
 
   // 用户输入 → SocketIO → 后端 PTY
   term.onData(function(data) {
-    var sock = termSockets[pid];
+    let sock = termSockets[pid];
     if (sock && sock.connected) {
       sock.emit('terminal_input', { sid: pid, data: data });
     }
@@ -66,7 +66,7 @@ function startTerminal(pid) {
   /* 建立 SocketIO 连接并启动 PTY */
   if (termSockets[pid] && termSockets[pid].connected) return;
   if (typeof io === 'undefined') { console.error('Socket.IO not loaded'); return; }
-  var sock = io('/ws/terminal');
+  let sock = io('/ws/terminal');
   termSockets[pid] = sock;
 
   sock.on('connect', function() {

@@ -1,5 +1,5 @@
 /* Agency — 首次配置向导（5步：欢迎 → Key → 项目 → 远端 → 完成） */
-var setupData=null,_setupStep=0,_demoMode=false,_wizardProvider='',_wizardRegion='',_wizardBudget='';
+let setupData=null,_setupStep=0,_demoMode=false,_wizardProvider='',_wizardRegion='',_wizardBudget='';
 fetch('/api/setup/status').then(function(r){return r.json()}).then(function(d){
   setupData=d;
   if(d.needs_setup){showSetupStep(0)}
@@ -7,7 +7,7 @@ fetch('/api/setup/status').then(function(r){return r.json()}).then(function(d){
 
 function showSetupStep(step){
   _setupStep=step;
-  var body=$('setup-body'),footer=$('setup-footer'),ov=$('setupOverlay');
+  let body=$('setup-body'),footer=$('setup-footer'),ov=$('setupOverlay');
   if(!body||!footer||!ov)return;
 
   // ── Step 0: 欢迎页 ──
@@ -69,12 +69,12 @@ function showSetupStep(step){
     body.innerHTML=
       '<p style="font-size:12px;color:var(--text2);margin-bottom:12px">开启后可从手机/平板浏览器远程操控 Agency</p>'+
       '<label style="display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:8px;cursor:pointer">'+
-        '<input type="checkbox" id="setup-remote" onchange="var t=document.getElementById(\'remote-config\');if(t)t.style.display=this.checked?\'block\':\'none\'"> 启用远端访问</label>'+
+        '<input type="checkbox" id="setup-remote" onchange="let t=document.getElementById(\'remote-config\');if(t)t.style.display=this.checked?\'block\':\'none\'"> 启用远端访问</label>'+
       '<div id="remote-config" style="display:none">'+
         '<p style="font-size:10px;color:var(--muted);margin-bottom:4px">访问密码（自动生成，可修改）</p>'+
         '<div style="display:flex;gap:4px">'+
           '<input class="proj-input" id="setup-remote-token" style="flex:1;margin:0;font-size:11px;font-family:monospace" value="'+escHtml(setupData&&setupData._remote_token||'')+'">'+
-          '<button class="btn" onclick="var t=Array(16).fill(0).map(function(){return\'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789\'.charAt(Math.floor(Math.random()*62))}).join(\'\');document.getElementById(\'setup-remote-token\').value=t" style="font-size:10px">🎲 随机</button>'+
+          '<button class="btn" onclick="let t=Array(16).fill(0).map(function(){return\'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789\'.charAt(Math.floor(Math.random()*62))}).join(\'\');document.getElementById(\'setup-remote-token\').value=t" style="font-size:10px">🎲 随机</button>'+
         '</div>'+
       '</div>';
     footer.innerHTML=
@@ -85,7 +85,7 @@ function showSetupStep(step){
 
   // ── Step 4: 完成确认 ──
   if(step===4){
-    var providerName=$('setup-provider')?$('setup-provider').selectedOptions[0].text.split(' ')[0]:'DeepSeek';
+    let providerName=$('setup-provider')?$('setup-provider').selectedOptions[0].text.split(' ')[0]:'DeepSeek';
     body.innerHTML=
       '<div style="text-align:center;padding:16px 0">'+
         '<div style="font-size:32px;margin-bottom:8px">🎉</div>'+
@@ -128,7 +128,7 @@ function selectRegion(region){
   _wizardRegion=region;
   // highlight selected
   document.querySelectorAll('.provider-region-card').forEach(function(el){el.style.borderColor='var(--border2)'});
-  var sel=document.getElementById('region-'+region);
+  let sel=document.getElementById('region-'+region);
   if(sel)sel.style.borderColor='var(--accent)';
   // proceed to Q2
   setTimeout(function(){renderProviderQ2($('setup-body'),$('setup-footer'))},200);
@@ -147,7 +147,7 @@ function renderProviderQ2(body,footer){
     '<div id="provider-auto-fill" style="font-size:10px;color:var(--muted);margin-bottom:8px;display:none"></div>'+
     '<div style="position:relative">'+
       '<input class="proj-input" id="setup-key" type="password" placeholder="sk-…" autocomplete="off" style="padding-right:80px;margin-bottom:4px">'+
-      '<button class="btn" onclick="var el=document.getElementById(\'setup-key\');el.type=el.type===\'password\'?\'text\':\'password\'" style="position:absolute;right:4px;top:4px;font-size:10px;padding:2px 8px">👁 显示</button>'+
+      '<button class="btn" onclick="let el=document.getElementById(\'setup-key\');el.type=el.type===\'password\'?\'text\':\'password\'" style="position:absolute;right:4px;top:4px;font-size:10px;padding:2px 8px">👁 显示</button>'+
     '</div>'+
     '<input class="proj-input" id="setup-provider" value="" type="hidden">'+
     '<p style="font-size:10px;color:var(--muted);margin-top:2px">'+
@@ -163,19 +163,19 @@ function renderProviderQ2(body,footer){
 }
 
 function renderBudgetCards(){
-  var container=document.getElementById('provider-recommendations');
+  let container=document.getElementById('provider-recommendations');
   if(!container)return;
 
-  var budgetTiers=[
+  let budgetTiers=[
     {key:'free',icon:'💰',label:t('providerBudgetFree'),descKey:'free'},
     {key:'mid',icon:'💳',label:t('providerBudgetMid'),descKey:'mid'},
     {key:'high',icon:'🚀',label:t('providerBudgetHigh'),descKey:'high'}
   ];
 
-  var html='';
+  let html='';
   budgetTiers.forEach(function(tier){
-    var providers=getProvidersForRegionBudget(_wizardRegion,tier.key);
-    var selectedClass= _wizardBudget===tier.key?' budget-selected':'';
+    let providers=getProvidersForRegionBudget(_wizardRegion,tier.key);
+    let selectedClass= _wizardBudget===tier.key?' budget-selected':'';
     html+='<div class="budget-tier-card'+selectedClass+'" onclick="selectBudget(\''+tier.key+'\')" id="budget-'+tier.key+'" style="padding:10px 12px;margin-bottom:6px;background:var(--surface2);border-radius:var(--radius);cursor:pointer;border:2px solid var(--border2);transition:all .15s">';
     html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">';
     html+='<span style="font-size:12px;font-weight:600;color:var(--text)">'+tier.icon+' '+tier.label+'</span>';
@@ -198,31 +198,31 @@ function selectBudget(budget){
   _wizardBudget=budget;
   // highlight
   document.querySelectorAll('.budget-tier-card').forEach(function(el){el.style.borderColor='var(--border2)'});
-  var sel=document.getElementById('budget-'+budget);
+  let sel=document.getElementById('budget-'+budget);
   if(sel)sel.style.borderColor='var(--accent)';
 
   // auto-pick best provider
-  var providers=getProvidersForRegionBudget(_wizardRegion,budget);
+  let providers=getProvidersForRegionBudget(_wizardRegion,budget);
   if(providers.length>0){
-    var best=providers[0];
+    let best=providers[0];
     _wizardProvider=best.key;
-    var fillDiv=document.getElementById('provider-auto-fill');
+    let fillDiv=document.getElementById('provider-auto-fill');
     if(fillDiv){
       fillDiv.style.display='block';
       fillDiv.innerHTML='✅ '+t('providerAutoFilled')+' <b>'+escHtml(best.name)+'</b> — API: <code style="font-size:9px">'+escHtml(best.api_base)+'</code> — 模型: <code style="font-size:9px">'+escHtml(best.default_model)+'</code>'+
         (best.register_url?' <a href="'+escHtml(best.register_url)+'" target="_blank" style="color:var(--accent);font-size:10px">📝 '+t('providerRegister')+'</a>':'');
     }
     // store provider value in hidden input
-    var providerInput=document.getElementById('setup-provider');
+    let providerInput=document.getElementById('setup-provider');
     if(providerInput)providerInput.value=best.key;
   }
 }
 
 function getProvidersForRegionBudget(region,budget){
-  var result=[];
+  let result=[];
   Object.keys(PROVIDER_DB).forEach(function(key){
-    var p=PROVIDER_DB[key];
-    var regionMatch=(region==='cn')?(p.region==='cn'||p.region==='any'):(p.region==='global'||p.region==='any');
+    let p=PROVIDER_DB[key];
+    let regionMatch=(region==='cn')?(p.region==='cn'||p.region==='any'):(p.region==='global'||p.region==='any');
     if(!regionMatch)return;
     if(budget==='free' && p.price_tier!=='free')return;
     if(budget==='mid' && (p.price_tier==='free'||p.price_tier==='mid')){/*pass*/}
@@ -232,20 +232,20 @@ function getProvidersForRegionBudget(region,budget){
   });
   // sort: free first, then mid, then high; within same tier, recommended ones first
   result.sort(function(a,b){
-    var tierOrder={free:0,mid:1,high:2,any:3};
+    let tierOrder={free:0,mid:1,high:2,any:3};
     return (tierOrder[a.price_tier]||0)-(tierOrder[b.price_tier]||0);
   });
   return result;
 }
 
 function renderAllProvidersDropdown(){
-  var container=document.getElementById('all-providers-list');
+  let container=document.getElementById('all-providers-list');
   if(!container)return;
-  var html='<select class="proj-input" id="setup-provider-select" style="margin:0;font-size:11px" onchange="onProviderSelect(this.value)">';
+  let html='<select class="proj-input" id="setup-provider-select" style="margin:0;font-size:11px" onchange="onProviderSelect(this.value)">';
   html+='<option value="">— 手动选择 Provider —</option>';
   Object.keys(PROVIDER_DB).forEach(function(key){
-    var p=PROVIDER_DB[key];
-    var label=(p.price_tier==='free'?'💰 ':p.price_tier==='mid'?'💳 ':'') + p.name + ' — ' + p.desc;
+    let p=PROVIDER_DB[key];
+    let label=(p.price_tier==='free'?'💰 ':p.price_tier==='mid'?'💳 ':'') + p.name + ' — ' + p.desc;
     html+='<option value="'+escHtml(key)+'">'+escHtml(label)+'</option>';
   });
   html+='</select>';
@@ -253,8 +253,8 @@ function renderAllProvidersDropdown(){
 }
 
 function toggleAllProviders(){
-  var list=document.getElementById('all-providers-list');
-  var toggle=document.getElementById('provider-toggle-all');
+  let list=document.getElementById('all-providers-list');
+  let toggle=document.getElementById('provider-toggle-all');
   if(!list||!toggle)return;
   if(list.style.display==='none'){
     list.style.display='block';
@@ -268,15 +268,15 @@ function toggleAllProviders(){
 function onProviderSelect(key){
   if(!key)return;
   _wizardProvider=key;
-  var p=PROVIDER_DB[key];
+  let p=PROVIDER_DB[key];
   if(!p)return;
-  var fillDiv=document.getElementById('provider-auto-fill');
+  let fillDiv=document.getElementById('provider-auto-fill');
   if(fillDiv){
     fillDiv.style.display='block';
     fillDiv.innerHTML='✅ '+t('providerAutoFilled')+' <b>'+escHtml(p.name)+'</b> — API: <code style="font-size:9px">'+escHtml(p.api_base)+'</code> — 模型: <code style="font-size:9px">'+escHtml(p.default_model)+'</code>'+
       (p.register_url?' <a href="'+escHtml(p.register_url)+'" target="_blank" style="color:var(--accent);font-size:10px">📝 '+t('providerRegister')+'</a>':'');
   }
-  var providerInput=document.getElementById('setup-provider');
+  let providerInput=document.getElementById('setup-provider');
   if(providerInput)providerInput.value=key;
   // clear budget selection
   _wizardBudget='';
@@ -286,12 +286,12 @@ function onProviderSelect(key){
 /* ── 步骤跳转逻辑 ── */
 function setupNext(){
   if(_setupStep===1){
-    var key=$('setup-key').value.trim();
-    var provider=$('setup-provider').value;
+    let key=$('setup-key').value.trim();
+    let provider=$('setup-provider').value;
     if(!key){showToast('请输入 API Key 或点击"跳过"体验 Demo',true);return}
     if(!provider){
       // try to get from select dropdown
-      var sel=$('setup-provider-select');
+      let sel=$('setup-provider-select');
       if(sel&&sel.value)provider=sel.value;
     }
     if(!provider){
@@ -300,9 +300,9 @@ function setupNext(){
     setupData._api_key=key;
     setupData._api_provider=provider;
   } else if(_setupStep===2){
-    var dirEl=$('setup-proj-dir');
+    let dirEl=$('setup-proj-dir');
     if(dirEl){
-      var dir=dirEl.value.trim();
+      let dir=dirEl.value.trim();
       if(dir){projDir=dir;localStorage.setItem('agency_proj_dir',projDir)}
     }
   }
@@ -311,9 +311,9 @@ function setupNext(){
 }
 
 function setupFinish(){
-  var remoteOn=!!($('setup-remote')&&$('setup-remote').checked);
-  var remoteToken=remoteOn?(($('setup-remote-token')&&$('setup-remote-token').value.trim())||(setupData&&setupData._remote_token)||''):'';
-  var body={api_key:setupData._api_key||'',api_provider:setupData._api_provider||'deepseek',remote_enabled:remoteOn,remote_token:remoteToken};
+  let remoteOn=!!($('setup-remote')&&$('setup-remote').checked);
+  let remoteToken=remoteOn?(($('setup-remote-token')&&$('setup-remote-token').value.trim())||(setupData&&setupData._remote_token)||''):'';
+  let body={api_key:setupData._api_key||'',api_provider:setupData._api_provider||'deepseek',remote_enabled:remoteOn,remote_token:remoteToken};
 
   showSetupStep(4); // 先展示完成页
 
@@ -364,6 +364,6 @@ function enterDemoMode(){
   if(typeof renderDemoWelcome==='function')renderDemoWelcome();
 
   // Demo 模式显示仪表盘按钮（绕过门控）
-  var dbBtn = document.getElementById('dashboardBtn');
+  let dbBtn = document.getElementById('dashboardBtn');
   if(dbBtn) dbBtn.style.display = '';
 }

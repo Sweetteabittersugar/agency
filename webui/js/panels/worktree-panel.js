@@ -10,13 +10,13 @@ function loadWorktrees() {
   api.get('/api/worktrees')
     .then(function(data) {
       document.getElementById('wt-count').textContent = data.count || 0;
-      var list = document.getElementById('wt-list');
-      var agents = data.agents || [];
+      let list = document.getElementById('wt-list');
+      let agents = data.agents || [];
       if (agents.length === 0) {
         list.innerHTML = '<p style="color:var(--muted)">暂无活跃 Worktree</p>';
         return;
       }
-      var html = '<div style="display:flex;flex-direction:column;gap:8px;">';
+      let html = '<div style="display:flex;flex-direction:column;gap:8px;">';
       agents.forEach(function(wt) {
         html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;">';
         html += '<div><strong>' + escHtml(wt.name) + '</strong><br><span style="font-size:12px;color:var(--muted);">' + escHtml(wt.branch || '') + ' · ' + (wt.size_mb || 0) + ' MB</span></div>';
@@ -32,7 +32,7 @@ function loadWorktrees() {
 }
 
 function createWorktree() {
-  var name = document.getElementById('wt-new-name').value.trim();
+  let name = document.getElementById('wt-new-name').value.trim();
   if (!name) return;
   api.post('/api/worktrees/create', {name: name})
     .then(function(data) {
