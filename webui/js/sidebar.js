@@ -6,17 +6,21 @@ let _selectedAgents = {};
 let STARTER_AGENTS = ['coder', 'explorer', 'general-worker', 'orchestrator'];
 let currentNav = 'chat';
 
-/* ── 导航切换 (v3兼容 — 侧边栏已改为可折叠区域) ── */
+/* ── 导航切换 (v2.0: 重定向到 Activity Bar) ── */
 window.switchNav = function(nav) {
   currentNav = nav;
   try { localStorage.setItem('agency-nav', nav); } catch(e) {}
+  // v2.0: 统一走 activity bar
+  if (nav === 'dashboard' && typeof switchActivity === 'function') {
+    switchActivity('dashboard');
+  } else if (nav === 'agents' || nav === 'chat') {
+    if (typeof switchActivity === 'function') switchActivity('chat');
+  }
   if (nav === 'agents') {
-    // 展开 Agent 区域并滚动到可见
     let sec = document.getElementById('sb-agents');
     if (sec) {
       let section = sec.closest('.sidebar-section');
       if (section) section.classList.remove('collapsed');
-      sec.scrollIntoView({behavior:'smooth'});
     }
     loadSidebarAgents(); loadSidebarSkills();
   } else if (nav === 'dashboard') {
@@ -24,7 +28,6 @@ window.switchNav = function(nav) {
   } else if (nav === 'connect') {
     if (typeof toggleDashboard === 'function') toggleDashboard();
   }
-  // chat → 默认即展开，无需操作
 };
 
 function loadSidebarAgents() {
@@ -621,3 +624,52 @@ window.toggleSidebarSection = toggleSidebarSection;
 window.toggleSidebarSub = toggleSidebarSub;
 window.cycleTrustMode = cycleTrustMode;
 window.updateTrustBadge = updateTrustBadge;
+
+/* ── v2.0 侧边栏视图切换（Activity Bar 驱动） ── */
+window.renderSidebarView = function(activityId) {
+  let view = document.getElementById('sidebarView');
+  if (!view) return;
+  let sections = view.querySelectorAll('.sidebar-section');
+  switch (activityId) {
+    case 'chat':
+      // 显示全部：会话 + Agent + Skill + 记忆
+      sections.forEach(function(s) { s.style.display = ''; });
+      if (typeof loadSidebarAgents === 'function') loadSidebarAgents();
+      break;
+    case 'sessions':
+      // 仅显示会话区域
+      sections.forEach(function(s) {
+        let hdr = s.querySelector('.sidebar-section-header');
+        let isSessions = hdr && hdr.textContent.includes('会话');
+        s.style.display = isSessions ? '' : 'none';
+      });
+      break;
+    case 'dashboard':
+      // 临时：显示简易仪表盘提示（Phase 4 完整实现）
+      sections.forEach(function(s) {
+        let hdr = s.querySelector('.sidebar-section-header');
+        s.style.display = (hdr && hdr.textContent.includes('Agent')) ? '' : 'none';
+      });
+      let agentSec = document.getElementById('sb-agents');
+      if (agentSec) {
+        agentSec.innerHTML = '<div style="padding:12px;color:var(--muted);font-size:12px">' +
+          '📊 仪表盘视图 (Phase 4 将在此显示费用/上下文卡片)<br>' +
+          '<button class="btn" onclick="toggleDashboard()" style="margin-top:8px;font-size:11px">打开现有仪表盘浮窗 →</button>' +
+          '</div>';
+      }
+      break;
+    case 'settings':
+      // 临时：显示设置引导（Phase 4 完整实现）
+      sections.forEach(function(s) {
+        let hdr = s.querySelector('.sidebar-section-header');
+        s.style.display = (hdr && hdr.textContent.includes('Agent')) ? '' : 'none';
+      });
+      if (agentSec) {
+        agentSec.innerHTML = '<div style="padding:12px;color:var(--muted);font-size:12px">' +
+          '⚙️ 设置视图 (Phase 4 将在此显示设置导航树)<br>' +
+          '<button class="btn" onclick="toggleDevOverlay()" style="margin-top:8px;font-size:11px">打开现有设置浮窗 →</button>' +
+          '</div>';
+      }
+      break;
+  }
+};

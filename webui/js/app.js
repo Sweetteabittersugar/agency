@@ -197,6 +197,8 @@ updateProfileUI();
 loadProfileDescriptions();
 initTheme();
 initTooltips();
+// v2.0 活动栏初始化
+if (typeof initActivityBar === 'function') { setTimeout(initActivityBar, 50); }
 
 // ── 功能门控应用 ──
 (function applyFeatureGates(){
