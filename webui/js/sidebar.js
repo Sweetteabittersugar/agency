@@ -17,11 +17,6 @@ window.switchNav = function(nav) {
     if (typeof switchActivity === 'function') switchActivity('chat');
   }
   if (nav === 'agents') {
-    let sec = document.getElementById('sb-agents');
-    if (sec) {
-      let section = sec.closest('.sidebar-section');
-      if (section) section.classList.remove('collapsed');
-    }
     loadSidebarAgents(); loadSidebarSkills();
   } else if (nav === 'dashboard') {
     if (typeof toggleDashboard === 'function') toggleDashboard();
@@ -625,48 +620,41 @@ window.toggleSidebarSub = toggleSidebarSub;
 window.cycleTrustMode = cycleTrustMode;
 window.updateTrustBadge = updateTrustBadge;
 
-/* ── v2.0 侧边栏视图切换（Activity Bar 驱动 — 每个活动只显示相关内容） ── */
+/* ── v2.0 侧边栏视图切换（每个活动独立容器，不再交叉污染） ── */
 window.renderSidebarView = function(activityId) {
-  let view = document.getElementById('sidebarView');
-  if (!view) return;
-  // 隐藏所有 section，按活动只显示目标
-  let sections = view.querySelectorAll('.sidebar-section');
-  sections.forEach(function(s) { s.style.display = 'none'; });
+  // Hide all views
+  ['sv-chat','sv-sessions','sv-dashboard','sv-settings'].forEach(function(id) {
+    let el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  // Show target view
+  let targetId = 'sv-' + activityId;
+  let target = document.getElementById(targetId);
+  if (!target) return;
 
-  switch (activityId) {
-    case 'chat':
-      // Chat: 只显示 Agent 列表（核心工具）
-      let agentSec = document.getElementById('sb-agents');
-      if (agentSec) {
-        let section = agentSec.closest('.sidebar-section');
-        if (section) section.style.display = '';
-        if (typeof loadSidebarAgents === 'function') loadSidebarAgents();
-      }
-      break;
-    case 'sessions':
-      // Sessions: 只显示会话历史搜索+列表
-      let convSec = document.getElementById('sb-conversations');
-      if (convSec) {
-        let section = convSec.closest('.sidebar-section');
-        if (section) section.style.display = '';
-        if (typeof renderHistory === 'function') renderHistory();
-      }
-      break;
-    case 'dashboard':
-      // Dashboard: 显示 KPI 卡片
-      let dashTarget = document.getElementById('sb-agents');
-      if (dashTarget) {
-        dashTarget.closest('.sidebar-section').style.display = '';
-        if (typeof renderSidebarDashboard === 'function') renderSidebarDashboard(dashTarget);
-      }
-      break;
-    case 'settings':
-      // Settings: 显示设置导航树
-      let settTarget = document.getElementById('sb-agents');
-      if (settTarget) {
-        settTarget.closest('.sidebar-section').style.display = '';
-        if (typeof renderSidebarSettings === 'function') renderSidebarSettings(settTarget);
-      }
-      break;
+  target.style.display = 'flex';
+
+  // Load content per activity
+  if (activityId === 'chat' && typeof loadSidebarAgents === 'function') {
+    loadSidebarAgents();
+  }
+  if (activityId === 'sessions' && typeof renderHistory === 'function') {
+    renderHistory();
+  }
+  if (activityId === 'dashboard') {
+    // Fetch KPI data
+    if (typeof api !== 'undefined') {
+      api.get('/api/cost/summary').then(function(d) {
+        let el = document.getElementById('sidebar-cost-val');
+        if (el && d && d.today) el.textContent = '$' + (d.today.cost || 0).toFixed(4);
+      }).catch(function(){});
+      api.get('/api/sessions/processes').then(function(d) {
+        let el = document.getElementById('sidebar-ctx-val');
+        if (el && d && d.processes) {
+          let alive = d.processes.filter(function(p) { return p.alive; }).length;
+          el.textContent = alive + '/' + d.processes.length;
+        }
+      }).catch(function(){});
+    }
   }
 };

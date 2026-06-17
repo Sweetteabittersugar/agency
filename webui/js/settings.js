@@ -712,20 +712,12 @@ window.loadPRDiff = function() {
     .catch(function(e){ container.innerHTML = '<div style="padding:12px;color:var(--danger)">错误: '+e.message+'</div>'; });
 };
 
-/* ── v2.0 侧边栏设置导航树 ── */
-window.renderSidebarSettings = function(container) {
-  container.innerHTML = '<div class="settings-nav">' +
-    '<div class="settings-nav-item active" data-section="api" onclick="openSettingsSection(\'api\')">🔑 API & Provider</div>' +
-    '<div class="settings-nav-item" data-section="theme" onclick="openSettingsSection(\'theme\')">🎨 外观</div>' +
-    '<div class="settings-nav-item" data-section="security" onclick="openSettingsSection(\'security\')">🛡️ 安全</div>' +
-    '<div class="settings-nav-item" data-section="data" onclick="openSettingsSection(\'data\')">💾 数据</div>' +
-    '<div class="settings-nav-item" data-section="advanced" onclick="openSettingsSection(\'advanced\')">⚙️ 高级</div>' +
-    '</div>';
-};
-window.openSettingsSection = function(section) {
+/* ── v2.0 设置详情 — 直接在主区渲染，不弹浮窗 ── */
+window.openSettingsDetail = function(section) {
+  // Update nav active state
   let navItems = document.querySelectorAll('.settings-nav-item');
   navItems.forEach(function(item) { item.classList.toggle('active', item.dataset.section === section); });
-  // v2.0: 在主区渲染设置详情，不再依赖浮窗
+  // Show in main area
   let grid = document.getElementById('grid');
   let detail = document.getElementById('settingsDetail');
   if (!detail) {
@@ -735,14 +727,14 @@ window.openSettingsSection = function(section) {
     grid.parentNode.insertBefore(detail, grid);
     grid.style.display = 'none';
   }
+  // Copy settings content from devOverlay (kept as source, not opened as overlay)
   let devContent = document.querySelector('#devOverlay .harness-overlay-content');
+  detail.innerHTML = '<div class="sd-header"><h2>⚙️ 设置</h2><button class="btn" onclick="closeSettingsDetail()">✕ 关闭</button></div>' +
+    '<div class="sd-body" id="sdBody"></div>';
   if (devContent) {
-    detail.innerHTML = '<div class="sd-header"><h2>⚙️ 设置</h2><button class="btn" onclick="closeSettingsDetail()">✕ 关闭</button></div>' +
-      '<div class="sd-body" id="sdBody"></div>';
-    let sdBody = document.getElementById('sdBody');
-    if (sdBody) sdBody.innerHTML = devContent.innerHTML;
+    document.getElementById('sdBody').innerHTML = devContent.innerHTML;
   } else {
-    if (typeof toggleDevOverlay === 'function') toggleDevOverlay();
+    document.getElementById('sdBody').innerHTML = '<p style="color:var(--muted);padding:20px">设置内容加载中...</p>';
   }
 };
 window.closeSettingsDetail = function() {

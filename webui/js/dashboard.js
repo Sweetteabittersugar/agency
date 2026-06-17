@@ -667,7 +667,7 @@ window.renderSidebarDashboard = function(container) {
   }
 };
 
-/* ── v2.0 主区仪表盘（完整版，替代浮窗） ── */
+/* ── v2.0 主区仪表盘（把旧浮窗内容搬进主区，不弹窗） ── */
 window.openMainDashboard = function() {
   let grid = document.getElementById('grid');
   let detail = document.getElementById('dashboardDetail');
@@ -680,55 +680,30 @@ window.openMainDashboard = function() {
   }
   let harnessContent = document.getElementById('harnessContent');
   let harnessTabs = document.getElementById('harnessTabs');
-  if (harnessTabs) {
-    // Clone all tabs into main view
+  if (harnessTabs && harnessContent) {
     let tabHTML = '';
-    harnessTabs.querySelectorAll('.harness-overlay-tab').forEach(function(t, i) {
+    harnessTabs.querySelectorAll('.harness-overlay-tab').forEach(function(t) {
       let tab = t.dataset.tab;
-      if (tab) tabHTML += '<span class="dd-tab' + (i === 0 ? ' active' : '') + '" data-tab="' + tab + '" onclick="switchMainDashTab(\'' + tab + '\')">' + t.textContent + '</span>';
+      if (tab) tabHTML += '<span class="dd-tab' + (t.classList.contains('active')?' active':'') + '" data-tab="' + tab + '" onclick="switchMainDashTab(\'' + tab + '\')">' + t.textContent.trim() + '</span>';
     });
     detail.innerHTML = '<div class="dd-header"><h2>📊 仪表盘</h2><button class="btn" onclick="closeMainDashboard()">✕</button></div>' +
-      '<div class="dd-tabs">' + tabHTML + '</div>' +
-      '<div class="dd-content" id="ddContent"></div>';
-    let defaultTab = harnessTabs.querySelector('.harness-overlay-tab.active');
-    if (defaultTab && defaultTab.dataset.tab) switchMainDashTab(defaultTab.dataset.tab);
-    else switchMainDashTab('cost');
+      '<div class="dd-tabs">' + tabHTML + '</div><div class="dd-content" id="ddContent"></div>';
+    // Copy current dashboard content
+    document.getElementById('ddContent').innerHTML = harnessContent.innerHTML;
   }
 };
 window.switchMainDashTab = function(tab) {
   document.querySelectorAll('.dd-tab').forEach(function(t) { t.classList.toggle('active', t.dataset.tab === tab); });
-  let content = document.getElementById('ddContent');
-  if (!content) return;
-  // Reuse existing dashboard rendering by temporarily swapping harnessContent
-  let oldContent = document.getElementById('harnessContent');
-  let harnessContentBackup = oldContent ? oldContent.innerHTML : '';
-  // Populate from existing dashboard data if available via switchHarnessTab
-  if (typeof switchHarnessTab === 'function') {
-    // Use a temp container approach
-    let temp = document.createElement('div');
-    let origHarnessContent = document.getElementById('harnessContent');
-    if (origHarnessContent) {
-      let origParent = origHarnessContent.parentNode;
-      origHarnessContent.remove();
-      content.appendChild(origHarnessContent);
-      origHarnessContent.id = 'harnessContentTemp';
-      switchHarnessTab(tab);
-      setTimeout(function() {
-        origHarnessContent.id = 'harnessContent';
-        if (origParent) origParent.appendChild(origHarnessContent);
-      }, 100);
-    }
-  }
-  content.innerHTML = '<div style="padding:12px;color:var(--muted);text-align:center">加载中...</div>';
-  // Fallback: use existing floating overlay logic
-  if (typeof switchHarnessTab === 'function') {
-    let harness = document.getElementById('harnessOverlay');
-    if (harness) { harness.style.display = ''; switchHarnessTab(tab); }
-    // Copy the rendered content back
+  // Use existing overlay switch function, then copy rendered content
+  let harness = document.getElementById('harnessOverlay');
+  if (harness && typeof switchHarnessTab === 'function') {
+    harness.style.display = '';
+    switchHarnessTab(tab);
     setTimeout(function() {
       let hc = document.getElementById('harnessContent');
+      let content = document.getElementById('ddContent');
       if (content && hc) { content.innerHTML = hc.innerHTML; harness.style.display = 'none'; }
-    }, 300);
+    }, 200);
   }
 };
 window.closeMainDashboard = function() {

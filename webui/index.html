@@ -39,54 +39,54 @@
     </div>
   </div>
 
-  <!-- Zone 2: Sidebar (context-sensitive, content populated by sidebar.js) -->
+  <!-- Zone 2: Sidebar (context-sensitive — content swapped per activity) -->
   <div class="sidebar-view" id="sidebarView">
-    <!-- Chat activity: Agents + Skills + History (default) -->
-    <div class="sidebar-section">
-      <div class="sidebar-section-header" onclick="toggleSidebarSection(this)">
-        <span>💬 会话</span><span class="section-toggle">▼</span>
+    <!-- Backward-compat: hidden containers for old sidebar.js references -->
+    <div id="sb-conversations" style="display:none"></div>
+    <div id="sb-agents" style="display:none"></div>
+    <div id="sb-skills" style="display:none"><div id="sidebar-skills-list"></div></div>
+    <div id="sb-memory" style="display:none"><div id="sidebar-mem-search"></div><div id="sidebar-mem-content"></div></div>
+    <!-- Chat view: Agent list + search -->
+    <div class="sidebar-panel-view" id="sv-chat" style="display:flex;flex-direction:column;flex:1;overflow-y:auto">
+      <div id="demo-banner" style="display:none;padding:8px 10px;background:var(--surface2);color:var(--text);text-align:center;font-size:11px;font-weight:500;border-radius:var(--radius-sm);margin:8px 8px 4px;flex-shrink:0;border:1px solid var(--accent);">
+      ⚡ Demo 模式 — 免 API Key 体验全部功能
+      <button onclick="enterDemoMode()" style="margin-left:6px;padding:2px 10px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:600;font-size:11px;">立即体验</button>
+      <button onclick="dismissDemoBanner()" style="margin-left:4px;padding:2px 6px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:10px;">关闭</button>
       </div>
-      <div class="sidebar-section-body" id="sb-conversations">
-        <div style="padding:0 8px 6px">
-          <input placeholder="搜索对话..." style="width:100%;padding:6px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:11px;box-sizing:border-box"
-            onkeyup="if(event.key==='Enter')searchHistory(this.value)" onblur="if(!this.value.trim())renderHistory()">
-        </div>
-        <div style="overflow-y:auto;max-height:200px" id="history-list">加载中...<script>setTimeout(function(){var h=document.getElementById("history-list");if(h&&h.textContent.trim()==="加载中...")h.innerHTML='<span style="color:var(--muted)">暂无对话，发送第一条消息开始</span>'},8000)</script></div>
+      <div style="padding:4px 8px"><input class="agent-search" id="agent-search" placeholder="搜索 Agent…" autocomplete="off"></div>
+      <div class="agent-list" id="agent-list" style="flex:1;overflow-y:auto"></div>
+    </div>
+    <!-- Sessions view: conversation history -->
+    <div class="sidebar-panel-view" id="sv-sessions" style="display:none;flex-direction:column;flex:1;overflow-y:auto">
+      <div style="padding:8px">
+        <input placeholder="搜索对话..." style="width:100%;padding:6px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:11px;box-sizing:border-box"
+          onkeyup="if(event.key==='Enter')searchHistory(this.value)" onblur="if(!this.value.trim())renderHistory()">
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:0 8px" id="history-list">加载中...</div>
+      <div style="padding:0 8px 4px">
+        <button onclick="renderHistory()" style="width:100%;padding:4px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:10px">🔄 刷新</button>
       </div>
     </div>
-    <div class="sidebar-section">
-      <div class="sidebar-section-header" onclick="toggleSidebarSection(this)">
-        <span>🤖 Agent</span><span class="section-toggle">▼</span>
+    <!-- Dashboard view: KPI cards -->
+    <div class="sidebar-panel-view" id="sv-dashboard" style="display:none;flex-direction:column;flex:1;overflow-y:auto;padding:8px">
+      <div id="sidebar-cost-kpi" style="margin-bottom:8px;padding:10px;background:var(--surface2);border-radius:6px;font-size:11px">
+        <div style="color:var(--muted)">💰 今日费用</div>
+        <div style="font-size:20px;font-weight:700;color:var(--accent)" id="sidebar-cost-val">--</div>
       </div>
-      <div class="sidebar-section-body" id="sb-agents">
-        <div id="demo-banner" style="display:none;padding:8px 10px;background:var(--surface2);color:var(--text);text-align:center;font-size:11px;font-weight:500;border-radius:var(--radius-sm);margin:0 8px 8px;flex-shrink:0;border:1px solid var(--accent);">
-        ⚡ Demo 模式 — 免 API Key 体验全部功能
-        <button onclick="enterDemoMode()" style="margin-left:6px;padding:2px 10px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:600;font-size:11px;">立即体验</button>
-        <button onclick="dismissDemoBanner()" style="margin-left:4px;padding:2px 6px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:10px;">关闭</button>
-        </div>
-        <div style="padding:0 8px 4px"><input class="agent-search" id="agent-search" placeholder="搜索 Agent…" autocomplete="off"></div>
-        <div class="agent-list" id="agent-list"></div>
+      <div id="sidebar-ctx-kpi" style="margin-bottom:8px;padding:10px;background:var(--surface2);border-radius:6px;font-size:11px">
+        <div style="color:var(--muted)">🧠 活跃会话</div>
+        <div style="font-size:20px;font-weight:700;color:var(--text)" id="sidebar-ctx-val">--</div>
       </div>
+      <button class="btn" onclick="openMainDashboard()" style="width:100%;margin-top:4px;font-size:11px">📊 打开完整仪表盘</button>
     </div>
-    <div class="sidebar-section collapsed">
-      <div class="sidebar-section-header" onclick="toggleSidebarSection(this)">
-        <span>🧩 Skill</span><span class="section-toggle">▼</span>
-      </div>
-      <div class="sidebar-section-body" id="sb-skills">
-        <div style="padding:0 8px;font-size:11px" id="sidebar-skills-list">点击 Agent 标签以加载...</div>
-      </div>
-    </div>
-    <div class="sidebar-section collapsed">
-      <div class="sidebar-section-header" onclick="toggleSidebarSection(this)">
-        <span>🧠 记忆</span><span class="section-toggle">▼</span>
-      </div>
-      <div class="sidebar-section-body" id="sb-memory">
-        <div style="padding:0 8px 4px"><input id="sidebar-mem-search" placeholder="搜索记忆…" style="width:100%;padding:6px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:11px;box-sizing:border-box" onkeyup="if(event.key==='Enter')sidebarSearchMemory()"></div>
-        <div style="padding:0 8px 4px;display:flex;gap:4px">
-          <button onclick="sidebarLoadMemoryTimeline()" style="flex:1;padding:4px 6px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:10px">时间线</button>
-          <button onclick="sidebarLoadMemoryFiles()" style="flex:1;padding:4px 6px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:10px">文件</button>
-        </div>
-        <div id="sidebar-mem-content" style="overflow-y:auto;max-height:250px;font-size:11px;padding:0 8px"><span style="color:var(--muted)">点击按钮加载</span></div>
+    <!-- Settings view: nav tree -->
+    <div class="sidebar-panel-view" id="sv-settings" style="display:none;flex-direction:column;flex:1;overflow-y:auto">
+      <div class="settings-nav" style="padding:8px 4px">
+        <div class="settings-nav-item active" onclick="openSettingsDetail('api')">🔑 API & Provider</div>
+        <div class="settings-nav-item" onclick="openSettingsDetail('theme')">🎨 外观</div>
+        <div class="settings-nav-item" onclick="openSettingsDetail('security')">🛡️ 安全</div>
+        <div class="settings-nav-item" onclick="openSettingsDetail('data')">💾 数据管理</div>
+        <div class="settings-nav-item" onclick="openSettingsDetail('advanced')">⚙️ 高级</div>
       </div>
     </div>
   </div>
