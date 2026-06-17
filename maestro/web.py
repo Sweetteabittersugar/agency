@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """
-Agency — Claude Code Web 前端（已废弃，2026-06-16）
+Agency — Claude Code Web 前端
 
-DEPRECATED: 请使用 flask_app.py 启动。此文件保留仅作参考。
+HTTP 服务器部分已废弃（2026-06-16），请使用 flask_app.py 启动：
   python maestro/flask_app.py   →   http://localhost:8800
+
+⚠️ 但以下函数仍被 routes/harness.py 引用，不可删除：
+  _permission_log / _permission_log_lock / get_permission_stats /
+  record_permission / _get_permission_engine / check_tool_permission
 """
 
 import os
