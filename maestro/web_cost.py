@@ -10,6 +10,82 @@ _cost_db_lock = threading.Lock()
 DAILY_WARN = 5.0
 ENTRY_RED = 0.50
 
+# ── 数据库迁移管理 ──
+# 版本号 → (迁移SQL列表, 说明)。新增列只需在最新版本追加条目并提升 CURRENT_SCHEMA。
+# 启动时 _run_migrations() 自动补全缺失列，已存在的列被 sqlite3.OperationalError 跳过。
+
+CURRENT_SCHEMA = 2
+
+_MIGRATIONS = {
+    1: [
+        "ALTER TABLE costs ADD COLUMN date TEXT DEFAULT ''",
+        "ALTER TABLE costs ADD COLUMN project TEXT DEFAULT ''",
+        "ALTER TABLE costs ADD COLUMN task_preview TEXT DEFAULT ''",
+        "ALTER TABLE costs ADD COLUMN agent TEXT DEFAULT ''",
+        "ALTER TABLE costs ADD COLUMN cache_read_tokens INTEGER DEFAULT 0",
+        "ALTER TABLE costs ADD COLUMN cache_write_tokens INTEGER DEFAULT 0",
+        "ALTER TABLE costs ADD COLUMN cache_saved_usd REAL DEFAULT 0.0",
+        "ALTER TABLE costs ADD COLUMN is_estimated INTEGER DEFAULT 0",
+        "ALTER TABLE costs ADD COLUMN session_id TEXT DEFAULT ''",
+        "ALTER TABLE costs ADD COLUMN tokens_from_api INTEGER DEFAULT 1",
+    ],
+}
+
+_migrations_done = set()  # 已迁移的 db 路径（进程内缓存，避免每次 record_cost 都检查）
+
+
+def _run_migrations(db_path: str):
+    """按版本号顺序执行未应用的迁移。每个 db 只执行一次（进程生命周期内）。"""
+    if db_path in _migrations_done:
+        return
+    conn = sqlite3.connect(db_path)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=5000")
+    try:
+        # 创建 schema_version 表（迁移记录）
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS schema_version ("
+            "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "  version INTEGER NOT NULL,"
+            "  applied_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),"
+            "  description TEXT DEFAULT ''"
+            ")"
+        )
+        # 查询当前版本（无记录 → 0）
+        cur = conn.execute("SELECT MAX(version) FROM schema_version")
+        row = cur.fetchone()
+        current = row[0] if row and row[0] is not None else 0
+
+        if current >= CURRENT_SCHEMA:
+            _migrations_done.add(db_path)
+            conn.close()
+            return
+
+        # 按序应用未执行的迁移
+        import time as _time
+        for ver in sorted(_Migrations.keys()):
+            if ver <= current:
+                continue
+            for sql in _Migrations[ver]:
+                try:
+                    conn.execute(sql)
+                except sqlite3.OperationalError:
+                    pass  # 列已存在（旧 ALTER TABLE 方式的遗留列）
+            conn.execute(
+                "INSERT INTO schema_version (version, description) VALUES (?, ?)",
+                (ver, f"Auto-migrated at {_time.strftime('%Y-%m-%d %H:%M:%S')}"),
+            )
+            log.info(f"DB migration v{ver} applied → {db_path}")
+        conn.commit()
+        # 补全历史数据：旧记录的 date 可能为空
+        conn.execute(
+            "UPDATE costs SET date = substr(time, 1, 10) WHERE date = '' OR date IS NULL"
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    _migrations_done.add(db_path)
+
 
 def record_cost(
     project_root,
@@ -63,26 +139,8 @@ def record_cost(
                 session_id TEXT DEFAULT '',
                 tokens_from_api INTEGER DEFAULT 1
             )""")
-            _migrate = [
-                "date TEXT DEFAULT ''",
-                "project TEXT DEFAULT ''",
-                "task_preview TEXT DEFAULT ''",
-                "agent TEXT DEFAULT ''",
-                "cache_read_tokens INTEGER DEFAULT 0",
-                "cache_write_tokens INTEGER DEFAULT 0",
-                "cache_saved_usd REAL DEFAULT 0.0",
-                "is_estimated INTEGER DEFAULT 0",
-                "session_id TEXT DEFAULT ''",
-                "tokens_from_api INTEGER DEFAULT 1",
-            ]
-            for col_def in _migrate:
-                try:
-                    conn.execute(f"ALTER TABLE costs ADD COLUMN {col_def}")
-                except sqlite3.OperationalError:
-                    pass
-            conn.execute(
-                "UPDATE costs SET date = substr(time, 1, 10) WHERE date = '' OR date IS NULL"
-            )
+            # 版本化迁移——只在新版本或首次运行时执行，不再每次 ALTER TABLE
+            _run_migrations(str(db))
             conn.execute(
                 "INSERT INTO costs (time, date, project, agent, model, in_tokens, out_tokens, cost_usd, duration_s, cache_read_tokens, cache_write_tokens, cache_saved_usd, is_estimated, session_id, tokens_from_api) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (
