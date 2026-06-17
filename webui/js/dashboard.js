@@ -650,7 +650,7 @@ window.renderSidebarDashboard = function(container) {
       '<div style="color:var(--muted)">🧠 活跃会话</div>' +
       '<div style="font-size:18px;font-weight:700;color:var(--text)" id="sidebar-ctx-val">--</div>' +
     '</div>' +
-    '<button class="btn" onclick="toggleDashboard()" style="width:100%;margin-top:4px;font-size:11px">📊 打开完整仪表盘</button>' +
+    '<button class="btn" onclick="openMainDashboard()" style="width:100%;margin-top:4px;font-size:11px">📊 打开完整仪表盘</button>' +
     '</div>';
   if (typeof api !== 'undefined') {
     api.get('/api/cost/summary').then(function(d) {
@@ -665,4 +665,75 @@ window.renderSidebarDashboard = function(container) {
       }
     }).catch(function(){});
   }
+};
+
+/* ── v2.0 主区仪表盘（完整版，替代浮窗） ── */
+window.openMainDashboard = function() {
+  let grid = document.getElementById('grid');
+  let detail = document.getElementById('dashboardDetail');
+  if (!detail) {
+    detail = document.createElement('div');
+    detail.id = 'dashboardDetail';
+    detail.className = 'dashboard-detail-view';
+    grid.parentNode.insertBefore(detail, grid);
+    grid.style.display = 'none';
+  }
+  let harnessContent = document.getElementById('harnessContent');
+  let harnessTabs = document.getElementById('harnessTabs');
+  if (harnessTabs) {
+    // Clone all tabs into main view
+    let tabHTML = '';
+    harnessTabs.querySelectorAll('.harness-overlay-tab').forEach(function(t, i) {
+      let tab = t.dataset.tab;
+      if (tab) tabHTML += '<span class="dd-tab' + (i === 0 ? ' active' : '') + '" data-tab="' + tab + '" onclick="switchMainDashTab(\'' + tab + '\')">' + t.textContent + '</span>';
+    });
+    detail.innerHTML = '<div class="dd-header"><h2>📊 仪表盘</h2><button class="btn" onclick="closeMainDashboard()">✕</button></div>' +
+      '<div class="dd-tabs">' + tabHTML + '</div>' +
+      '<div class="dd-content" id="ddContent"></div>';
+    let defaultTab = harnessTabs.querySelector('.harness-overlay-tab.active');
+    if (defaultTab && defaultTab.dataset.tab) switchMainDashTab(defaultTab.dataset.tab);
+    else switchMainDashTab('cost');
+  }
+};
+window.switchMainDashTab = function(tab) {
+  document.querySelectorAll('.dd-tab').forEach(function(t) { t.classList.toggle('active', t.dataset.tab === tab); });
+  let content = document.getElementById('ddContent');
+  if (!content) return;
+  // Reuse existing dashboard rendering by temporarily swapping harnessContent
+  let oldContent = document.getElementById('harnessContent');
+  let harnessContentBackup = oldContent ? oldContent.innerHTML : '';
+  // Populate from existing dashboard data if available via switchHarnessTab
+  if (typeof switchHarnessTab === 'function') {
+    // Use a temp container approach
+    let temp = document.createElement('div');
+    let origHarnessContent = document.getElementById('harnessContent');
+    if (origHarnessContent) {
+      let origParent = origHarnessContent.parentNode;
+      origHarnessContent.remove();
+      content.appendChild(origHarnessContent);
+      origHarnessContent.id = 'harnessContentTemp';
+      switchHarnessTab(tab);
+      setTimeout(function() {
+        origHarnessContent.id = 'harnessContent';
+        if (origParent) origParent.appendChild(origHarnessContent);
+      }, 100);
+    }
+  }
+  content.innerHTML = '<div style="padding:12px;color:var(--muted);text-align:center">加载中...</div>';
+  // Fallback: use existing floating overlay logic
+  if (typeof switchHarnessTab === 'function') {
+    let harness = document.getElementById('harnessOverlay');
+    if (harness) { harness.style.display = ''; switchHarnessTab(tab); }
+    // Copy the rendered content back
+    setTimeout(function() {
+      let hc = document.getElementById('harnessContent');
+      if (content && hc) { content.innerHTML = hc.innerHTML; harness.style.display = 'none'; }
+    }, 300);
+  }
+};
+window.closeMainDashboard = function() {
+  let detail = document.getElementById('dashboardDetail');
+  if (detail) detail.remove();
+  let grid = document.getElementById('grid');
+  if (grid) grid.style.display = '';
 };

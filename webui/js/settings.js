@@ -720,13 +720,34 @@ window.renderSidebarSettings = function(container) {
     '<div class="settings-nav-item" data-section="security" onclick="openSettingsSection(\'security\')">🛡️ 安全</div>' +
     '<div class="settings-nav-item" data-section="data" onclick="openSettingsSection(\'data\')">💾 数据</div>' +
     '<div class="settings-nav-item" data-section="advanced" onclick="openSettingsSection(\'advanced\')">⚙️ 高级</div>' +
-    '<button class="btn" onclick="toggleDevOverlay()" style="width:100%;margin-top:12px;font-size:11px">🔧 打开完整设置面板</button>' +
     '</div>';
 };
 window.openSettingsSection = function(section) {
-  // 激活导航项
   let navItems = document.querySelectorAll('.settings-nav-item');
   navItems.forEach(function(item) { item.classList.toggle('active', item.dataset.section === section); });
-  // 打开设置浮窗（后续 Phase 7 改为主区渲染）
-  if (typeof toggleDevOverlay === 'function') toggleDevOverlay();
+  // v2.0: 在主区渲染设置详情，不再依赖浮窗
+  let grid = document.getElementById('grid');
+  let detail = document.getElementById('settingsDetail');
+  if (!detail) {
+    detail = document.createElement('div');
+    detail.id = 'settingsDetail';
+    detail.className = 'settings-detail-view';
+    grid.parentNode.insertBefore(detail, grid);
+    grid.style.display = 'none';
+  }
+  let devContent = document.querySelector('#devOverlay .harness-overlay-content');
+  if (devContent) {
+    detail.innerHTML = '<div class="sd-header"><h2>⚙️ 设置</h2><button class="btn" onclick="closeSettingsDetail()">✕ 关闭</button></div>' +
+      '<div class="sd-body" id="sdBody"></div>';
+    let sdBody = document.getElementById('sdBody');
+    if (sdBody) sdBody.innerHTML = devContent.innerHTML;
+  } else {
+    if (typeof toggleDevOverlay === 'function') toggleDevOverlay();
+  }
+};
+window.closeSettingsDetail = function() {
+  let detail = document.getElementById('settingsDetail');
+  if (detail) detail.remove();
+  let grid = document.getElementById('grid');
+  if (grid) grid.style.display = '';
 };
