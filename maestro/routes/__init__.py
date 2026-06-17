@@ -1,122 +1,22 @@
-"""路由注册中心 — 将所有路由绑定到 Handler 类"""
+"""路由注册中心 — 从 route_registry.py 统一路由表派生
 
-from maestro.routes import (
-    agents,
-    chat,
-    cost,
-    config,
-    harness,
-    memory,
-    files,
-    orchestrate,
-    static,
-    agent_factory,
-    remote,
-    setup,
-    restart,
-    webhook,
-    health,
-    test_api,
-    routing_feedback,
-    sessions,
-    operations,
-    weixin_api,
-    reset,
-    session_fork,
-)
-from maestro import worktree_manager
+兼容旧 web.py 的 register_all(Handler) 模式。
+新增路由一律在 route_registry.py 的 ROUTES 表中添加。
+"""
 
 
 def register_all(Handler):
-    """将所有路由模块的函数注入 Handler 类"""
-    # GET 路由分发（"/" 在 Handler.do_GET 中单独处理，不在此注册）
-    Handler._get_routes = [
-        ("/api/agents", agents.handle_list),
-        ("/api/agents/", agents.handle_detail),
-        ("/api/version", config.handle_version),
-        ("/api/settings", config.handle_settings),
-        ("/api/cost", cost.handle_cost),
-        ("/api/cost/history", cost.handle_history),
-        ("/api/cost/alerts", cost.handle_alerts),
-        ("/api/cost/summary", cost.handle_summary),
-        ("/api/cost/dashboard", cost.handle_dashboard),
-        ("/api/harness/stream", harness.handle_stream),
-        ("/api/permissions/allowlist", harness.handle_permissions_allowlist),
-        ("/api/permissions/history", harness.handle_permissions_history),
-        ("/api/permissions/stats", harness.handle_permissions_stats),
-        ("/api/permissions/audit", harness.handle_permission_audit),
-        ("/api/harness/context", harness.handle_context),
-        ("/api/harness/subagents", harness.handle_subagents),
-        ("/api/harness/events", harness.handle_events),
-        ("/api/harness/status", harness.handle_harness_status),
-        ("/api/hooks/config", harness.handle_hooks_config),
-        ("/api/skills", config.handle_skills),
-        ("/api/memory/search", memory.handle_search),
-        ("/api/memory/timeline", memory.handle_timeline),
-        ("/api/memory", memory.handle_list),
-        ("/api/memory/", memory.handle_get),
-        ("/api/files", files.handle_list),
-        ("/api/mcp/status", config.handle_mcp_status),
-        ("/api/remote/status", remote.handle_status),
-        ("/api/setup/status", setup.handle_status),
-        ("/api/health", health.handle_health),
-        ("/api/test/status/", test_api.handle_test_status),
-        ("/api/skills/content/", config.handle_skills_content),
-        ("/api/profile", config.handle_profile),
-        ("/api/profiles", config.handle_profiles_list),
-        ("/api/check-update", config.handle_check_update),
-        ("/api/routing/feedback/stats", routing_feedback.handle_stats),
-        ("/api/worktrees", worktree_manager.worktree_handle_list),
-        ("/api/sessions", sessions.handle_list),
-        ("/api/sessions/search", sessions.handle_search),
-        ("/api/sessions/", sessions.handle_get),
-        ("/api/operations", operations.handle_list),
-        ("/api/weixin/status", weixin_api.handle_status),
-        ("/api/reset/status", reset.handle_reset_status),
-    ]
-    # POST 路由分发
-    Handler._post_routes = [
-        ("/api/chat", chat.handle_chat),
-        ("/api/route", orchestrate.handle_route),
-        ("/api/orchestrate", orchestrate.handle_orchestrate),
-        ("/api/hooks/", harness.handle_hooks_callback),
-        ("/api/permissions/allowlist", harness.handle_permissions_allowlist_post),
-        ("/api/permissions/decision", harness.handle_permissions_decision),
-        ("/api/permissions/confirm", harness.handle_permission_confirm),
-        ("/api/permissions/memory/clear", harness.handle_permission_memory_clear),
-        ("/api/memory/", memory.handle_save),
-        ("/api/skills/toggle", config.handle_skills_toggle),
-        ("/api/skills/save", config.handle_skills_save),
-        ("/api/mcp/config", config.handle_mcp_config),
-        ("/api/agent-update", agents.handle_update),
-        ("/api/agent-generate", agent_factory.handle_generate),
-        ("/api/agent-create", agent_factory.handle_create),
-        ("/api/settings", config.handle_settings_patch),
-        ("/api/remote/config", remote.handle_config),
-        ("/api/setup", setup.handle_save),
-        ("/api/restart", restart.handle_restart),
-        ("/api/agent-delete", agents.handle_delete),
-        ("/api/webhook/", webhook.handle_webhook),
-        ("/api/test/run", test_api.handle_test_run),
-        ("/api/session/delete", harness.handle_session_delete),
-        ("/api/profile", config.handle_profile_set),
-        ("/api/routing/feedback", routing_feedback.handle_feedback),
-        ("/api/worktrees/create", worktree_manager.worktree_handle_create),
-        ("/api/worktrees/remove", worktree_manager.worktree_handle_remove),
-        ("/api/worktrees/cleanup", worktree_manager.worktree_handle_cleanup),
-        ("/api/sessions/append", sessions.handle_append),
-        ("/api/sessions/fork", session_fork.handle_fork),
-        ("/api/weixin/login/start", weixin_api.handle_login_start),
-        ("/api/weixin/start", weixin_api.handle_start),
-        ("/api/weixin/stop", weixin_api.handle_stop),
-        ("/api/weixin/logout", weixin_api.handle_logout),
-        ("/api/reset/user-file", reset.handle_reset_user_file),
-        ("/api/reset/user-all", reset.handle_reset_user_all),
-        ("/api/reset/system-category", reset.handle_reset_system_category),
-        ("/api/reset/full", reset.handle_reset_full),
-    ]
-    # DELETE 路由分发
-    Handler._delete_routes = [
-        ("/api/skills/", config.handle_skills_delete),
-        ("/api/sessions/", sessions.handle_delete),
-    ]
+    """将统一路由表的路由函数注入 Handler 类（兼容旧 web.py）"""
+    from maestro.route_registry import ROUTES
+
+    Handler._get_routes = []
+    Handler._post_routes = []
+    Handler._delete_routes = []
+
+    for method, path, handler, _endpoint in ROUTES:
+        if method == "GET":
+            Handler._get_routes.append((path, handler))
+        elif method == "POST":
+            Handler._post_routes.append((path, handler))
+        elif method == "DELETE":
+            Handler._delete_routes.append((path, handler))
