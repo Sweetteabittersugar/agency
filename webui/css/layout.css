@@ -217,7 +217,7 @@
    ══════════════════════════════════════════ */
 
 /* ── App Wrapper ── */
-.app-wrapper { display:flex; height:100vh; overflow:hidden; }
+.app-wrapper { display:flex; height:100%; overflow:hidden; }
 
 /* ── Zone 1: Activity Bar ── */
 .activity-bar {

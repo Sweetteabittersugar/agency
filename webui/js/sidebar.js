@@ -625,37 +625,47 @@ window.toggleSidebarSub = toggleSidebarSub;
 window.cycleTrustMode = cycleTrustMode;
 window.updateTrustBadge = updateTrustBadge;
 
-/* ── v2.0 侧边栏视图切换（Activity Bar 驱动） ── */
+/* ── v2.0 侧边栏视图切换（Activity Bar 驱动 — 每个活动只显示相关内容） ── */
 window.renderSidebarView = function(activityId) {
   let view = document.getElementById('sidebarView');
   if (!view) return;
+  // 隐藏所有 section，按活动只显示目标
   let sections = view.querySelectorAll('.sidebar-section');
+  sections.forEach(function(s) { s.style.display = 'none'; });
+
   switch (activityId) {
     case 'chat':
-      // 显示全部：会话 + Agent + Skill + 记忆
-      sections.forEach(function(s) { s.style.display = ''; });
-      if (typeof loadSidebarAgents === 'function') loadSidebarAgents();
+      // Chat: 只显示 Agent 列表（核心工具）
+      let agentSec = document.getElementById('sb-agents');
+      if (agentSec) {
+        let section = agentSec.closest('.sidebar-section');
+        if (section) section.style.display = '';
+        if (typeof loadSidebarAgents === 'function') loadSidebarAgents();
+      }
       break;
     case 'sessions':
-      // 仅显示会话区域
-      sections.forEach(function(s) {
-        let hdr = s.querySelector('.sidebar-section-header');
-        let isSessions = hdr && hdr.textContent.includes('会话');
-        s.style.display = isSessions ? '' : 'none';
-      });
+      // Sessions: 只显示会话历史搜索+列表
+      let convSec = document.getElementById('sb-conversations');
+      if (convSec) {
+        let section = convSec.closest('.sidebar-section');
+        if (section) section.style.display = '';
+        if (typeof renderHistory === 'function') renderHistory();
+      }
       break;
     case 'dashboard':
-      sections.forEach(function(s) { s.style.display = 'none'; });
-      if (typeof renderSidebarDashboard === 'function') {
-        let target = document.getElementById('sb-agents') || sections[0].querySelector('.sidebar-section-body');
-        if (target) { target.parentElement.style.display = ''; renderSidebarDashboard(target); }
+      // Dashboard: 显示 KPI 卡片
+      let dashTarget = document.getElementById('sb-agents');
+      if (dashTarget) {
+        dashTarget.closest('.sidebar-section').style.display = '';
+        if (typeof renderSidebarDashboard === 'function') renderSidebarDashboard(dashTarget);
       }
       break;
     case 'settings':
-      sections.forEach(function(s) { s.style.display = 'none'; });
-      if (typeof renderSidebarSettings === 'function') {
-        let target = document.getElementById('sb-agents') || sections[0].querySelector('.sidebar-section-body');
-        if (target) { target.parentElement.style.display = ''; renderSidebarSettings(target); }
+      // Settings: 显示设置导航树
+      let settTarget = document.getElementById('sb-agents');
+      if (settTarget) {
+        settTarget.closest('.sidebar-section').style.display = '';
+        if (typeof renderSidebarSettings === 'function') renderSidebarSettings(settTarget);
       }
       break;
   }
