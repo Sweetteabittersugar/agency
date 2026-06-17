@@ -6,12 +6,6 @@ Phase 2: 聊天 SSE → WebSocket 升级"""
 import time
 import logging
 
-
-def _ws_estimate_tokens(text: str, model: str = "") -> int:
-    """Token 估算——根据模型 tokenizer 特性加权。"""
-    from maestro.models import estimate_tokens
-    return estimate_tokens(text, model or "deepseek-v4-flash")
-
 log = logging.getLogger(__name__)
 
 
@@ -24,32 +18,20 @@ def process_chat_task(data, emit_callback):
     返回: {ok, model, agent, total_in, total_out, total_cost, in_tokens, out_tokens,
             cost, elapsed, compaction, session_id, content_preview}
     """
+    from maestro.services.chat_service import (
+        resolve_api_key,
+        check_budget,
+        inject_memory,
+        record_chat_cost,
+    )
+
     task = data.get('task', '').strip()
     api_key = data.get('api_key', '')
     api_provider = data.get('api_provider', 'deepseek')
 
-    # 后台配置优先：无前端 Key 时从环境变量读取
-    if not api_key:
-        import os
-        from maestro.models import get_provider_config
-        _, env_key, _ = get_provider_config()
-        api_key = env_key
-    # 第二兜底：从服务端 api_key.json 读取
-    if not api_key:
-        try:
-            import json
-            from pathlib import Path as _Path
-            _key_file = _Path(__file__).resolve().parent / "api_key.json"
-            if _key_file.exists():
-                _data = json.loads(_key_file.read_text(encoding="utf-8"))
-                api_key = _data.get("key", "")
-                if not api_provider:
-                    api_provider = _data.get("provider", "deepseek")
-        except Exception:
-            pass
-    if not api_provider:
-        import os
-        api_provider = os.environ.get("PROVIDER", "deepseek")
+    # API Key 三级回退：request → env → api_key.json
+    from maestro.shared import PROJECT_ROOT as _prj_root
+    api_key, api_provider = resolve_api_key(_prj_root, api_key, api_provider)
 
     # Phase 2: 输入校验——空任务和缺 Key 在推送 error 事件后立即返回
     if not task:
@@ -81,19 +63,10 @@ def process_chat_task(data, emit_callback):
 
     # Phase 2: 获取或创建 Claude 会话——每个面板独立 session
     # 2026-06: 预算检查——任务执行前验证日预算
-    try:
-        from maestro.permission_engine import PermissionEngine
-        from maestro.shared import PROJECT_ROOT as _prj_root
-        _engine = PermissionEngine(_prj_root / "maestro" / "cost.db")
-        _budget_ok, _budget_msg = _engine.check_cost_budget(
-            task_estimate_tokens=_ws_estimate_tokens(actual_task, model),
-            model=model or "deepseek-v4-flash",
-        )
-        if not _budget_ok:
-            emit_callback('error', {'error': _budget_msg, 'action': 'budget_exceeded'})
-            return {'ok': False, 'error': _budget_msg}
-    except Exception:
-        pass  # 预算检查失败不阻塞聊天
+    _budget_ok, _budget_msg = check_budget(actual_task, model or "deepseek-v4-flash", PROJECT_ROOT)
+    if not _budget_ok:
+        emit_callback('error', {'error': _budget_msg, 'action': 'budget_exceeded'})
+        return {'ok': False, 'error': _budget_msg}
 
     cs = get_or_create(session_id, str(PROJECT_ROOT), iso_env)
     if cs is None:
@@ -111,11 +84,7 @@ def process_chat_task(data, emit_callback):
 
     # Phase 2: 新会话注入记忆——首次对话时扫描 memory/ 目录
     if data.get('is_first'):
-        try:
-            from maestro.memory_engine import build_injection_prefix
-            actual_task = build_injection_prefix(actual_task, str(PROJECT_ROOT))
-        except Exception:
-            pass
+        actual_task = inject_memory(actual_task, PROJECT_ROOT)
 
     start_time = time.time()
     # 不可移除——send_and_read 是整个对话管道的核心：发送任务 → 接收 Claude 流式响应
@@ -144,26 +113,17 @@ def process_chat_task(data, emit_callback):
     comp = check_compaction(model_used, cs.in_tokens)
 
     # Phase 2: 费用记录——写入 Web 费用日志
-    # 2026-06 修复：参数顺序对齐 web_cost.record_cost 签名 (project_root, time_str, model, ...)
-    # 之前把 model_used 当 project_root 传入，导致每次写入静默失败，费用数据全部丢失
-    try:
-        from maestro.web_cost import record_cost as web_record_cost
-        from maestro.shared import PROJECT_ROOT as _prj_root
-        _now_str = time.strftime("%Y-%m-%d %H:%M:%S")
-        web_record_cost(
-            project_root=_prj_root,
-            time_str=_now_str,
-            model=model_used,
-            in_tokens=in_tokens,
-            out_tokens=out_tokens,
-            cost_usd=cost,
-            duration_s=elapsed,
-            agent=agent_name,
-            session_id=session_id,
-            tokens_from_api=True,  # ws_chat 走 Claude stream-json，token 来自 API 真实值
-        )
-    except Exception:
-        pass
+    record_chat_cost(
+        project_root=PROJECT_ROOT,
+        model=model_used,
+        in_tokens=in_tokens,
+        out_tokens=out_tokens,
+        cost_usd=cost,
+        duration_s=elapsed,
+        agent=agent_name,
+        session_id=session_id,
+        tokens_from_api=True,
+    )
 
     return {
         'ok': True,

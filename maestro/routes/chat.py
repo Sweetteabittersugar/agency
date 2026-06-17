@@ -25,7 +25,13 @@ def handle_chat(handler, body):
     from maestro.app_config import build_isolated_env
     from maestro.main import simple_route
     from maestro.agent_parser import parse_agent_md
-    from maestro.web_cost import record_cost
+    from maestro.services.chat_service import (
+        resolve_api_key,
+        check_budget,
+        inject_memory,
+        record_chat_cost,
+        append_session_event,
+    )
 
     task = body.get("task", "")
     force_agent = body.get("force_agent", "")
@@ -33,24 +39,8 @@ def handle_chat(handler, body):
     api_key = body.get("api_key", "")
     api_provider = body.get("api_provider", "")
 
-    # 后台配置优先：环境变量有 Key 时直接使用，前端不必传
-    if not api_key:
-        from maestro.models import get_provider_config
-        _, env_key, _ = get_provider_config()
-        api_key = env_key
-    # 第二兜底：从服务端 api_key.json 读取（设置面板保存的 Key）
-    if not api_key:
-        try:
-            _key_file = PROJECT_ROOT / "maestro" / "api_key.json"
-            if _key_file.exists():
-                _data = json.loads(_key_file.read_text(encoding="utf-8"))
-                api_key = _data.get("key", "")
-                if not api_provider:
-                    api_provider = _data.get("provider", "deepseek")
-        except Exception:
-            pass
-    if not api_provider:
-        api_provider = os.environ.get("PROVIDER", "deepseek")
+    # API Key 三级回退：request → env → api_key.json
+    api_key, api_provider = resolve_api_key(PROJECT_ROOT, api_key, api_provider)
 
     if not task:
         handler.send_json({"error": "请求为空。请在消息框中输入任务描述后发送"}, 400)
@@ -166,17 +156,13 @@ def handle_chat(handler, body):
             mcp_servers = [s.strip() for s in mcp_servers.split(",") if s.strip()]
 
         log.info(f'CHAT start agent={agent_name or "auto"} task="{actual_task[:40]}…"')
-        # 会话事件记录：路由决策写入 session_store，供时间线和会话列表使用
-        try:
-            from maestro.session_store import append_event
-            append_event(session_id, "route_decision", {
-                "agent": agent_name or "auto",
-                "model": model or "auto",
-                "source": route_source,
-                "task_preview": actual_task[:100],
-            })
-        except Exception:
-            pass
+        # 会话事件：路由决策写入 session_store
+        append_session_event(session_id, "route_decision", {
+            "agent": agent_name or "auto",
+            "model": model or "auto",
+            "source": route_source,
+            "task_preview": actual_task[:100],
+        })
         start_time = time.time()
         iso_env = build_isolated_env(api_key, api_provider)
         if api_key:
@@ -200,13 +186,8 @@ def handle_chat(handler, body):
         if is_new_session:
             import uuid
             session_id = str(uuid.uuid4())
-            # Memory injection: scan memory/ directory for relevant past learnings
-            # and prepend them to the user's task so Claude sees historical context
-            try:
-                from maestro.memory_engine import build_injection_prefix
-                actual_task = build_injection_prefix(actual_task, str(PROJECT_ROOT))
-            except Exception:
-                pass
+            # Memory injection: 新会话注入记忆上下文
+            actual_task = inject_memory(actual_task, PROJECT_ROOT)
 
         handler.wfile.write(
             f"data: {json.dumps({'progress': True, 'stage': 'executing', 'message': (agent_name or 'auto') + ' 正在执行...'})}\n\n".encode()
@@ -214,22 +195,13 @@ def handle_chat(handler, body):
         handler.wfile.flush()
 
         # 2026-06: 预算检查——任务执行前验证日预算，避免意外超支
-        # 基于 cost.db 今日实际费用 + 模型预估，而非固定 $2/M 单价
-        try:
-            from maestro.permission_engine import PermissionEngine
-            _engine = PermissionEngine(PROJECT_ROOT / "maestro" / "cost.db")
-            _budget_ok, _budget_msg = _engine.check_cost_budget(
-                task_estimate_tokens=_estimate_tokens_for(actual_task, model),
-                model=model or "deepseek-v4-flash",
+        _budget_ok, _budget_msg = check_budget(actual_task, model or "deepseek-v4-flash", PROJECT_ROOT)
+        if not _budget_ok:
+            handler.wfile.write(
+                f"event: done\ndata: {json.dumps({'error': _budget_msg, 'action': 'budget_exceeded'})}\n\n".encode()
             )
-            if not _budget_ok:
-                handler.wfile.write(
-                    f"event: done\ndata: {json.dumps({'error': _budget_msg, 'action': 'budget_exceeded'})}\n\n".encode()
-                )
-                handler.wfile.flush()
-                return True
-        except Exception:
-            pass  # 预算检查失败不阻塞聊天
+            handler.wfile.flush()
+            return True
 
         cs = get_or_create(session_id, str(PROJECT_ROOT), iso_env)
         if cs is None:
@@ -240,11 +212,7 @@ def handle_chat(handler, body):
             return True
 
         # 会话事件：用户消息写入 session_store
-        try:
-            from maestro.session_store import append_event
-            append_event(session_id, "user_message", {"content": actual_task[:200]})
-        except Exception:
-            pass
+        append_session_event(session_id, "user_message", {"content": actual_task[:200]})
         elapsed = time.time() - start_time
 
         # 2026-06 修复：send_and_read 调用曾被误删，导致聊天链路完全断裂
@@ -320,35 +288,27 @@ def handle_chat(handler, body):
         except Exception:
             pass
 
-        record_cost(
-            PROJECT_ROOT,
-            time.strftime("%Y-%m-%d %H:%M:%S"),
-            detected_model,
-            in_tokens,
-            out_tokens,
-            cost,
-            elapsed,
-            agent_name,
-            proj_dir or "",
-            cache_read,
-            0,
-            0,
-            is_estimated,  # 2026-06 修复：Claude 未报 cost 时用 estimate_cost 兜底，标记为估算
-            session_id or "",
-            tokens_from_api=not is_estimated,  # API 路径 token 来自 Claude 真实返回
+        record_chat_cost(
+            project_root=PROJECT_ROOT,
+            model=detected_model,
+            in_tokens=in_tokens,
+            out_tokens=out_tokens,
+            cost_usd=cost,
+            duration_s=elapsed,
+            agent=agent_name,
+            session_id=session_id or "",
+            cache_read=cache_read,
+            is_estimated=is_estimated,
+            tokens_from_api=not is_estimated,
         )
         # session event: agent response to session_store for timeline
-        try:
-            from maestro.session_store import append_event
-            append_event(session_id, "agent_response", {
-                "content_preview": chat_output_text[:200],
-                "elapsed": round(elapsed, 1),
-                "cost": round(cost, 6),
-                "tokens_in": in_tokens,
-                "tokens_out": out_tokens,
-            })
-        except Exception:
-            pass
+        append_session_event(session_id, "agent_response", {
+            "content_preview": chat_output_text[:200],
+            "elapsed": round(elapsed, 1),
+            "cost": round(cost, 6),
+            "tokens_in": in_tokens,
+            "tokens_out": out_tokens,
+        })
         log.info(
             f"CHAT done elapsed={elapsed:.1f}s cost=${cost:.4f} model={detected_model} session={session_id[:8] if session_id else 'new'}"
         )
