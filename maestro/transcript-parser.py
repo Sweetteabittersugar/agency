@@ -75,23 +75,11 @@ def init_db() -> sqlite3.Connection:
             in_tokens  INTEGER NOT NULL DEFAULT 0,
             out_tokens INTEGER NOT NULL DEFAULT 0,
             cost_usd   REAL    NOT NULL DEFAULT 0.0,
-            note       TEXT    DEFAULT ''
+            note       TEXT    DEFAULT '',
+            cache_read_input_tokens INTEGER NOT NULL DEFAULT 0,
+            cache_creation_input_tokens INTEGER NOT NULL DEFAULT 0
         )
     """)
-    # 迁移: 添加 cache_read_input_tokens 列（如果不存在）
-    try:
-        conn.execute(
-            "ALTER TABLE cost_logs ADD COLUMN cache_read_input_tokens INTEGER NOT NULL DEFAULT 0"
-        )
-    except sqlite3.OperationalError:
-        pass  # 列已存在
-    # 迁移: 添加 cache_creation_input_tokens 列（如果不存在）
-    try:
-        conn.execute(
-            "ALTER TABLE cost_logs ADD COLUMN cache_creation_input_tokens INTEGER NOT NULL DEFAULT 0"
-        )
-    except sqlite3.OperationalError:
-        pass  # 列已存在
     conn.execute("""
         CREATE INDEX IF NOT EXISTS idx_cost_logs_time ON cost_logs(time)
     """)

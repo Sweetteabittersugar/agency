@@ -53,4 +53,17 @@
 
 ---
 
+## 防退化
+
+- **提交前必跑** `python scripts/check-all.py`，拦截 `_private` 泄漏 / `var` 退化 / ALTER TABLE 热修
+- **改代码不改模式**：不新增旧模式代码，发现同类问题 ≥3 处 → 先加门控再修
+- **超过 5 文件或 100 行改动** → 提示用户用 `/retro` 复盘
+
+## DB 迁移
+
+- 新增列走 `web_cost._MIGRATIONS` 版本号，不要直接 `ALTER TABLE + except`
+- `transcript-parser.py` 的 `cost_logs` 表列定义在建表 DDL 中，不需要迁移
+
+---
+
 详见 AGENTS.md（路由矩阵）

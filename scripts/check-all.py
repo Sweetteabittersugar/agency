@@ -349,6 +349,102 @@ def check_test_coverage():
     return True, ""
 
 
+# ── 9. 防退化：禁止新 _private 跨模块访问 ──
+def check_no_private_leak():
+    """_private 成员只应在定义文件内访问，跨模块访问会触发此检查"""
+    pattern = re.compile(r'\._(?:total_in|total_out|transcript|cost|running|sessions)\b')
+    allow_in = {
+        "claude_session.py",   # 类内部自引用
+        "weixin_bot.py",        # 类内部自引用
+    }
+    violations = []
+    for py_file in sorted(ROOT.glob("maestro/**/*.py")):
+        if "__pycache__" in str(py_file):
+            continue
+        if py_file.name in allow_in:
+            continue
+        try:
+            for i, line in enumerate(py_file.read_text(encoding="utf-8").split("\n"), 1):
+                if pattern.search(line):
+                    violations.append(f"{py_file.relative_to(ROOT)}:{i}: {line.strip()[:80]}")
+        except Exception:
+            pass
+    if violations:
+        return False, "\n".join(violations[:10])
+    return True, ""
+
+
+# ── 10. 防退化：禁止新 var 声明 ──
+def check_no_new_var():
+    """webui/js/ 下所有用户代码应使用 let/const，非 lib/ 文件出现 var 则拦截"""
+    js_dir = ROOT / "webui" / "js"
+    violations = []
+    for js_file in sorted(js_dir.glob("**/*.js")):
+        rel = js_file.relative_to(js_dir)
+        if str(rel).startswith("lib" + os.sep):
+            continue
+        try:
+            for i, line in enumerate(js_file.read_text(encoding="utf-8").split("\n"), 1):
+                if re.search(r'\bvar\s+\w+\s*=', line):
+                    # 排除 CSS 变量引用 var(--xxx)
+                    if "var(--" in line:
+                        continue
+                    violations.append(f"{rel}:{i}: {line.strip()[:80]}")
+        except Exception:
+            pass
+    if violations:
+        return False, "\n".join(violations[:10])
+    return True, ""
+
+
+# ── 11. 防退化：禁止 ALTER TABLE 热修 ──
+def check_no_hotfix_alter_table():
+    """ALTER TABLE + except OperationalError = 每次写入都改表，应走 web_cost._MIGRATIONS"""
+    pattern = re.compile(r'ALTER TABLE.*ADD COLUMN', re.IGNORECASE)
+    # web_cost.py 的 _MIGRATIONS dict 是唯一合法使用处
+    allow_in = {"web_cost.py"}
+    violations = []
+    for py_file in sorted(ROOT.glob("maestro/**/*.py")):
+        if "__pycache__" in str(py_file):
+            continue
+        if py_file.name in allow_in:
+            continue
+        try:
+            content = py_file.read_text(encoding="utf-8")
+            if pattern.search(content):
+                # Check if there's also an except OperationalError nearby
+                if "OperationalError" in content:
+                    violations.append(
+                        f"{py_file.relative_to(ROOT)}: ALTER TABLE + except (热修模式，应走 migration)"
+                    )
+        except Exception:
+            pass
+    if violations:
+        return False, "\n".join(violations)
+    return True, ""
+
+
+# ── 12. 路由一致性：route_registry.py vs flask_app.py ──
+def check_route_consistency():
+    """确保所有路由只通过 route_registry.py 注册，没有散落在 flask_app.py 中"""
+    flask_path = ROOT / "maestro" / "flask_app.py"
+    if not flask_path.exists():
+        return True, ""
+    content = flask_path.read_text(encoding="utf-8")
+    # flask_app.py 应只通过 register_flask() 来注册路由，不应有独立的 app.add_url_rule
+    lines_with_rule = [
+        i for i, line in enumerate(content.split("\n"), 1)
+        if "app.add_url_rule" in line
+    ]
+    if lines_with_rule:
+        return False, (
+            f"flask_app.py 仍有 {len(lines_with_rule)} 处独立 app.add_url_rule（行 "
+            + ", ".join(map(str, lines_with_rule[:5]))
+            + "）。应统一到 route_registry.py 的 ROUTES 表。"
+        )
+    return True, ""
+
+
 # ═══════════════════════════════════
 if __name__ == "__main__":
     # 确保 stdout 用 utf-8
@@ -361,6 +457,10 @@ if __name__ == "__main__":
     check("JS 重复函数", check_duplicate_functions)
     check("HTML 标签配对", check_html_tags)
     check("Python 语法", check_python_syntax)
+    check("防退化: 无新 _private 跨模块访问", check_no_private_leak)
+    check("防退化: 无新 var 声明", check_no_new_var)
+    check("防退化: 无 ALTER TABLE 热修", check_no_hotfix_alter_table)
+    check("路由一致性: route_registry vs flask_app", check_route_consistency)
     check("API 端点", check_api)
     check("前端关键功能完整性", check_frontend_critical)
     check("测试覆盖率 (>=20%)", check_test_coverage)
