@@ -645,30 +645,17 @@ window.renderSidebarView = function(activityId) {
       });
       break;
     case 'dashboard':
-      // 临时：显示简易仪表盘提示（Phase 4 完整实现）
-      sections.forEach(function(s) {
-        let hdr = s.querySelector('.sidebar-section-header');
-        s.style.display = (hdr && hdr.textContent.includes('Agent')) ? '' : 'none';
-      });
-      let agentSec = document.getElementById('sb-agents');
-      if (agentSec) {
-        agentSec.innerHTML = '<div style="padding:12px;color:var(--muted);font-size:12px">' +
-          '📊 仪表盘视图 (Phase 4 将在此显示费用/上下文卡片)<br>' +
-          '<button class="btn" onclick="toggleDashboard()" style="margin-top:8px;font-size:11px">打开现有仪表盘浮窗 →</button>' +
-          '</div>';
+      sections.forEach(function(s) { s.style.display = 'none'; });
+      if (typeof renderSidebarDashboard === 'function') {
+        let target = document.getElementById('sb-agents') || sections[0].querySelector('.sidebar-section-body');
+        if (target) { target.parentElement.style.display = ''; renderSidebarDashboard(target); }
       }
       break;
     case 'settings':
-      // 临时：显示设置引导（Phase 4 完整实现）
-      sections.forEach(function(s) {
-        let hdr = s.querySelector('.sidebar-section-header');
-        s.style.display = (hdr && hdr.textContent.includes('Agent')) ? '' : 'none';
-      });
-      if (agentSec) {
-        agentSec.innerHTML = '<div style="padding:12px;color:var(--muted);font-size:12px">' +
-          '⚙️ 设置视图 (Phase 4 将在此显示设置导航树)<br>' +
-          '<button class="btn" onclick="toggleDevOverlay()" style="margin-top:8px;font-size:11px">打开现有设置浮窗 →</button>' +
-          '</div>';
+      sections.forEach(function(s) { s.style.display = 'none'; });
+      if (typeof renderSidebarSettings === 'function') {
+        let target = document.getElementById('sb-agents') || sections[0].querySelector('.sidebar-section-body');
+        if (target) { target.parentElement.style.display = ''; renderSidebarSettings(target); }
       }
       break;
   }

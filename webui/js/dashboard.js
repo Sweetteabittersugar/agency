@@ -638,3 +638,31 @@ window.replaySession=function(sid){/* P2-2: 回放会话事件时间线 */
     let detail=document.getElementById("dash-detail");if(detail){detail.innerHTML=h;detail.style.display="block"}
   });
 };
+
+/* ── v2.0 侧边栏仪表盘（缩略版 KPI 卡片） ── */
+window.renderSidebarDashboard = function(container) {
+  container.innerHTML = '<div style="padding:8px">' +
+    '<div id="sidebar-cost-kpi" style="margin-bottom:8px;padding:8px;background:var(--surface2);border-radius:6px;font-size:11px">' +
+      '<div style="color:var(--muted)">💰 今日费用</div>' +
+      '<div style="font-size:18px;font-weight:700;color:var(--accent)" id="sidebar-cost-val">--</div>' +
+    '</div>' +
+    '<div id="sidebar-ctx-kpi" style="margin-bottom:8px;padding:8px;background:var(--surface2);border-radius:6px;font-size:11px">' +
+      '<div style="color:var(--muted)">🧠 活跃会话</div>' +
+      '<div style="font-size:18px;font-weight:700;color:var(--text)" id="sidebar-ctx-val">--</div>' +
+    '</div>' +
+    '<button class="btn" onclick="toggleDashboard()" style="width:100%;margin-top:4px;font-size:11px">📊 打开完整仪表盘</button>' +
+    '</div>';
+  if (typeof api !== 'undefined') {
+    api.get('/api/cost/summary').then(function(d) {
+      let el = document.getElementById('sidebar-cost-val');
+      if (el && d && d.today) el.textContent = '$' + (d.today.cost || 0).toFixed(4);
+    }).catch(function(){});
+    api.get('/api/sessions/processes').then(function(d) {
+      let el = document.getElementById('sidebar-ctx-val');
+      if (el && d && d.processes) {
+        let alive = d.processes.filter(function(p) { return p.alive; }).length;
+        el.textContent = alive + '/' + d.processes.length;
+      }
+    }).catch(function(){});
+  }
+};

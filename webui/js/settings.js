@@ -711,3 +711,22 @@ window.loadPRDiff = function() {
     })
     .catch(function(e){ container.innerHTML = '<div style="padding:12px;color:var(--danger)">错误: '+e.message+'</div>'; });
 };
+
+/* ── v2.0 侧边栏设置导航树 ── */
+window.renderSidebarSettings = function(container) {
+  container.innerHTML = '<div class="settings-nav">' +
+    '<div class="settings-nav-item active" data-section="api" onclick="openSettingsSection(\'api\')">🔑 API & Provider</div>' +
+    '<div class="settings-nav-item" data-section="theme" onclick="openSettingsSection(\'theme\')">🎨 外观</div>' +
+    '<div class="settings-nav-item" data-section="security" onclick="openSettingsSection(\'security\')">🛡️ 安全</div>' +
+    '<div class="settings-nav-item" data-section="data" onclick="openSettingsSection(\'data\')">💾 数据</div>' +
+    '<div class="settings-nav-item" data-section="advanced" onclick="openSettingsSection(\'advanced\')">⚙️ 高级</div>' +
+    '<button class="btn" onclick="toggleDevOverlay()" style="width:100%;margin-top:12px;font-size:11px">🔧 打开完整设置面板</button>' +
+    '</div>';
+};
+window.openSettingsSection = function(section) {
+  // 激活导航项
+  let navItems = document.querySelectorAll('.settings-nav-item');
+  navItems.forEach(function(item) { item.classList.toggle('active', item.dataset.section === section); });
+  // 打开设置浮窗（后续 Phase 7 改为主区渲染）
+  if (typeof toggleDevOverlay === 'function') toggleDevOverlay();
+};

@@ -547,3 +547,53 @@ window.openSearchResult = function(id, source) {
     showToast('会话 ' + id.substring(0,8) + ' — 点击新建面板后可从历史恢复', true, 'info');
   }
 };
+
+/* ── v2.0 状态栏更新 ── */
+window.updateStatusBar = function() {
+  let mEl = document.getElementById('statusModel');
+  let aEl = document.getElementById('statusAgents');
+  let cEl = document.getElementById('statusCost');
+  let sEl = document.getElementById('statusSessions');
+  let connEl = document.getElementById('statusConnection');
+  if (mEl) mEl.textContent = 'Model: ' + (typeof apiProvider !== 'undefined' ? apiProvider : '--');
+  if (aEl && typeof agents !== 'undefined') aEl.textContent = 'Agents: ' + (Array.isArray(agents) ? agents.length : '--');
+  if (cEl && typeof api !== 'undefined') {
+    api.get('/api/cost/summary').then(function(d) {
+      if (cEl && d && d.today) cEl.textContent = 'Today: $' + (d.today.cost || 0).toFixed(4);
+    }).catch(function(){});
+  }
+  if (sEl && typeof api !== 'undefined') {
+    api.get('/api/sessions/processes').then(function(d) {
+      if (sEl && d && d.processes) sEl.textContent = 'Sessions: ' + d.processes.length;
+    }).catch(function(){});
+  }
+  if (connEl) {
+    connEl.className = navigator.onLine ? 'connected' : 'disconnected';
+    connEl.title = navigator.onLine ? 'Connected' : 'Offline';
+  }
+};
+window.addEventListener('online', function(){ updateStatusBar(); });
+window.addEventListener('offline', function(){ updateStatusBar(); });
+setTimeout(function(){ updateStatusBar(); setInterval(updateStatusBar, 30000); }, 1000);
+
+/* ── v2.0 底部面板切换（Phase 5 完整实现前的基本功能） ── */
+let _bottomActive = null;
+window.switchBottomTab = function(tabId) {
+  let panel = document.getElementById('bottomPanel');
+  if (!panel) return;
+  if (_bottomActive === tabId) { panel.classList.add('collapsed'); _bottomActive = null; return; }
+  _bottomActive = tabId;
+  panel.classList.remove('collapsed');
+  let tabs = document.querySelectorAll('.bp-tab');
+  tabs.forEach(function(t) { t.classList.toggle('active', t.dataset.bp === tabId); });
+  let content = document.getElementById('bottomPanelContent');
+  if (!content) return;
+  if (tabId === 'terminal' && typeof toggleTerminal === 'function') {
+    content.innerHTML = '<div style="padding:8px;color:var(--muted);text-align:center;font-size:12px">💻 点击面板中的 💻 按钮打开终端</div>';
+  } else if (tabId === 'output' && typeof renderOperationsTab === 'function') {
+    content.innerHTML = ''; renderOperationsTab(content);
+  } else if (tabId === 'memory' && typeof sidebarLoadMemoryTimeline === 'function') {
+    content.innerHTML = '<div id="bp-mem-content" style="padding:8px"></div>';
+    sidebarLoadMemoryTimeline();
+  }
+};
