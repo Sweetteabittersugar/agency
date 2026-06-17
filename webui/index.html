@@ -7,9 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<!-- CSS 加载顺序：style.css(v0.1.0 完整基准) → 拆分CSS(增量覆盖)
-     v0.1.0 原版 style.css 提供全部基线样式，5个拆分文件只做增量。
-     避免 CSS 拆分时遗漏选择器导致样式塌陷。 -->
+<!-- CSS — style.css(v0.1.0 baseline) + 5 split files (incremental overrides) -->
 <link rel="stylesheet" href="vendor/github-dark.min.css?v=2">
 <link rel="stylesheet" href="style.css?v=2">
 <link rel="stylesheet" href="css/tokens.css?v=2">
@@ -17,119 +15,175 @@
 <link rel="stylesheet" href="css/layout.css?v=2">
 <link rel="stylesheet" href="css/components.css?v=2">
 <link rel="stylesheet" href="css/panels.css?v=2">
-<!-- xterm.js + Socket.IO（本地化，不再依赖 CDN—国内 jsdelivr 被墙导致分钟级加载延迟） -->
 <link rel="stylesheet" href="/css/lib/xterm.min.css">
 <script src="/js/lib/xterm.min.js"></script>
 <script src="/js/lib/socket.io.min.js"></script>
 </head>
 <body>
-<nav class="sidebar">
-<div id="sidebar-content">
-  <!-- 💬 会话 — 始终展开 -->
-  <div class="sidebar-section">
-    <div class="sidebar-section-header" onclick="toggleSidebarSection(this)">
-      <span>💬 会话</span>
-      <span class="section-toggle">▼</span>
+
+<!-- ═══════════════════════════════════════════
+     v2.0 四区布局: Activity Bar → Sidebar → Main Area → Bottom Panel → Status Bar
+     ═══════════════════════════════════════════ -->
+<div class="app-wrapper">
+
+  <!-- Zone 1: Activity Bar (48px icon column) -->
+  <div class="activity-bar" id="activityBar">
+    <div class="activity-bar-top" id="activityBarTop">
+      <button class="activity-bar-icon active" data-activity="chat" title="Chat — 聊天" aria-label="Chat">💬</button>
+      <button class="activity-bar-icon" data-activity="sessions" title="Sessions — 会话历史" aria-label="Sessions">📋</button>
+      <button class="activity-bar-icon" data-activity="dashboard" title="Dashboard — 仪表盘" aria-label="Dashboard">📊</button>
+      <button class="activity-bar-icon" data-activity="settings" title="Settings — 设置" aria-label="Settings">⚙️</button>
     </div>
-    <div class="sidebar-section-body" id="sb-conversations">
-      <div style="padding:0 8px 6px">
-        <input placeholder="搜索对话..." style="width:100%;padding:6px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:11px;box-sizing:border-box"
-          onkeyup="if(event.key==='Enter')searchHistory(this.value)" onblur="if(!this.value.trim())renderHistory()">
+    <div class="activity-bar-bottom" id="activityBarBottom">
+      <!-- future: profile / account -->
+    </div>
+  </div>
+
+  <!-- Zone 2: Sidebar (context-sensitive, content populated by sidebar.js) -->
+  <div class="sidebar-view" id="sidebarView">
+    <!-- Chat activity: Agents + Skills + History (default) -->
+    <div class="sidebar-section">
+      <div class="sidebar-section-header" onclick="toggleSidebarSection(this)">
+        <span>💬 会话</span><span class="section-toggle">▼</span>
       </div>
-      <div style="overflow-y:auto;max-height:200px" id="history-list">加载中...<script>setTimeout(function(){var h=document.getElementById("history-list");if(h&&h.textContent.trim()==="加载中...")h.innerHTML='<span style="color:var(--muted)">暂无对话，发送第一条消息开始</span>'},8000)</script></div>
-    </div>
-  </div>
-  <!-- 🤖 Agent — 始终展开 -->
-  <div class="sidebar-section">
-    <div class="sidebar-section-header" onclick="toggleSidebarSection(this)">
-      <span>🤖 Agent</span>
-      <span class="section-toggle">▼</span>
-    </div>
-    <div class="sidebar-section-body" id="sb-agents">
-      <div id="demo-banner" style="display:none;padding:8px 10px;background:var(--surface2);color:var(--text);text-align:center;font-size:11px;font-weight:500;border-radius:var(--radius-sm);margin:0 8px 8px;flex-shrink:0;border:1px solid var(--accent);">
-      ⚡ Demo 模式 — 免 API Key 体验全部功能
-      <button onclick="enterDemoMode()" style="margin-left:6px;padding:2px 10px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:600;font-size:11px;">立即体验</button>
-      <button onclick="dismissDemoBanner()" style="margin-left:4px;padding:2px 6px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:10px;">关闭</button>
+      <div class="sidebar-section-body" id="sb-conversations">
+        <div style="padding:0 8px 6px">
+          <input placeholder="搜索对话..." style="width:100%;padding:6px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:11px;box-sizing:border-box"
+            onkeyup="if(event.key==='Enter')searchHistory(this.value)" onblur="if(!this.value.trim())renderHistory()">
+        </div>
+        <div style="overflow-y:auto;max-height:200px" id="history-list">加载中...<script>setTimeout(function(){var h=document.getElementById("history-list");if(h&&h.textContent.trim()==="加载中...")h.innerHTML='<span style="color:var(--muted)">暂无对话，发送第一条消息开始</span>'},8000)</script></div>
       </div>
-      <div style="padding:0 8px 4px"><input class="agent-search" id="agent-search" placeholder="搜索 Agent…" autocomplete="off"></div>
-      <div class="agent-list" id="agent-list"></div>
     </div>
-  </div>
-  <!-- 🧩 Skill — 可折叠 -->
-  <div class="sidebar-section collapsed">
-    <div class="sidebar-section-header" onclick="toggleSidebarSection(this)">
-      <span>🧩 Skill</span>
-      <span class="section-toggle">▼</span>
-    </div>
-    <div class="sidebar-section-body" id="sb-skills">
-      <div style="padding:0 8px;font-size:11px" id="sidebar-skills-list">点击 Agent 标签以加载...</div>
-    </div>
-  </div>
-  <!-- 🧠 记忆 — 可折叠 -->
-  <div class="sidebar-section collapsed">
-    <div class="sidebar-section-header" onclick="toggleSidebarSection(this)">
-      <span>🧠 记忆</span>
-      <span class="section-toggle">▼</span>
-    </div>
-    <div class="sidebar-section-body" id="sb-memory">
-      <div style="padding:0 8px 4px"><input id="sidebar-mem-search" placeholder="搜索记忆…" style="width:100%;padding:6px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:11px;box-sizing:border-box" onkeyup="if(event.key==='Enter')sidebarSearchMemory()"></div>
-      <div style="padding:0 8px 4px;display:flex;gap:4px">
-        <button onclick="sidebarLoadMemoryTimeline()" style="flex:1;padding:4px 6px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:10px">时间线</button>
-        <button onclick="sidebarLoadMemoryFiles()" style="flex:1;padding:4px 6px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:10px">文件</button>
+    <div class="sidebar-section">
+      <div class="sidebar-section-header" onclick="toggleSidebarSection(this)">
+        <span>🤖 Agent</span><span class="section-toggle">▼</span>
       </div>
-      <div id="sidebar-mem-content" style="overflow-y:auto;max-height:250px;font-size:11px;padding:0 8px"><span style="color:var(--muted)">点击按钮加载</span></div>
+      <div class="sidebar-section-body" id="sb-agents">
+        <div id="demo-banner" style="display:none;padding:8px 10px;background:var(--surface2);color:var(--text);text-align:center;font-size:11px;font-weight:500;border-radius:var(--radius-sm);margin:0 8px 8px;flex-shrink:0;border:1px solid var(--accent);">
+        ⚡ Demo 模式 — 免 API Key 体验全部功能
+        <button onclick="enterDemoMode()" style="margin-left:6px;padding:2px 10px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:600;font-size:11px;">立即体验</button>
+        <button onclick="dismissDemoBanner()" style="margin-left:4px;padding:2px 6px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:10px;">关闭</button>
+        </div>
+        <div style="padding:0 8px 4px"><input class="agent-search" id="agent-search" placeholder="搜索 Agent…" autocomplete="off"></div>
+        <div class="agent-list" id="agent-list"></div>
+      </div>
+    </div>
+    <div class="sidebar-section collapsed">
+      <div class="sidebar-section-header" onclick="toggleSidebarSection(this)">
+        <span>🧩 Skill</span><span class="section-toggle">▼</span>
+      </div>
+      <div class="sidebar-section-body" id="sb-skills">
+        <div style="padding:0 8px;font-size:11px" id="sidebar-skills-list">点击 Agent 标签以加载...</div>
+      </div>
+    </div>
+    <div class="sidebar-section collapsed">
+      <div class="sidebar-section-header" onclick="toggleSidebarSection(this)">
+        <span>🧠 记忆</span><span class="section-toggle">▼</span>
+      </div>
+      <div class="sidebar-section-body" id="sb-memory">
+        <div style="padding:0 8px 4px"><input id="sidebar-mem-search" placeholder="搜索记忆…" style="width:100%;padding:6px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:11px;box-sizing:border-box" onkeyup="if(event.key==='Enter')sidebarSearchMemory()"></div>
+        <div style="padding:0 8px 4px;display:flex;gap:4px">
+          <button onclick="sidebarLoadMemoryTimeline()" style="flex:1;padding:4px 6px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:10px">时间线</button>
+          <button onclick="sidebarLoadMemoryFiles()" style="flex:1;padding:4px 6px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:10px">文件</button>
+        </div>
+        <div id="sidebar-mem-content" style="overflow-y:auto;max-height:250px;font-size:11px;padding:0 8px"><span style="color:var(--muted)">点击按钮加载</span></div>
+      </div>
     </div>
   </div>
-</div>
-</nav>
-<div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar()"></div>
-<div class="main" role="main" aria-live="polite">
-<div class="header">
-<button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebar()">☰</button>
-<h1><span class="dot"></span>Agency</h1>
-<div class="header-actions">
-<span id="trust-badge" style="padding:2px 8px;border-radius:4px;font-size:10px;cursor:pointer;border:1px solid var(--border)" onclick="cycleTrustMode()" title="切换信任模式">🛡️ 普通</span>
-<span style="font-size:10px;color:var(--muted)" id="summary"></span>
-<button class="btn" id="dashboardBtn" onclick="toggleDashboard()" title="看板" aria-label="仪表盘">📊</button>
-<button class="btn" id="devBtn" onclick="toggleDevOverlay()" title="设置" aria-label="开发者设置">⚙️</button>
-<button class="btn" onclick="addPanel()" title="新建面板" aria-label="新建面板">＋</button>
-<button class="btn" id="gridBtn" onclick="cycleGrid()" title="切换布局" aria-label="切换分屏布局">⊞</button>
-			<button class="btn" id="helpBtn" onclick="toggleHelpOverlay()" title="帮助" aria-label="帮助">❓</button>
-			<button class="btn" id="searchBtn" onclick="toggleGlobalSearch()" title="全局搜索" aria-label="全局搜索">🔍</button>
-<button class="btn" id="profileQuickBtn" onclick="cycleProfile()" title="切换 Profile 级别" aria-label="切换 Profile" style="display:none;font-size:10px;font-weight:600">⚙</button>
-<button class="btn" id="orchBtn" onclick="toggleOrchMode()" aria-label="智能调度模式" style="display:none">🧠</button>
-</div>
-</div>
-<div class="mobile-tabs" id="mobile-tabs">
-<div class="mobile-tab active" data-mtab="chat" onclick="switchMobileTab('chat')">💬 聊天</div>
-<div class="mobile-tab" data-mtab="dashboard" onclick="switchMobileTab('dashboard')">📊 仪表盘</div>
-<div class="mobile-tab" data-mtab="settings" onclick="switchMobileTab('settings')">⚙️ 设置</div>
-<div class="mobile-tab" data-mtab="agents" onclick="switchMobileTab('agents')">👤 Agent</div>
-</div>
-<div class="page-bar layout-toolbar" id="pageBar">
-<button class="layout-btn" id="pgPrev" onclick="prevPage()" title="上一页">◀</button>
-<span id="pgNum" style="font-size:10px;color:var(--muted);min-width:40px;text-align:center">1/1</span>
-<button class="layout-btn" id="pgNext" onclick="nextPage()" title="下一页">▶</button>
-</div>
-<div class="grid g1" id="grid"></div>
+  <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar()"></div>
+
+  <!-- Zone 3+4+5: Main Area -->
+  <div class="main-area">
+
+    <!-- Header (simplified) -->
+    <div class="header">
+      <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebar()">☰</button>
+      <h1><span class="dot"></span>Agency</h1>
+      <div class="header-actions">
+        <button class="btn" onclick="addPanel()" title="新建面板" aria-label="新建面板">＋</button>
+        <button class="btn" id="gridBtn" onclick="cycleGrid()" title="切换布局" aria-label="切换分屏布局">⊞</button>
+        <span style="font-size:10px;color:var(--muted);margin-left:4px" title="按 Ctrl+K 打开命令面板">Ctrl+K</span>
+        <!-- Backward-compat hidden buttons (referenced by existing JS) -->
+        <span id="summary" style="display:none"></span>
+        <button id="dashboardBtn" style="display:none" onclick="toggleDashboard()"></button>
+        <button id="devBtn" style="display:none" onclick="toggleDevOverlay()"></button>
+        <button id="helpBtn" style="display:none" onclick="toggleHelpOverlay()"></button>
+        <button id="searchBtn" style="display:none" onclick="toggleGlobalSearch()"></button>
+        <button id="profileQuickBtn" style="display:none" onclick="cycleProfile()"></button>
+        <button id="orchBtn" style="display:none" onclick="toggleOrchMode()"></button>
+      </div>
+    </div>
+
+    <!-- Mobile tabs (unchanged) -->
+    <div class="mobile-tabs" id="mobile-tabs">
+      <div class="mobile-tab active" data-mtab="chat" onclick="switchMobileTab('chat')">💬 聊天</div>
+      <div class="mobile-tab" data-mtab="dashboard" onclick="switchMobileTab('dashboard')">📊 仪表盘</div>
+      <div class="mobile-tab" data-mtab="settings" onclick="switchMobileTab('settings')">⚙️ 设置</div>
+      <div class="mobile-tab" data-mtab="agents" onclick="switchMobileTab('agents')">👤 Agent</div>
+    </div>
+
+    <!-- Page bar (unchanged) -->
+    <div class="page-bar layout-toolbar" id="pageBar">
+      <button class="layout-btn" id="pgPrev" onclick="prevPage()" title="上一页">◀</button>
+      <span id="pgNum" style="font-size:10px;color:var(--muted);min-width:40px;text-align:center">1/1</span>
+      <button class="layout-btn" id="pgNext" onclick="nextPage()" title="下一页">▶</button>
+    </div>
+
+    <!-- Chat panel grid (unchanged) -->
+    <div class="grid g1" id="grid"></div>
+
+    <!-- Zone 4: Bottom Panel (collapsible) -->
+    <div class="bottom-panel collapsed" id="bottomPanel">
+      <div class="bottom-panel-tabs" id="bottomPanelTabs">
+        <button class="bp-tab" data-bp="terminal" onclick="switchBottomTab('terminal')">💻 终端</button>
+        <button class="bp-tab" data-bp="output" onclick="switchBottomTab('output')">📋 输出</button>
+        <button class="bp-tab" data-bp="memory" onclick="switchBottomTab('memory')">🧠 记忆</button>
+      </div>
+      <div class="bottom-panel-content" id="bottomPanelContent"></div>
+      <div id="bottomPanelHandle"></div>
+    </div>
+
+    <!-- Zone 5: Status Bar -->
+    <div class="status-bar" id="statusBar">
+      <div class="status-left" id="statusLeft">
+        <span id="statusModel">Model: --</span>
+        <span id="statusAgents">Agents: 0</span>
+      </div>
+      <div class="status-right" id="statusRight">
+        <span id="trust-badge" style="padding:1px 6px;border-radius:3px;cursor:pointer;border:1px solid var(--border)" onclick="cycleTrustMode()" title="切换信任模式">🛡️ 普通</span>
+        <span id="statusCost">Today: $0.0000</span>
+        <span id="statusSessions">Sessions: 0</span>
+        <span id="statusConnection" class="connected" title="Connection">●</span>
+      </div>
+    </div>
+
+  </div><!-- /main-area -->
+
+</div><!-- /app-wrapper -->
+
+<!-- ═══════════════════════════════════════════
+     Overlays & Modals (fully preserved from v1.0)
+     ═══════════════════════════════════════════ -->
+
+<!-- Dashboard overlay (preserved for backward compat, will migrate to sidebar in Phase 4) -->
 <div class="harness-overlay" id="harnessOverlay">
 <div class="harness-overlay-tabs" id="harnessTabs">
-<!-- 仪表盘标签：横排按钮，每个功能独立一页，hover 出名称，点击切换 -->
-<span class="harness-overlay-tab active" data-tab="cost" title="费用详情 — 每日趋势/模型分布" onclick="switchHarnessTab('cost')">💰 费用</span>
-<span class="harness-overlay-tab" data-tab="context" title="上下文窗口 — Token 用量实时监控" onclick="switchHarnessTab('context')">🧠 上下文</span>
-<span class="harness-overlay-tab" data-tab="test" title="测试运行 — URL 检测/截图" onclick="switchHarnessTab('test')">🧪 测试</span>
-<span class="harness-overlay-tab" data-tab="operations" title="操作日志 — Agent 执行记录" onclick="switchHarnessTab('operations')">📋 操作</span>
-<span class="harness-overlay-tab" data-tab="mcp" title="MCP 服务 — 工具连接状态" onclick="switchHarnessTab('mcp')">🔌 MCP</span>
-<span class="harness-overlay-tab" data-tab="subagents" title="SubAgent — 子任务状态" onclick="switchHarnessTab('subagents')">🤖 Agent</span>
-<span class="harness-overlay-tab" data-tab="hooks" title="Hook — 事件脚本注册" onclick="switchHarnessTab('hooks')">🪝 Hook</span>
-<!-- Phase P2: Worktree 图形化管理标签 -->
-<span class="harness-overlay-tab" data-tab="history" title="会话历史 — 事件回放" onclick="switchHarnessTab('history')">📜 历史</span>
-	<span class="harness-overlay-tab" data-tab="worktree" title="Worktree — Git 工作树管理" onclick="switchHarnessTab('worktree')">🌳 Worktree</span>
+<span class="harness-overlay-tab active" data-tab="cost" title="费用详情" onclick="switchHarnessTab('cost')">💰 费用</span>
+<span class="harness-overlay-tab" data-tab="context" title="上下文窗口" onclick="switchHarnessTab('context')">🧠 上下文</span>
+<span class="harness-overlay-tab" data-tab="test" title="测试运行" onclick="switchHarnessTab('test')">🧪 测试</span>
+<span class="harness-overlay-tab" data-tab="operations" title="操作日志" onclick="switchHarnessTab('operations')">📋 操作</span>
+<span class="harness-overlay-tab" data-tab="mcp" title="MCP 服务" onclick="switchHarnessTab('mcp')">🔌 MCP</span>
+<span class="harness-overlay-tab" data-tab="subagents" title="SubAgent 状态" onclick="switchHarnessTab('subagents')">🤖 Agent</span>
+<span class="harness-overlay-tab" data-tab="hooks" title="Hook 注册" onclick="switchHarnessTab('hooks')">🪝 Hook</span>
+<span class="harness-overlay-tab" data-tab="history" title="会话历史" onclick="switchHarnessTab('history')">📜 历史</span>
+<span class="harness-overlay-tab" data-tab="worktree" title="Worktree 管理" onclick="switchHarnessTab('worktree')">🌳 Worktree</span>
 <button class="btn" style="align-self:center;margin-left:auto" onclick="toggleDashboard()">✕</button>
 </div>
 <div class="harness-overlay-content" id="harnessContent"></div>
 <div class="resize-handle"></div>
 </div>
+
+<!-- Settings overlay (preserved for backward compat, will migrate in Phase 4+7) -->
 <div class="harness-overlay" id="devOverlay">
 <div class="harness-overlay-tabs">
 <span style="font-weight:600;color:var(--accent);padding:10px 0">⚙ 设置</span>
@@ -225,42 +279,41 @@
 <input class="proj-input" id="output-dir" type="text" placeholder="D:/output" autocomplete="off" style="width:100%">
 <button class="new-chat-btn" style="margin-top:4px;font-size:11px;padding:6px" onclick="saveOutputDir()">💾 保存</button>
 </div>
-  <div class="settings-section" style="margin-top:16px">
-	<h3 id="sett-主题" style="font-size:12px;color:var(--text);margin-bottom:8px">🎨 主题</h3>
-	<div class="contrast-hint" id="contrast-hint">💡 检测到系统偏好高对比度，已自动推荐高对比度主题</div>
-	<div class="theme-selector" id="theme-selector">
-	<div class="theme-opt active" data-theme-val="dark" onclick="setTheme('dark')"><span class="to-icon">🌙</span><span class="to-label">暗色</span></div>
-	<div class="theme-opt" data-theme-val="light" onclick="setTheme('light')"><span class="to-icon">☀️</span><span class="to-label">亮色</span></div>
-	<div class="theme-opt" data-theme-val="high-contrast" onclick="setTheme('high-contrast')"><span class="to-icon">◐</span><span class="to-label">高对比度</span></div>
-	</div>
-	</div>
-	<div class="settings-section" style="margin-top:16px" id="compaction-section">
-	<h3 id="sett-压缩比例" style="font-size:12px;color:var(--text);margin-bottom:8px">📐 压缩比例</h3>
-	<p style="font-size:10px;color:var(--muted);margin-bottom:8px">按模型调整上下文压缩触发比例（警告 / 强制压缩）</p>
-	<div id="compaction-config-ui" style="font-size:11px">
-		  <div style="margin-bottom:8px">全局默认</div>
-		  <div style="display:flex;gap:8px;margin-bottom:4px">
-		    <!-- 暗色主题：全局默认压缩比例输入框 -->
-		    <label>警告比例 <input id="cmp-d-warn" type="number" step="0.05" min="0.1" max="0.99" style="width:70px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px"> (0.1~0.99)</label>
-		    <label>强制比例 <input id="cmp-d-force" type="number" step="0.05" min="0.1" max="0.99" style="width:70px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px"> (0.1~0.99)</label>
-		  </div>
-		  <div style="margin:10px 0 6px;border-top:1px solid var(--border);padding-top:6px">按模型自定义 <span style="color:var(--muted)">(留空=跟随全局默认)</span></div>
-		  <div id="cmp-model-list" style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px"></div>
-		  <!-- 暗色主题：保存按钮用 btn class --><button class="btn" onclick="saveCompactionConfig()" style="margin-top:8px;font-size:11px;padding:6px 12px">💾 保存</button>
-		  <span id="cmp-save-msg" style="margin-left:8px;font-size:11px;color:var(--green)"></span>
-		</div>
-	</div>
-	<div class="settings-section" style="margin-top:16px" id="cron-section">
-		  <h3 id="sett-定时任务" style="font-size:12px;color:var(--text);margin-bottom:8px">⏰ 定时任务</h3>
-		  <p style="font-size:10px;color:var(--muted);margin-bottom:8px">定时向 Claude 发送预设任务（格式: 分 时 日 月 周，如 0 9 * * * = 每天9点）</p>
-		  <div id="cron-jobs-list" style="margin-bottom:8px"></div>
-		  <div style="display:flex;gap:8px;flex-wrap:wrap">
-		    <input id="cron-new-prompt" placeholder="任务描述" style="flex:1;min-width:120px;font-size:10px;background:var(--bg2);color:var(--text);border:1px solid var(--border);padding:4px 6px;border-radius:4px">
-		    <input id="cron-new-expr" placeholder="0 9 * * *" style="width:90px;font-size:10px;background:var(--bg2);color:var(--text);border:1px solid var(--border);padding:4px 6px;border-radius:4px">
-		    <button class="btn" onclick="addCronJob()" style="font-size:10px;padding:4px 10px">➕</button>
-		  </div>
-		</div>
-		<div class="settings-section" style="margin-top:16px" id="pr-section">
+<div class="settings-section" style="margin-top:16px">
+<h3 id="sett-主题" style="font-size:12px;color:var(--text);margin-bottom:8px">🎨 主题</h3>
+<div class="contrast-hint" id="contrast-hint">💡 检测到系统偏好高对比度，已自动推荐高对比度主题</div>
+<div class="theme-selector" id="theme-selector">
+<div class="theme-opt active" data-theme-val="dark" onclick="setTheme('dark')"><span class="to-icon">🌙</span><span class="to-label">暗色</span></div>
+<div class="theme-opt" data-theme-val="light" onclick="setTheme('light')"><span class="to-icon">☀️</span><span class="to-label">亮色</span></div>
+<div class="theme-opt" data-theme-val="high-contrast" onclick="setTheme('high-contrast')"><span class="to-icon">◐</span><span class="to-label">高对比度</span></div>
+</div>
+</div>
+<div class="settings-section" style="margin-top:16px" id="compaction-section">
+<h3 id="sett-压缩比例" style="font-size:12px;color:var(--text);margin-bottom:8px">📐 压缩比例</h3>
+<p style="font-size:10px;color:var(--muted);margin-bottom:8px">按模型调整上下文压缩触发比例（警告 / 强制压缩）</p>
+<div id="compaction-config-ui" style="font-size:11px">
+<div style="margin-bottom:8px">全局默认</div>
+<div style="display:flex;gap:8px;margin-bottom:4px">
+<label>警告比例 <input id="cmp-d-warn" type="number" step="0.05" min="0.1" max="0.99" style="width:70px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px"> (0.1~0.99)</label>
+<label>强制比例 <input id="cmp-d-force" type="number" step="0.05" min="0.1" max="0.99" style="width:70px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px"> (0.1~0.99)</label>
+</div>
+<div style="margin:10px 0 6px;border-top:1px solid var(--border);padding-top:6px">按模型自定义 <span style="color:var(--muted)">(留空=跟随全局默认)</span></div>
+<div id="cmp-model-list" style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px"></div>
+<button class="btn" onclick="saveCompactionConfig()" style="margin-top:8px;font-size:11px;padding:6px 12px">💾 保存</button>
+<span id="cmp-save-msg" style="margin-left:8px;font-size:11px;color:var(--green)"></span>
+</div>
+</div>
+<div class="settings-section" style="margin-top:16px" id="cron-section">
+<h3 id="sett-定时任务" style="font-size:12px;color:var(--text);margin-bottom:8px">⏰ 定时任务</h3>
+<p style="font-size:10px;color:var(--muted);margin-bottom:8px">定时向 Claude 发送预设任务（格式: 分 时 日 月 周，如 0 9 * * * = 每天9点）</p>
+<div id="cron-jobs-list" style="margin-bottom:8px"></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<input id="cron-new-prompt" placeholder="任务描述" style="flex:1;min-width:120px;font-size:10px;background:var(--bg2);color:var(--text);border:1px solid var(--border);padding:4px 6px;border-radius:4px">
+<input id="cron-new-expr" placeholder="0 9 * * *" style="width:90px;font-size:10px;background:var(--bg2);color:var(--text);border:1px solid var(--border);padding:4px 6px;border-radius:4px">
+<button class="btn" onclick="addCronJob()" style="font-size:10px;padding:4px 10px">➕</button>
+</div>
+</div>
+<div class="settings-section" style="margin-top:16px" id="pr-section">
 <h3 id="sett-PR集成" style="font-size:12px;color:var(--text);margin-bottom:8px">🔀 PR 集成</h3>
 <p style="font-size:10px;color:var(--muted);margin-bottom:8px">拉取 GitHub PR diff 并排对照审查（需 GitHub Token 环境变量 GITHUB_TOKEN）</p>
 <div style="display:flex;gap:6px;margin-bottom:8px">
@@ -271,31 +324,33 @@
 </div>
 <div id="pr-diff-container" style="max-height:300px;overflow:auto;font-size:10px;font-family:monospace;background:var(--bg);border-radius:4px;display:none"></div>
 </div>
-
 <div class="settings-section" style="margin-top:16px" id="feature-unlock-section">
-	<h3 id="sett-功能解锁" style="font-size:12px;color:var(--text);margin-bottom:8px">🔓 功能解锁</h3>
-	<div id="feature-unlock-content"></div>
-	</div>
-	<div class="settings-section" style="margin-top:16px">
-	<h3 id="sett-配置管理" style="font-size:12px;color:var(--text);margin-bottom:8px">💾 配置管理</h3>
-	<div style="display:flex;gap:6px;flex-wrap:wrap">
-	<button class="btn" onclick="exportConfig()" style="font-size:11px;padding:6px 12px">📤 导出配置</button>
-	<button class="btn" onclick="importConfig()" style="font-size:11px;padding:6px 12px">📥 导入配置</button>
-	<button class="btn" onclick="resetConfig()" style="font-size:11px;padding:6px 12px;color:var(--danger);border-color:var(--danger)">🔄 重置为默认</button>
-	</div>
-	<div id="config-export-preview"></div>
-	</div>
-	<div class="settings-section" style="margin-top:16px">
-	<h3 id="sett-恢复默认" style="font-size:12px;color:var(--text);margin-bottom:8px">🛠️ 恢复默认</h3>
-	<p style="font-size:10px;color:var(--muted);margin-bottom:8px">重置被改崩的 Agent/Skill，从单个文件到全量恢复</p>
-	<div id="reset-container">
-	<button onclick="renderResetSection(document.getElementById('reset-container'))" style="padding:8px 16px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:13px;">🛠️ 加载恢复选项...</button>
-	</div>
-	</div>
+<h3 id="sett-功能解锁" style="font-size:12px;color:var(--text);margin-bottom:8px">🔓 功能解锁</h3>
+<div id="feature-unlock-content"></div>
+</div>
+<div class="settings-section" style="margin-top:16px">
+<h3 id="sett-配置管理" style="font-size:12px;color:var(--text);margin-bottom:8px">💾 配置管理</h3>
+<div style="display:flex;gap:6px;flex-wrap:wrap">
+<button class="btn" onclick="exportConfig()" style="font-size:11px;padding:6px 12px">📤 导出配置</button>
+<button class="btn" onclick="importConfig()" style="font-size:11px;padding:6px 12px">📥 导入配置</button>
+<button class="btn" onclick="resetConfig()" style="font-size:11px;padding:6px 12px;color:var(--danger);border-color:var(--danger)">🔄 重置为默认</button>
+</div>
+<div id="config-export-preview"></div>
+</div>
+<div class="settings-section" style="margin-top:16px">
+<h3 id="sett-恢复默认" style="font-size:12px;color:var(--text);margin-bottom:8px">🛠️ 恢复默认</h3>
+<p style="font-size:10px;color:var(--muted);margin-bottom:8px">重置被改崩的 Agent/Skill，从单个文件到全量恢复</p>
+<div id="reset-container">
+<button onclick="renderResetSection(document.getElementById('reset-container'))" style="padding:8px 16px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:13px;">🛠️ 加载恢复选项...</button>
+</div>
+</div>
 <div class="resize-handle"></div>
 </div>
 </div>
-</div>
+
+<!-- ═══════════════════════════════════════════
+     Modal Overlays (fully preserved)
+     ═══════════════════════════════════════════ -->
 <div class="agent-prompt-overlay" id="agentPromptOverlay">
 <div class="agent-prompt-modal">
 <div class="apm-header"><span id="apm-title">Agent 提示词</span><button class="btn" onclick="closeAgentPrompt()">✕</button></div>
@@ -303,7 +358,6 @@
 <div class="apm-footer" id="apm-footer"><button class="new-chat-btn" onclick="saveAgentPrompt()" style="font-size:11px;padding:5px 14px;width:auto">💾 保存</button><button class="btn" onclick="closeAgentPrompt()">取消</button></div>
 </div>
 </div>
-<!-- 首次配置向导 -->
 <div class="agent-prompt-overlay" id="setupOverlay">
 <div class="agent-prompt-modal" style="width:480px">
 <div class="apm-header"><span id="setup-title">欢迎使用 Agency</span></div>
@@ -311,15 +365,12 @@
 <div class="apm-footer" id="setup-footer"></div>
 </div>
 </div>
-<!-- 全局搜索覆盖层（Phase 3 — 跨会话全文检索） -->
 <div class="agent-prompt-overlay" id="searchOverlay">
 <div class="apm-header"><span>🔍 全局搜索</span><button class="btn" onclick="toggleGlobalSearch()">✕</button></div>
 <div class="apm-body" style="padding:12px">
 <input id="global-search-input" placeholder="搜索所有对话和会话…" style="width:100%;padding:8px 12px;font-size:13px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;margin-bottom:12px" onkeydown="if(event.key==='Enter')doGlobalSearch()">
 <div id="global-search-results" style="max-height:400px;overflow-y:auto"></div>
 </div></div>
-
-<!-- 帮助覆盖层 -->
 <div class="agent-prompt-overlay" id="helpOverlay">
 <div class="agent-prompt-modal" style="width:560px">
 <div class="apm-header"><span>帮助</span><button class="btn" onclick="toggleHelpOverlay()">✕</button></div>
@@ -334,7 +385,6 @@
 </div>
 </div>
 </div>
-<!-- 远端登录覆盖层 -->
 <div class="agent-prompt-overlay" id="remoteLoginOverlay">
 <div class="agent-prompt-modal" style="width:360px">
 <div class="apm-header"><span>远程访问认证</span></div>
@@ -348,6 +398,10 @@
 </div>
 </div>
 </div>
+
+<!-- ═══════════════════════════════════════════
+     Scripts (same loading order as v1.0)
+     ═══════════════════════════════════════════ -->
 <script src="vendor/highlight.min.js"></script>
 <script src="js/utils.js"></script>
 <script src="js/api.js"></script>
@@ -373,7 +427,8 @@
 <script src="js/panels/worktree-panel.js"></script>
 <script src="js/dashboard.js"></script>
 <script src="js/app.js"></script>
-<!-- 首次引导覆盖层 -->
+
+<!-- Onboarding overlay -->
 <div id="onboard-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;justify-content:center;align-items:center;">
   <div style="background:var(--bg,#1a1a2e);border:1px solid var(--border,#444);border-radius:16px;padding:32px;max-width:500px;width:90%;text-align:center;">
     <div style="font-size:48px;margin-bottom:16px;">🚀</div>

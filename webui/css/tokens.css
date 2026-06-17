@@ -9,6 +9,13 @@
   --success:#2e7d32;--focus-ring:#1a73e8;
   --transition-fast:0.12s ease;--transition-normal:0.25s ease;
   --radius-md:8px;
+  /* v2.0 四区布局 */
+  --activity-bar-width:48px;
+  --sidebar-width:260px;
+  --bottom-panel-height:200px;
+  --bottom-panel-min:100px;
+  --bottom-panel-max:500px;
+  --status-bar-height:24px;
   font-size:14px;
 }
 
