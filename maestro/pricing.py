@@ -15,27 +15,46 @@ from __future__ import annotations
 
 import json as _json
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
+
+
+class BillingStyle(Enum):
+    """计费风格——不同供应商计费规则不同，estimate_cost 按此标签分派。
+
+    当前实现：
+      STANDARD  — 通用公式：cache_write 免费，无阶梯价（DeepSeek/OpenAI/Qwen/Zhipu…）
+      ANTHROPIC — cache_write 5min/1hr 拆分定价 + fast_mode 乘数
+      MINIMAX   — ≤512K vs >512K 上下文阶梯价
+    """
+    STANDARD = "standard"
+    ANTHROPIC = "anthropic"
+    MINIMAX = "minimax"
 
 
 @dataclass(frozen=True)
 class ModelPrice:
-    """模型定价——含缓存感知价格 + token 估算系数。
+    """模型定价——含缓存感知价格 + token 估算系数 + 供应商计费规则。
 
     cache_read:  缓存命中输入价格（USD/MTok），通常为 input 的 10-20%
-    cache_write: 缓存写入价格（USD/MTok），仅 Anthropic/Google/Qwen 收取。
-                 5-min TTL 通常为 input 的 1.25×，1-hour TTL 为 2×。
-                 此字段取 5-min TTL 值（高频场景默认）。
+    cache_write: 缓存写入价格（USD/MTok），5-min TTL。仅 Anthropic/Qwen 收取。
+                 通常为 input 的 1.25×。DeepSeek/OpenAI 此值为 0（免费写入）。
+    cache_write_1h: 1-hour TTL 缓存写入价格（USD/MTok）。仅 Anthropic 有区分。
+                    1hr TTL 通常为 input 的 2×。不区分 5min/1hr 的供应商此值为 0。
     tok_per_char: 中文场景 token/字符 估算系数。
-                  不同模型 tokenizer 对同一中文文本的 token 数可差 3 倍：
-                  Claude ~0.8 tok/字，DeepSeek ~0.5 tok/字，Qwen ~0.3 tok/字。
-                  取实测上限值（保守高估），用于无 API usage 时的 fallback 估算。
+    billing: 计费风格标签，estimate_cost() 据此选择计算路径。
+    context_tier_threshold: 上下文阶梯阈值（token 数），0=无阶梯。
+    tier_multiplier: 超阈值后价格乘数（如 MiniMax >512K 翻倍 = 2.0）。
     """
     input: float
     cache_read: float
     output: float
     cache_write: float = 0.0
-    tok_per_char: float = 0.40  # 默认保守值
+    cache_write_1h: float = 0.0
+    tok_per_char: float = 0.40
+    billing: BillingStyle = BillingStyle.STANDARD
+    context_tier_threshold: int = 0
+    tier_multiplier: float = 2.0
 
 
 # ═══════════════════════════════════════════════════
@@ -83,21 +102,31 @@ PRICING: dict[str, ModelPrice] = {
     # cache_write: 5-min TTL = 1.25× input, 1-hour TTL = 2× input
     # tok_per_char=0.8: 中文 token 税最高（比英文贵 64%），实测 0.6-0.8 tok/字
     "claude-opus-4-8": ModelPrice(
-        input=5.00, cache_read=0.50, output=25.00, cache_write=6.25, tok_per_char=0.8,
+        input=5.00, cache_read=0.50, output=25.00,
+        cache_write=6.25, cache_write_1h=10.00,
+        billing=BillingStyle.ANTHROPIC, tok_per_char=0.8,
     ),
     "claude-sonnet-4-6": ModelPrice(
-        input=3.00, cache_read=0.30, output=15.00, cache_write=3.75, tok_per_char=0.8,
+        input=3.00, cache_read=0.30, output=15.00,
+        cache_write=3.75, cache_write_1h=6.00,
+        billing=BillingStyle.ANTHROPIC, tok_per_char=0.8,
     ),
     "claude-haiku-4-5": ModelPrice(
-        input=1.00, cache_read=0.10, output=5.00, cache_write=1.25, tok_per_char=0.8,
+        input=1.00, cache_read=0.10, output=5.00,
+        cache_write=1.25, cache_write_1h=2.00,
+        billing=BillingStyle.ANTHROPIC, tok_per_char=0.8,
     ),
     # Fable 5 / Mythos 5 — 2026-06-10 发布，美国政府禁止非美国用户访问（2026-06-12）
     # ⚠️ US-ONLY: 国内 DeepSeek 路由不可达
     "claude-fable-5": ModelPrice(
-        input=10.00, cache_read=1.00, output=50.00, cache_write=12.50, tok_per_char=0.8,
+        input=10.00, cache_read=1.00, output=50.00,
+        cache_write=12.50, cache_write_1h=20.00,
+        billing=BillingStyle.ANTHROPIC, tok_per_char=0.8,
     ),
     "claude-mythos-5": ModelPrice(
-        input=15.00, cache_read=1.50, output=75.00, cache_write=18.75, tok_per_char=0.8,
+        input=15.00, cache_read=1.50, output=75.00,
+        cache_write=18.75, cache_write_1h=30.00,
+        billing=BillingStyle.ANTHROPIC, tok_per_char=0.8,
     ),
 
     # ── OpenAI GPT-5 — developers.openai.com ──
@@ -221,10 +250,14 @@ PRICING: dict[str, ModelPrice] = {
     # 官方标准价。早前 50% 启动促销已于 2026.05 结束。
     # tok_per_char=0.45: 英文最优，中文取中位
     "minimax-m3": ModelPrice(
-        input=0.60, cache_read=0.12, output=2.40, tok_per_char=0.45,
+        input=0.60, cache_read=0.12, output=2.40,
+        billing=BillingStyle.MINIMAX, context_tier_threshold=512_000, tier_multiplier=2.0,
+        tok_per_char=0.45,
     ),
     "minimax-m2.7": ModelPrice(
-        input=0.30, cache_read=0.06, output=1.20, tok_per_char=0.45,
+        input=0.30, cache_read=0.06, output=1.20,
+        billing=BillingStyle.MINIMAX, context_tier_threshold=512_000, tier_multiplier=2.0,
+        tok_per_char=0.45,
     ),
 
     # ── 豆包 / 火山引擎 — ark.cn-beijing.volces.com ──
@@ -293,12 +326,18 @@ def get_model_price(model: str) -> ModelPrice | None:
     if model in overrides:
         ov = overrides[model]
         if isinstance(ov, dict):
+            billing_raw = ov.get("billing", "standard")
+            billing = BillingStyle(billing_raw) if billing_raw in {e.value for e in BillingStyle} else BillingStyle.STANDARD
             return ModelPrice(
                 input=ov.get("input", 0),
                 cache_read=ov.get("cache_read", 0),
                 output=ov.get("output", 0),
                 cache_write=ov.get("cache_write", 0),
+                cache_write_1h=ov.get("cache_write_1h", 0),
                 tok_per_char=ov.get("tok_per_char", 0.40),
+                billing=billing,
+                context_tier_threshold=ov.get("context_tier_threshold", 0),
+                tier_multiplier=ov.get("tier_multiplier", 2.0),
             )
     return PRICING.get(model)
 
@@ -411,17 +450,14 @@ def normalize_model_name(model: str) -> str:
 
 
 def estimate_cost(model: str, in_tokens: int, out_tokens: int,
-                  cache_read: int = 0, cache_write: int = 0) -> tuple[float, float, float]:
-    """估算费用（美元）— 仅 fallback 用。缓存感知版。
+                  cache_read: int = 0, cache_write: int = 0,
+                  cache_write_1h: int = 0,
+                  fast_mode: bool = False) -> tuple[float, float, float]:
+    """估算费用（美元）——缓存感知 + 供应商计费规则适配。
 
-    正常路径应使用 Claude Code result.total_cost_usd（API 实际扣费金额），
-    该值在 claude_session.py 的 result 事件中直接读取，天然准确。
-
-    本函数只在以下场景使用：
-    1. 无 Claude 进程时读取历史 JSONL 做离线统计
-    2. Claude result 事件异常未报 cost 时做兜底（此时标记 is_estimated=True）
-    3. cost-tracker / cost-analyzer 等只读 cost.db 的工具做补充估算
-    4. 预算检查时预估新任务的费用
+    cache_write:     5-min TTL 缓存写入 token 数（Anthropic 1.25× input）
+    cache_write_1h:  1-hour TTL 缓存写入 token 数（Anthropic 2× input）
+    fast_mode:       Anthropic fast mode（2-6× 乘数，此处取 2× 保守值）
 
     返回:
       (total_cost_usd, cache_saved_usd, cache_hit_rate_pct)
@@ -432,25 +468,90 @@ def estimate_cost(model: str, in_tokens: int, out_tokens: int,
     price = get_model_price(model)
     if price is None:
         # Unknown model: conservative estimate ($1/M input + $3/M output)
-        miss = max(0, in_tokens - cache_read - cache_write)
+        miss = max(0, in_tokens - cache_read - cache_write - cache_write_1h)
         cost = (miss / 1_000_000) * 1.0 + (out_tokens / 1_000_000) * 3.0
         saved = (cache_read / 1_000_000) * 1.0
         hit_rate = (cache_read / (in_tokens + 1)) * 100 if in_tokens > 0 else 0
         return (cost, saved, hit_rate)
 
-    miss_tokens = max(0, in_tokens - cache_read - cache_write)
+    # Dispatch by billing style
+    if price.billing == BillingStyle.ANTHROPIC:
+        return _estimate_anthropic(price, in_tokens, out_tokens,
+                                   cache_read, cache_write, cache_write_1h, fast_mode)
+    elif price.billing == BillingStyle.MINIMAX:
+        return _estimate_minimax(price, in_tokens, out_tokens, cache_read, cache_write)
+    else:
+        return _estimate_standard(price, in_tokens, out_tokens, cache_read, cache_write)
 
+
+def _estimate_standard(price: ModelPrice, in_tokens: int, out_tokens: int,
+                       cache_read: int, cache_write: int) -> tuple[float, float, float]:
+    """通用计费公式——适用于 DeepSeek / OpenAI / Qwen / Zhipu 等。
+    cache_write 通常为 0（这些供应商缓存写入免费）。"""
+    miss_tokens = max(0, in_tokens - cache_read - cache_write)
     cost = (
         (miss_tokens / 1_000_000) * price.input
         + (cache_read / 1_000_000) * price.cache_read
         + (cache_write / 1_000_000) * price.cache_write
         + (out_tokens / 1_000_000) * price.output
     )
-
     saved = (cache_read / 1_000_000) * (price.input - price.cache_read)
+    hit_rate = (cache_read / (in_tokens + 1)) * 100 if in_tokens > 0 else 0
+    return (cost, saved, hit_rate)
+
+
+def _estimate_anthropic(price: ModelPrice, in_tokens: int, out_tokens: int,
+                        cache_read: int, cache_write_5m: int, cache_write_1h: int,
+                        fast_mode: bool) -> tuple[float, float, float]:
+    """Anthropic 计费公式——5min/1hr 缓存写入拆分 + Fast mode 乘数。
+
+    cache_write_5m: 5-min TTL 缓存创建 token（1.25× input rate）
+    cache_write_1h: 1-hour TTL 缓存创建 token（2× input rate）
+    fast_mode:      若为 True，输出价格 ×2（保守估算，实际 2-6×）
+    """
+    miss_tokens = max(0, in_tokens - cache_read - cache_write_5m - cache_write_1h)
+
+    output_rate = price.output * 2 if fast_mode else price.output
+
+    cost = (
+        (miss_tokens / 1_000_000) * price.input
+        + (cache_read / 1_000_000) * price.cache_read
+        + (cache_write_5m / 1_000_000) * price.cache_write
+        + (cache_write_1h / 1_000_000) * price.cache_write_1h
+        + (out_tokens / 1_000_000) * output_rate
+    )
+    # 缓存节省 = 如果这些 token 都按正价算要多少钱 - 实际缓存读写费
+    total_cache_tokens = cache_read + cache_write_5m + cache_write_1h
+    saved = (cache_read / 1_000_000) * (price.input - price.cache_read)
+    if cache_write_5m > 0:
+        saved += (cache_write_5m / 1_000_000) * (price.input - price.cache_write)
+    if cache_write_1h > 0:
+        saved += (cache_write_1h / 1_000_000) * (price.input - price.cache_write_1h)
 
     hit_rate = (cache_read / (in_tokens + 1)) * 100 if in_tokens > 0 else 0
+    return (cost, saved, hit_rate)
 
+
+def _estimate_minimax(price: ModelPrice, in_tokens: int, out_tokens: int,
+                      cache_read: int, cache_write: int) -> tuple[float, float, float]:
+    """MiniMax 计费公式——≤512K vs >512K 上下文阶梯价。
+    超过 threshold 后全部价格翻倍（输入+输出+缓存）。"""
+    total = in_tokens + out_tokens
+    over_tier = (
+        price.context_tier_threshold > 0
+        and total > price.context_tier_threshold
+    )
+    mult = price.tier_multiplier if over_tier else 1.0
+
+    miss_tokens = max(0, in_tokens - cache_read - cache_write)
+    cost = (
+        (miss_tokens / 1_000_000) * price.input * mult
+        + (cache_read / 1_000_000) * price.cache_read * mult
+        + (cache_write / 1_000_000) * price.cache_write * mult
+        + (out_tokens / 1_000_000) * price.output * mult
+    )
+    saved = (cache_read / 1_000_000) * (price.input - price.cache_read) * mult
+    hit_rate = (cache_read / (in_tokens + 1)) * 100 if in_tokens > 0 else 0
     return (cost, saved, hit_rate)
 
 

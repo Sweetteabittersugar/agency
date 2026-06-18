@@ -183,6 +183,10 @@ class ClaudeSession:
                     in_tok = usage.get("input_tokens", 0)
                     out_tok = usage.get("output_tokens", 0)
                     cache_read = usage.get("cache_read_input_tokens", 0)
+                    # Anthropic 缓存写入拆分（5min/1hr TTL 不同定价）
+                    cache_creation = usage.get("cache_creation", {}) or {}
+                    cache_write_5m = cache_creation.get("ephemeral_5m_input_tokens", 0)
+                    cache_write_1h = cache_creation.get("ephemeral_1h_input_tokens", 0)
                     model = evt.get("model", "")
                     # 标准化模型名——CC 可能报简称如 "sonnet"，统一到 PRICING 表键名
                     from maestro.pricing import normalize_model_name as _norm
@@ -192,7 +196,10 @@ class ClaudeSession:
                     cc_raw = evt.get("total_cost_usd", 0)
                     from maestro.pricing import estimate_cost as _estimate
                     cost, _saved, _hit = _estimate(
-                        model_norm, in_tok, out_tok, cache_read=cache_read
+                        model_norm, in_tok, out_tok,
+                        cache_read=cache_read,
+                        cache_write=cache_write_5m,
+                        cache_write_1h=cache_write_1h,
                     )
                     # accumulate token counters for per-panel tracking in dashboard
                     self._total_in_tokens += in_tok
@@ -209,6 +216,9 @@ class ClaudeSession:
                                 "in_tokens": in_tok,
                                 "out_tokens": out_tok,
                                 "cache_read": cache_read,
+                                "cache_write": cache_write_5m + cache_write_1h,
+                                "cache_write_5m": cache_write_5m,
+                                "cache_write_1h": cache_write_1h,
                                 "session_id": evt.get("session_id", ""),
                                 "model": model_norm,
                                 "total_in": self._total_in_tokens,

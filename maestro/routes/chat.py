@@ -248,12 +248,17 @@ def handle_chat(handler, body):
         in_tokens = done_data.get("in_tokens", _estimate_tokens_for(task, model))
         out_tokens = done_data.get("out_tokens", 0)
         cache_read = done_data.get("cache_read", 0)
+        cache_write_5m = done_data.get("cache_write_5m", 0)
+        cache_write_1h = done_data.get("cache_write_1h", 0)
         detected_model = done_data.get("model", "") or model or "deepseek-v4-flash"
         # CC 的 total_cost_usd 是客户端估算（内置 Anthropic 定价），对非 Anthropic
         # 模型虚高 36-114x。统一用 API 真实 token 数 × 正确定价表自己算。
         from maestro.pricing import estimate_cost as _chat_estimate
         cost, cache_saved, _hit = _chat_estimate(
-            detected_model, in_tokens, out_tokens, cache_read=cache_read
+            detected_model, in_tokens, out_tokens,
+            cache_read=cache_read,
+            cache_write=cache_write_5m,
+            cache_write_1h=cache_write_1h,
         )
         is_estimated = False  # token 来自 API usage，cost 从 token × 正确定价计算
 
@@ -297,6 +302,7 @@ def handle_chat(handler, body):
             agent=agent_name,
             session_id=session_id or "",
             cache_read=cache_read,
+            cache_write=cache_write_5m + cache_write_1h,
             is_estimated=is_estimated,
             tokens_from_api=not is_estimated,
         )

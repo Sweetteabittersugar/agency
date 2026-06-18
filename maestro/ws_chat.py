@@ -106,6 +106,7 @@ def process_chat_task(data, emit_callback):
     in_tokens = done_data.get('in_tokens', _ws_estimate_tokens(task, model))
     out_tokens = done_data.get('out_tokens', 0)
     cache_read = done_data.get('cache_read', 0)
+    cache_write_total = done_data.get('cache_write', 0)
     model_used = done_data.get('model', model)
     # cost 已由 claude_session.py 用 token × 正确定价表计算，不再信 CC 的 total_cost_usd
     cost = done_data.get('cost', 0)
@@ -123,6 +124,7 @@ def process_chat_task(data, emit_callback):
         agent=agent_name,
         session_id=session_id,
         cache_read=cache_read,
+        cache_write=cache_write_total,
         tokens_from_api=True,
     )
 
