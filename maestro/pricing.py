@@ -218,22 +218,23 @@ PRICING: dict[str, ModelPrice] = {
     ),
 
     # ── MiniMax — platform.minimax.io（2026.06 M3） ──
-    # 50% 启动折扣已永久化，英文效率最优（-4.3%）
+    # 官方标准价。早前 50% 启动促销已于 2026.05 结束。
     # tok_per_char=0.45: 英文最优，中文取中位
     "minimax-m3": ModelPrice(
-        input=0.30, cache_read=0.06, output=1.20, tok_per_char=0.45,
+        input=0.60, cache_read=0.12, output=2.40, tok_per_char=0.45,
     ),
     "minimax-m2.7": ModelPrice(
-        input=0.15, cache_read=0.03, output=0.60, tok_per_char=0.45,
+        input=0.30, cache_read=0.06, output=1.20, tok_per_char=0.45,
     ),
 
     # ── 豆包 / 火山引擎 — ark.cn-beijing.volces.com ──
+    # 2026.06 定价（豆包2.0 Pro/Lite），¥→$≈7.2:1
     # tok_per_char=0.4: 中文优化，接近 Qwen
     "doubao-pro-32k": ModelPrice(
-        input=0.10, cache_read=0.02, output=0.40, tok_per_char=0.4,
+        input=0.45, cache_read=0.09, output=2.25, tok_per_char=0.4,
     ),
     "doubao-lite-32k": ModelPrice(
-        input=0.04, cache_read=0.008, output=0.16, tok_per_char=0.4,
+        input=0.08, cache_read=0.016, output=0.45, tok_per_char=0.4,
     ),
 
     # ── 美团 LongCat — longcat.chat ──
