@@ -183,18 +183,24 @@ class ClaudeSession:
                     in_tok = usage.get("input_tokens", 0)
                     out_tok = usage.get("output_tokens", 0)
                     cache_read = usage.get("cache_read_input_tokens", 0)
-                    cost = round(evt.get("total_cost_usd", 0), 6)
                     model = evt.get("model", "")
+                    # 标准化模型名——CC 可能报简称如 "sonnet"，统一到 PRICING 表键名
+                    from maestro.pricing import normalize_model_name as _norm
+                    model_norm = _norm(model)
+                    # CC 的 total_cost_usd 是客户端估算（内置 Anthropic 定价），
+                    # 对 DeepSeek 等非 Anthropic 模型虚高 36-114x。只用 token 数 × 正确定价表自己算。
+                    cc_raw = evt.get("total_cost_usd", 0)
+                    from maestro.pricing import estimate_cost as _estimate
+                    cost, _saved, _hit = _estimate(
+                        model_norm, in_tok, out_tok, cache_read=cache_read
+                    )
                     # accumulate token counters for per-panel tracking in dashboard
                     self._total_in_tokens += in_tok
                     self._total_out_tokens += out_tok
                     self._total_cache_read += cache_read
                     self._total_cost += cost
-                    if model:
-                        # 2026-06：标准化模型名——Claude Code 可能报简称如 "sonnet"，
-                        # 统一到 PRICING 表键名如 "claude-sonnet-4-6"，避免聚合统计出错
-                        from maestro.models import normalize_model_name
-                        self._detected_model = normalize_model_name(model)
+                    # 记录标准化后的模型名（避免下游各自再 normalize）
+                    self._detected_model = model_norm
                     events.append(
                         {
                             "done": {
@@ -204,7 +210,7 @@ class ClaudeSession:
                                 "out_tokens": out_tok,
                                 "cache_read": cache_read,
                                 "session_id": evt.get("session_id", ""),
-                                "model": model,
+                                "model": model_norm,
                                 "total_in": self._total_in_tokens,
                                 "total_out": self._total_out_tokens,
                                 "total_cost": round(self._total_cost, 6),

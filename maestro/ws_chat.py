@@ -105,9 +105,9 @@ def process_chat_task(data, emit_callback):
     elapsed = round(time.time() - start_time, 1)
     in_tokens = done_data.get('in_tokens', _ws_estimate_tokens(task, model))
     out_tokens = done_data.get('out_tokens', 0)
+    cache_read = done_data.get('cache_read', 0)
     model_used = done_data.get('model', model)
-    # 2026-06 修复：统一切到 Claude result.total_cost_usd（API 实际扣费），不再自己用 PRICING 表估算
-    # estimate_cost() 只在无 Claude 进程时做 fallback（如读历史 JSONL）
+    # cost 已由 claude_session.py 用 token × 正确定价表计算，不再信 CC 的 total_cost_usd
     cost = done_data.get('cost', 0)
     from maestro.models import check_compaction
     comp = check_compaction(model_used, cs.in_tokens)
@@ -122,6 +122,7 @@ def process_chat_task(data, emit_callback):
         duration_s=elapsed,
         agent=agent_name,
         session_id=session_id,
+        cache_read=cache_read,
         tokens_from_api=True,
     )
 

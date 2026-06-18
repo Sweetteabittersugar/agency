@@ -62,21 +62,21 @@ class ModelPrice:
 #   MiniMax M3:        cache_read=$0.06,    80% off
 
 PRICING: dict[str, ModelPrice] = {
-    # ── DeepSeek — api-docs.deepseek.com（2026.05 75%永久降价） ──
+    # ── DeepSeek — api-docs.deepseek.com（2026.06 缓存降价至首发价 1/10） ──
     # cache 自动生效，无 cache_write 费
     # tok_per_char=0.5: 中文高效 tokenizer，实测 0.3-0.5 tok/字，取上限
     "deepseek-v4-pro": ModelPrice(
-        input=0.435, cache_read=0.0145, output=0.87, tok_per_char=0.5,
+        input=0.435, cache_read=0.003625, output=0.87, tok_per_char=0.5,
     ),
     "deepseek-v4-flash": ModelPrice(
-        input=0.14, cache_read=0.028, output=0.28, tok_per_char=0.5,
+        input=0.14, cache_read=0.0028, output=0.28, tok_per_char=0.5,
     ),
     # 旧名兼容（2026.07退役，迁移到 v4-flash）
     "deepseek-chat": ModelPrice(
-        input=0.14, cache_read=0.028, output=0.28, tok_per_char=0.5,
+        input=0.14, cache_read=0.0028, output=0.28, tok_per_char=0.5,
     ),
     "deepseek-reasoner": ModelPrice(
-        input=0.14, cache_read=0.028, output=0.28, tok_per_char=0.5,
+        input=0.14, cache_read=0.0028, output=0.28, tok_per_char=0.5,
     ),
 
     # ── Anthropic Claude — platform.claude.com ──
@@ -395,7 +395,11 @@ def normalize_model_name(model: str) -> str:
     if not model:
         return model
     lower = model.lower().strip()
-    # 精确匹配优先
+    # 已是 PRICING 表中的规范名 → 直接返回，不走别名匹配
+    # （防止 "deepseek-v4-flash" 被 "deepseek" 前缀误映射成 "deepseek-v4-pro"）
+    if lower in PRICING:
+        return model
+    # 精确匹配别名
     if lower in _MODEL_ALIAS_MAP:
         return _MODEL_ALIAS_MAP[lower]
     # 前缀匹配（如 "sonnet-20250601" → "claude-sonnet-4-6"）

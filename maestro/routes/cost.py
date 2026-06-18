@@ -151,6 +151,7 @@ def handle_dashboard(handler, parsed):
             {
                 "daily": [],
                 "top_agents": [],
+                "top_models": [],
                 "totals": {"total_calls": 0, "total_cost": 0, "total_tokens": 0},
                 "period_days": 30,
             }
@@ -192,6 +193,21 @@ def handle_dashboard(handler, parsed):
             (thirty_days,),
         ).fetchall()
 
+        top_models = conn.execute(
+            """
+            SELECT model,
+                   COUNT(*) as calls,
+                   ROUND(COALESCE(SUM(cost_usd), 0), 6) as cost,
+                   COALESCE(SUM(in_tokens), 0) + COALESCE(SUM(out_tokens), 0) as tokens
+            FROM costs
+            WHERE date >= ? AND model != ''
+            GROUP BY model
+            ORDER BY cost DESC
+            LIMIT 10
+        """,
+            (thirty_days,),
+        ).fetchall()
+
         totals = conn.execute(
             """
             SELECT COUNT(*) as total_calls,
@@ -209,6 +225,7 @@ def handle_dashboard(handler, parsed):
             {
                 "daily": [dict(d) for d in daily],
                 "top_agents": [dict(a) for a in top_agents],
+                "top_models": [dict(m) for m in top_models],
                 "totals": dict(totals)
                 if totals
                 else {"total_calls": 0, "total_cost": 0, "total_tokens": 0},
@@ -221,6 +238,7 @@ def handle_dashboard(handler, parsed):
             {
                 "daily": [],
                 "top_agents": [],
+                "top_models": [],
                 "totals": {"total_calls": 0, "total_cost": 0, "total_tokens": 0},
                 "period_days": 30,
             }
