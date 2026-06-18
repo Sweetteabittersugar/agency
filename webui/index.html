@@ -7,9 +7,16 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<!-- Round 2: CSS 6→1 合并 (agency.css = tokens + base + layout + style + panels) -->
+<!-- CSS 加载顺序：style.css(v0.1.0 完整基准) → 拆分CSS(增量覆盖)
+     v0.1.0 原版 style.css 提供全部基线样式，5个拆分文件只做增量。
+     避免 CSS 拆分时遗漏选择器导致样式塌陷。 -->
 <link rel="stylesheet" href="vendor/github-dark.min.css?v=2">
-<link rel="stylesheet" href="css/agency.css?v=2">
+<link rel="stylesheet" href="style.css?v=2">
+<link rel="stylesheet" href="css/tokens.css?v=2">
+<link rel="stylesheet" href="css/base.css?v=2">
+<link rel="stylesheet" href="css/layout.css?v=2">
+<link rel="stylesheet" href="css/components.css?v=2">
+<link rel="stylesheet" href="css/panels.css?v=2">
 <!-- xterm.js + Socket.IO（本地化，不再依赖 CDN—国内 jsdelivr 被墙导致分钟级加载延迟） -->
 <link rel="stylesheet" href="/css/lib/xterm.min.css">
 <script src="/js/lib/xterm.min.js"></script>
