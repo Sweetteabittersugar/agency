@@ -96,3 +96,4 @@ agents/user/*
 *.bak
 *.old
 *.orig
+conversations.json
