@@ -32,7 +32,7 @@ check("index", lambda: None if urllib.request.urlopen(
 
 # 3. 关键 JS 文件全 200（前端加载链不断）
 for f in ["js/chat.js", "js/app.js", "js/settings.js", "js/dashboard.js",
-          "js/terminal.js", "js/utils.js", "css/agency.css"]:
+          "js/terminal.js", "js/utils.js", "style.css", "css/panels.css"]:
     check(f"static:{f}", lambda u=f"/{f}": None if urllib.request.urlopen(
         f"{BASE}{u}", timeout=5
     ).status == 200 else (_ for _ in ()).throw(Exception(f"{u} not 200")))
