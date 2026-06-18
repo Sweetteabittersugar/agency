@@ -199,13 +199,63 @@ initTheme();
 initTooltips();
 
 // ── 功能门控应用 ──
-// Round 1: monkey-patch 模式已废弃。功能门控逻辑待 Round 3 迁至 config/feature-gates.js
-// 临时保留仪表盘按钮隐藏（纯 DOM 操作，无 monkey-patch）
 (function applyFeatureGates(){
+  // 仪表盘按钮 (Demo 模式下始终显示)
   if(!(typeof _demoMode!=='undefined'&&_demoMode) && !isFeatureUnlocked('dashboard')){
     let dbBtn = document.getElementById('dashboardBtn');
     if(dbBtn){ dbBtn.style.display='none'; }
   }
+  // 多面板/分屏 (Demo 模式下允许新建面板)
+  let origAddPanel = addPanel;
+  addPanel = function(){
+    if(!(typeof _demoMode!=='undefined'&&_demoMode) && !isFeatureUnlocked('multipanel') && panels.length >= 1){
+      showToast(t('featureLocked').replace('{day}', FEATURE_UNLOCK_DAYS['multipanel']||3), false, 'warn');
+      return panels[0];
+    }
+    return origAddPanel();
+  };
+  let origCycleGrid = cycleGrid;
+  cycleGrid = function(){
+    if(!isFeatureUnlocked('multipanel')){ showToast(t('featureLocked').replace('{day}', FEATURE_UNLOCK_DAYS['multipanel']||3), false, 'warn'); return; }
+    origCycleGrid();
+  };
+  // 智能调度
+  let origToggleOrch = toggleOrchMode;
+  toggleOrchMode = function(){
+    if(!isFeatureUnlocked('routing')){ showToast(t('featureLocked').replace('{day}', FEATURE_UNLOCK_DAYS['routing']||3), false, 'warn'); return; }
+    origToggleOrch();
+  };
+  // Profile 切换
+  let origCycleProfile = cycleProfile;
+  cycleProfile = function(){
+    if(!isFeatureUnlocked('profiles')){ showToast(t('featureLocked').replace('{day}', FEATURE_UNLOCK_DAYS['profiles']||7), false, 'warn'); return; }
+    origCycleProfile();
+  };
+  let origSetProfile = setProfile;
+  setProfile = function(level){
+    if(!isFeatureUnlocked('profiles') && level !== agencyProfile){ showToast(t('featureLocked').replace('{day}', FEATURE_UNLOCK_DAYS['profiles']||7), false, 'warn'); return; }
+    origSetProfile(level);
+  };
+  // 设置面板打开时刷新功能解锁 UI
+  let origToggleDev = toggleDevOverlay;
+  toggleDevOverlay = function(){
+    origToggleDev();
+    if(devMode){
+      renderFeatureUnlock();
+      if(typeof renderStickyAgentDropdown === 'function'){
+        let sac = document.getElementById('sticky-agent-container');
+        if(sac) renderStickyAgentDropdown(sac);
+      }
+      if(typeof renderShortcutEditor === 'function'){
+        let sec = document.getElementById('shortcut-editor-container');
+        if(sec) renderShortcutEditor(sec);
+      }
+      if(!isFeatureUnlocked('agent-factory')){
+        let af = document.getElementById('agent-factory-section');
+        if(af) af.style.display = 'none';
+      }
+    }
+  };
 })();
 
 // ── 检测新解锁功能 ──
@@ -414,8 +464,10 @@ function switchMobileTab(tab){
   observer.observe(document.body, {childList: true, subtree: true});
 })();
 
-// Round 1: Store 已成唯一写路径，不再从全局变量反向同步
-// ES module — 全局变量仍导出供旧代码读取（逐步迁移中）
+// 同步全局变量到 Store（供后续渐进迁移）
+if (window.Store) setTimeout(function() { Store.syncFromGlobals(); }, 1000);
+
+// ES module — 确保全局变量在模块模式下仍可被其他文件访问
 window.panels = panels;
 window.pidSeq = pidSeq;
 window.perPage = perPage;

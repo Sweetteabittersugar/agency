@@ -158,6 +158,19 @@
     });
   }
 
+  /**
+   * 与现有全局变量同步（页面加载时调用一次）
+   */
+  function syncFromGlobals() {
+    let keys = ['panels', 'agents', 'apiKey', 'apiProvider', 'authToken',
+                'outputDir', 'agencyProfile', 'devMode', 'orchMode'];
+    keys.forEach(function(k) {
+      if (window[k] !== undefined) {
+        _state[k] = window[k];
+      }
+    });
+  }
+
   // ===== 导出 =====
   window.Store = {
     get: getState,
@@ -165,6 +178,7 @@
     on: on,
     once: once,
     restore: restore,
+    syncFromGlobals: syncFromGlobals,
     // 调试：打印当前全部状态
     dump: function() { console.table(_state); }
   };
