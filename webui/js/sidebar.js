@@ -571,9 +571,7 @@ window.updateTrustBadge = function() {
 };
 
 // 页面加载时初始化信任徽章 + 预加载 Agent/Skill 列表 + 恢复侧边栏折叠状态
-// R5补: 新四区布局下跳过初始化——由 zones/sidebar.js 接管
 document.addEventListener('DOMContentLoaded', function() {
-  if (document.getElementById('activityBar')) return; // 新布局: 跳过旧sidebar初始化
   updateTrustBadge();
   // 恢复侧边栏折叠状态
   try {
