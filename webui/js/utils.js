@@ -153,12 +153,6 @@ function detectFilePath(text){
   return null;
 }
 
-/** 侧边栏折叠区切换 (R5 四区布局) */
-window.toggleSidebarSection = function(sectionId) {
-  let el = document.getElementById(sectionId);
-  if (el) el.classList.toggle('collapsed');
-};
-
 // ES module bridge — 工具函数
 window.$ = $;
 window.escHtml = escHtml;
