@@ -144,16 +144,6 @@
   }
 
   function bindSidebarInteractions(activityId) {
-    // 重定向全局引用：让旧代码渲染到新 sidebarView 容器
-    let newAgentList = document.querySelector('#sidebarView #agent-list');
-    let newHistoryList = document.querySelector('#sidebarView #history-list');
-    if (newAgentList && window.agentList !== newAgentList) {
-      window.agentList = newAgentList;   // 覆盖 app.js 的旧引用
-    }
-    if (newHistoryList && window.historyList !== newHistoryList) {
-      window.historyList = newHistoryList;
-    }
-
     // 重新渲染 Agent 列表
     if (activityId === 'chat' && typeof renderAgents === 'function' && window.agents) {
       setTimeout(function() { renderAgents(window.agents); }, 100);
@@ -162,9 +152,6 @@
     if ((activityId === 'chat' || activityId === 'sessions') && typeof renderHistory === 'function') {
       setTimeout(function() { renderHistory(); }, 100);
     }
-    // 隐藏旧 sidebar 的 Agent 搜索框（新 sidebarView 已有）
-    let oldSearch = document.querySelector('#mainContent .agent-search');
-    if (oldSearch) oldSearch.style.display = 'none';
   }
 
   function showView(id) {
