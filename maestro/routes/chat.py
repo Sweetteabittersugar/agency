@@ -174,23 +174,17 @@ def handle_chat(handler, body):
         )
         handler.wfile.flush()
 
-        # ── 持久化 Claude 进程：stream-json 双向管道 ──
-        from maestro.claude_session import get_or_create
-
-        # -- persistent Claude process --
-        # Each panel has a session_id (UUID) mapped to an independent Claude process.
-        # session_id is a local panel-to-process route key, NOT passed to Claude --resume.
-        # Same panel reuses same process across turns; different panels get separate processes.
+        # ── 引擎选择：CC 或 Codex ──
+        engine = body.get("engine", "claude")  # "claude" | "codex"
         session_id = body.get("session_id", "")
         is_new_session = not bool(session_id)
         if is_new_session:
             import uuid
             session_id = str(uuid.uuid4())
-            # Memory injection: 新会话注入记忆上下文
             actual_task = inject_memory(actual_task, PROJECT_ROOT)
 
         handler.wfile.write(
-            f"data: {json.dumps({'progress': True, 'stage': 'executing', 'message': (agent_name or 'auto') + ' 正在执行...'})}\n\n".encode()
+            f"data: {json.dumps({'progress': True, 'stage': 'executing', 'message': (agent_name or 'auto') + f' 正在执行({engine})...'})}\n\n".encode()
         )
         handler.wfile.flush()
 
@@ -203,10 +197,22 @@ def handle_chat(handler, body):
             handler.wfile.flush()
             return True
 
-        cs = get_or_create(session_id, str(PROJECT_ROOT), iso_env)
+        # 按引擎创建会话
+        if engine == "codex":
+            from maestro.codex_session import CodexSession as _EngineSession
+            _eng_name = "Codex"
+        else:
+            from maestro.claude_session import get_or_create as _cc_get
+            _eng_name = "Claude"
+
+        if engine == "codex":
+            cs = _EngineSession(session_id, str(PROJECT_ROOT), iso_env)
+        else:
+            cs = _cc_get(session_id, str(PROJECT_ROOT), iso_env)
+
         if cs is None:
             handler.wfile.write(
-                f"event: done\ndata: {json.dumps({'error': '无法启动 Claude 进程', 'elapsed': 0})}\n\n".encode()
+                f"event: done\ndata: {json.dumps({'error': f'无法启动 {_eng_name} 进程', 'elapsed': 0})}\n\n".encode()
             )
             handler.wfile.flush()
             return True

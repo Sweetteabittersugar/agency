@@ -355,6 +355,7 @@ def check_no_private_leak():
     pattern = re.compile(r'\._(?:total_in|total_out|transcript|cost|running|sessions)\b')
     allow_in = {
         "claude_session.py",   # 类内部自引用
+        "codex_session.py",    # 类内部自引用
         "weixin_bot.py",        # 类内部自引用
     }
     violations = []
