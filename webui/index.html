@@ -65,6 +65,20 @@
       <div style="padding:0 8px;font-size:11px" id="sidebar-skills-list">点击 Agent 标签以加载...</div>
     </div>
   </div>
+  <!-- 🌳 工作树 — 始终展开 -->
+  <div class="sidebar-section">
+    <div class="sidebar-section-header" onclick="toggleSidebarSection(this);loadSidebarWorktrees()">
+      <span>🌳 工作树</span>
+      <span class="section-toggle">▼</span>
+    </div>
+    <div class="sidebar-section-body" id="sb-worktree">
+      <div id="sb-wt-list" style="font-size:11px;padding:0 8px"><span style="color:var(--muted)">展开时自动加载…</span></div>
+      <div style="padding:4px 8px;display:flex;gap:4px">
+        <input id="sb-wt-new-name" placeholder="分支名…" style="flex:1;padding:4px 6px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;font-size:10px">
+        <button onclick="sidebarCreateWorktree()" style="padding:4px 8px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:10px;white-space:nowrap">＋ 创建</button>
+      </div>
+    </div>
+  </div>
   <!-- 🧠 记忆 — 可折叠 -->
   <div class="sidebar-section collapsed">
     <div class="sidebar-section-header" onclick="toggleSidebarSection(this)">
@@ -122,9 +136,7 @@
 <span class="harness-overlay-tab" data-tab="mcp" title="MCP 服务 — 工具连接状态" onclick="switchHarnessTab('mcp')">🔌 MCP</span>
 <span class="harness-overlay-tab" data-tab="subagents" title="SubAgent — 子任务状态" onclick="switchHarnessTab('subagents')">🤖 Agent</span>
 <span class="harness-overlay-tab" data-tab="hooks" title="Hook — 事件脚本注册" onclick="switchHarnessTab('hooks')">🪝 Hook</span>
-<!-- Phase P2: Worktree 图形化管理标签 -->
 <span class="harness-overlay-tab" data-tab="history" title="会话历史 — 事件回放" onclick="switchHarnessTab('history')">📜 历史</span>
-	<span class="harness-overlay-tab" data-tab="worktree" title="Worktree — Git 工作树管理" onclick="switchHarnessTab('worktree')">🌳 Worktree</span>
 <button class="btn" style="align-self:center;margin-left:auto" onclick="toggleDashboard()">✕</button>
 </div>
 <div class="harness-overlay-content" id="harnessContent"></div>

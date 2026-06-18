@@ -1,27 +1,63 @@
 /* 从 dashboard.js 拆分 — 费用仪表盘面板 */
 
 /* ── 费用仪表盘 Tab ── */
-function loadCostDashboard(){
-  let barEl=$('cost-bar-chart'), agentEl=$('cost-agent-bars'), tableEl=$('cost-daily-table');
+function loadCostDashboard(container) {
+  // 先建 HTML 骨架，再填数据
+  container.innerHTML =
+    '<h3 style="margin-bottom:8px">💰 费用详情</h3>' +
+    '<div class="cost-kpis" style="margin-bottom:10px">' +
+      '<div class="cost-kpi"><span class="kpi-val" id="cdash-total-cost">--</span><span class="kpi-label">30天总费用</span></div>' +
+      '<div class="cost-kpi"><span class="kpi-val" id="cdash-total-tokens">--</span><span class="kpi-label">Token 用量</span></div>' +
+      '<div class="cost-kpi"><span class="kpi-val" id="cdash-total-calls">--</span><span class="kpi-label">API 调用</span></div>' +
+      '<div class="cost-kpi"><span class="kpi-val" id="cdash-cache-hit">--</span><span class="kpi-label">缓存命中率</span></div>' +
+      '<div class="cost-kpi"><span class="kpi-val" id="cdash-cache-saved">--</span><span class="kpi-label">缓存节省</span></div>' +
+    '</div>' +
+    '<div style="margin-bottom:8px">' +
+      '<span style="font-size:11px;color:var(--muted);font-weight:600">模型费用分布</span>' +
+      '<div id="cost-model-bars" style="background:var(--bg);border-radius:6px;padding:6px 8px;min-height:30px"></div>' +
+    '</div>' +
+    '<div style="margin-bottom:8px">' +
+      '<span style="font-size:11px;color:var(--muted);font-weight:600">每日费用趋势</span>' +
+      '<div id="cost-bar-chart" style="background:var(--bg);border-radius:6px;margin-top:4px;min-height:60px"></div>' +
+    '</div>' +
+    '<div style="margin-bottom:8px">' +
+      '<span style="font-size:11px;color:var(--muted);font-weight:600">Top Agent 费用</span>' +
+      '<div id="cost-agent-bars" style="background:var(--bg);border-radius:6px;padding:6px 8px;min-height:30px"></div>' +
+    '</div>' +
+    '<div style="margin-bottom:8px">' +
+      '<span style="font-size:11px;color:var(--muted);font-weight:600">近7天明细</span>' +
+      '<div id="cost-daily-table" style="font-size:10px"></div>' +
+    '</div>';
+
+  let barEl = document.getElementById('cost-bar-chart');
+  let agentEl = document.getElementById('cost-agent-bars');
+  let modelEl = document.getElementById('cost-model-bars');
+  let tableEl = document.getElementById('cost-daily-table');
+
   api.get('/api/cost/dashboard').then(function(d){
     if(!d){showEmpty();return}
-    // KPIs
-    let t=d.totals||{};
-    let tcEl=$('cdash-total-cost'), ttEl=$('cdash-total-tokens'), tclEl=$('cdash-total-calls');
-    if(tcEl)tcEl.textContent='$'+(t.total_cost||0).toFixed(4);
-    if(ttEl)ttEl.textContent=((t.total_tokens||0)).toLocaleString();
-    if(tclEl)tclEl.textContent=(t.total_calls||0).toLocaleString();
+    let t = d.totals || {};
+    let tcEl = document.getElementById('cdash-total-cost');
+    let ttEl = document.getElementById('cdash-total-tokens');
+    let tclEl = document.getElementById('cdash-total-calls');
+    if(tcEl) tcEl.textContent='$'+(t.total_cost||0).toFixed(4);
+    if(ttEl) ttEl.textContent=((t.total_tokens||0)).toLocaleString();
+    if(tclEl) tclEl.textContent=(t.total_calls||0).toLocaleString();
+    // 缓存命中率：cache_read / total_input_tokens
+    let totalIn = ((d.daily||[]).reduce(function(s,d){return s+(d.tokens||0)},0)) || (t.total_tokens||0);
+    let cacheRead = t.cache_read || 0;
+    let hitRate = totalIn > 0 ? (cacheRead / totalIn * 100).toFixed(1) : '0.0';
+    let chEl = document.getElementById('cdash-cache-hit');
+    let csEl = document.getElementById('cdash-cache-saved');
+    if(chEl) chEl.textContent = hitRate + '%';
+    if(csEl) csEl.textContent = '$' + ((t.cache_saved||0)).toFixed(4);
 
-    // 每日趋势柱状图
-    if(barEl)renderBarChart(barEl, d.daily||[], 'cost', 'day');
-
-    // Top Agent 横向条形图
-    if(agentEl)renderHBarChart(agentEl, (d.top_agents||[]).slice(0,5), 'cost', 'agent');
-
-    // 近7天明细表
+    if(barEl) renderBarChart(barEl, d.daily||[], 'cost', 'day');
+    if(agentEl) renderHBarChart(agentEl, (d.top_agents||[]).slice(0,5), 'cost', 'agent');
+    if(modelEl) renderHBarChart(modelEl, (d.top_models||[]).slice(0,5), 'cost', 'model');
     if(tableEl){
-      let daily=d.daily||[];
-      let recent=daily.slice(-7).reverse();
+      let daily = d.daily || [];
+      let recent = daily.slice(-7).reverse();
       renderDailyTable(tableEl, recent);
     }
   }).catch(function(e){
@@ -30,13 +66,20 @@ function loadCostDashboard(){
   });
 
   function showEmpty(){
-    if(barEl)barEl.innerHTML='<p style="color:var(--muted);padding:12px;text-align:center;font-size:11px">暂无费用数据</p>';
-    if(agentEl)agentEl.innerHTML='<p style="color:var(--muted);padding:12px;text-align:center;font-size:11px">暂无 Agent 数据</p>';
-    if(tableEl)tableEl.innerHTML='<p style="color:var(--muted);padding:12px;text-align:center;font-size:11px">暂无明细数据</p>';
-    let tcEl=$('cdash-total-cost'),ttEl=$('cdash-total-tokens'),tclEl=$('cdash-total-calls');
-    if(tcEl)tcEl.textContent='$0';
-    if(ttEl)ttEl.textContent='0';
-    if(tclEl)tclEl.textContent='0';
+    if(barEl) barEl.innerHTML='<p style="color:var(--muted);padding:12px;text-align:center;font-size:11px">暂无费用数据</p>';
+    if(agentEl) agentEl.innerHTML='<p style="color:var(--muted);padding:12px;text-align:center;font-size:11px">暂无 Agent 数据</p>';
+    if(modelEl) modelEl.innerHTML='<p style="color:var(--muted);padding:12px;text-align:center;font-size:11px">暂无模型数据</p>';
+    if(tableEl) tableEl.innerHTML='<p style="color:var(--muted);padding:12px;text-align:center;font-size:11px">暂无明细数据</p>';
+    let tcEl = document.getElementById('cdash-total-cost');
+    let ttEl = document.getElementById('cdash-total-tokens');
+    let tclEl = document.getElementById('cdash-total-calls');
+    let chEl = document.getElementById('cdash-cache-hit');
+    let csEl = document.getElementById('cdash-cache-saved');
+    if(tcEl) tcEl.textContent='$0';
+    if(ttEl) ttEl.textContent='0';
+    if(tclEl) tclEl.textContent='0';
+    if(chEl) chEl.textContent='0%';
+    if(csEl) csEl.textContent='$0';
   }
 }
 

@@ -58,3 +58,56 @@ function removeWorktree(name) {
 
 window.createWorktree = createWorktree;
 window.removeWorktree = removeWorktree;
+
+/* ── 侧边栏工作树渲染 ── */
+window.loadSidebarWorktrees = function() {
+  let list = document.getElementById('sb-wt-list');
+  if (!list) return;
+  api.get('/api/worktrees')
+    .then(function(data) {
+      let agents = data.agents || [];
+      if (agents.length === 0) {
+        list.innerHTML = '<div style="padding:8px;color:var(--muted);text-align:center">暂无活跃 Worktree</div>';
+        return;
+      }
+      let html = '';
+      agents.forEach(function(wt) {
+        let nm = escAttr(wt.name);
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;margin-bottom:4px;background:var(--surface2);border-radius:6px">';
+        html += '<div><strong style="font-size:11px">' + escHtml(wt.name) + '</strong><br><span style="font-size:9px;color:var(--muted)">' + escHtml(wt.branch || '') + ' · ' + (wt.size_mb || 0) + ' MB</span></div>';
+        html += '<button onclick="sidebarRemoveWorktree(\'' + nm + '\')" style="padding:2px 8px;background:var(--danger);color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:10px">✕</button>';
+        html += '</div>';
+      });
+      list.innerHTML = html;
+    })
+    .catch(function() {
+      list.innerHTML = '<div style="padding:8px;color:var(--muted);text-align:center">加载失败</div>';
+    });
+};
+
+window.sidebarCreateWorktree = function() {
+  let input = document.getElementById('sb-wt-new-name');
+  if (!input) return;
+  let name = input.value.trim();
+  if (!name) return;
+  api.post('/api/worktrees/create', {name: name})
+    .then(function(data) {
+      if (data.ok) {
+        input.value = '';
+        loadSidebarWorktrees();
+      } else {
+        showToast('创建失败: ' + (data.error || '未知错误'));
+      }
+    })
+    .catch(function() { showToast('网络错误'); });
+};
+
+window.sidebarRemoveWorktree = function(name) {
+  if (!confirm('确认删除 Worktree: ' + name + '?')) return;
+  api.post('/api/worktrees/remove', {name: name, force: true})
+    .then(function(data) {
+      if (data.ok) loadSidebarWorktrees();
+      else showToast('删除失败: ' + (data.error || '未知错误'));
+    })
+    .catch(function() { showToast('网络错误'); });
+};
