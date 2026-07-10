@@ -1,13 +1,4 @@
-/* Agency — 暗色主题 v2 */
-:root{
-  --bg:#070b12;--surface:#0e1420;--surface2:#161e2e;--surface3:#1c2538;
-  --text:#eef0f4;--text2:#a0a8bb;--muted:#8899aa;
-  --accent:#10b981;--accent2:#059669;--danger:#d32f2f;--warn:#e65100;
-  --border:#1e2a3e;--border2:#263348;--radius:8px;--radius-lg:12px;--radius-sm:4px;
-  --shadow:0 2px 8px rgba(0,0,0,.3);--shadow-lg:0 8px 32px rgba(0,0,0,.5);
-  --success:#2e7d32;--focus-ring:#1a73e8;
-  font-size:14px;
-}
+/* Agency — base styles (tokens in css/tokens.css) */
 *{margin:0;padding:0;box-sizing:border-box}
 body{font:14px/1.55 "DM Sans","Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;overflow:hidden}
 *{scrollbar-width:none;-ms-overflow-style:none}
@@ -38,9 +29,9 @@ body{font:14px/1.55 "DM Sans","Segoe UI",system-ui,sans-serif;background:var(--b
 .skill-card:hover{border-color:var(--accent)}
 .skill-card.disabled{opacity:.5;filter:grayscale(30%)}
 .skill-card.disabled:hover{opacity:.8}
-.skill-enable-btn{border-color:#2e7d32;color:#2e7d32;font-size:10px;background:var(--surface2);border:1px solid #2e7d32;padding:2px 8px;border-radius:var(--radius-sm);cursor:pointer;white-space:nowrap;transition:all .15s}
-.skill-enable-btn:hover{background:rgba(46,125,50,.15);color:#2e7d32}
-.skill-enable-all-btn{border-color:#2e7d32!important;color:#2e7d32!important}
+.skill-enable-btn{border-color:var(--success);color:var(--success);font-size:10px;background:var(--surface2);border:1px solid var(--success);padding:2px 8px;border-radius:var(--radius-sm);cursor:pointer;white-space:nowrap;transition:all var(--transition-fast)}
+.skill-enable-btn:hover{background:rgba(46,125,50,.15);color:var(--success)}
+.skill-enable-all-btn{border-color:var(--success)!important;color:var(--success)!important}
 .skill-enable-all-btn:hover{background:rgba(46,125,50,.15)!important}
 
 /* ── 历史 ── */
@@ -315,7 +306,7 @@ button:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px soli
 .pipeline-bar{display:flex;gap:8px;align-items:center;padding:6px 12px;flex-shrink:0;background:var(--surface);border-top:1px solid var(--border);overflow-x:auto;min-height:32px;flex-wrap:wrap}
 .pipeline-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;background:var(--border2);transition:all .3s}
 .pipeline-dot.active{background:var(--accent);animation:pulse 1s infinite;box-shadow:0 0 6px var(--accent)}
-.pipeline-dot.done{background:var(--green,#10b981);box-shadow:0 0 4px var(--green,#10b981)}
+.pipeline-dot.done{background:var(--accent);box-shadow:0 0 4px var(--accent)}
 .pipeline-dot.fail{background:var(--danger);box-shadow:0 0 4px var(--danger)}
 
 /* ── 重试提示块 ── */
@@ -512,9 +503,9 @@ button:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px soli
 /* ══════════════════════════════════════════
    Tooltip 系统 (data-tooltip)
    ══════════════════════════════════════════ */
-.agency-tooltip{position:fixed;z-index:9999;background:#333;color:#fff;padding:8px 12px;border-radius:6px;font-size:11px;max-width:280px;line-height:1.5;pointer-events:none;opacity:0;transform:translateY(-4px);transition:opacity .15s,transform .15s;box-shadow:0 4px 12px rgba(0,0,0,.4);word-break:break-word}
-.agency-tooltip::after{content:'';position:absolute;top:100%;left:var(--tip-x,50%);transform:translateX(-50%);border:6px solid transparent;border-top-color:#333}
-.agency-tooltip.tip-above::after{top:auto;bottom:100%;border-top-color:transparent;border-bottom-color:#333}
+.agency-tooltip{position:fixed;z-index:9999;background:var(--surface3);color:var(--text);padding:8px 12px;border-radius:var(--radius-xs);font-size:11px;max-width:280px;line-height:1.5;pointer-events:none;opacity:0;transform:translateY(-4px);transition:opacity var(--transition-fast),transform var(--transition-fast);box-shadow:0 4px 12px rgba(0,0,0,.4);word-break:break-word}
+.agency-tooltip::after{content:'';position:absolute;top:100%;left:var(--tip-x,50%);transform:translateX(-50%);border:6px solid transparent;border-top-color:var(--surface3)}
+.agency-tooltip.tip-above::after{top:auto;bottom:100%;border-top-color:transparent;border-bottom-color:var(--surface3)}
 
 /* ══════════════════════════════════════════
    多选模式
@@ -530,7 +521,7 @@ button:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px soli
 .batch-action-bar span{font-size:12px;color:var(--text);font-weight:600}
 .batch-action-bar .btn{padding:6px 16px;font-size:12px}
 .batch-action-bar .btn.danger{background:var(--danger);color:#fff;border-color:var(--danger)}
-.batch-action-bar .btn.danger:hover{background:#b71c1c}
+.batch-action-bar .btn.danger:hover{background:var(--danger)}
 
 /* ══════════════════════════════════════════
    快捷键编辑器

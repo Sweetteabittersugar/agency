@@ -1,6 +1,33 @@
-# AGENTS.md — Agent 路由矩阵
+# AGENTS.md — Agency
 
-> 32 个 Agent，按 13 大类组织。收到任务 → 路由矩阵判断 → 自动选择最佳 Agent。
+> 本文件适用于 `D:\ai\projects\agency`。这是独立 Git 仓库。
+
+## 项目定位
+
+Agency 是 Python 工具包与 Web UI 组合项目，提供 Agent、skill、hook、命令、调度、成本跟踪和浏览器管理界面。
+
+## 主要结构
+
+- `agents/`、`skills/`、`commands/`、`hooks/`：可分发的 AI 工作流资产。
+- `maestro/`：调度、服务与本地运行状态；移动前必须审计引用。
+- `webui/`：浏览器界面。
+- `tests/`、`docs/`、`scripts/`：测试、文档与维护工具。
+- `memory/`、`tasks/`：项目运行与工作流数据，不按普通源码目录清理。
+
+## 本地入口
+
+```powershell
+cd D:\ai\projects\agency
+python -m pytest
+```
+
+## 项目级硬约束
+
+- 不提交 `.env`、真实凭据或本地定价配置。
+- `.pytest_cache/`、`.ruff_cache/`、`*.egg-info/` 属于可重建内容。
+- 调整 Agent、skill、命令或 hook 时同步检查安装清单和路由矩阵。
+
+## Agent 路由矩阵
 
 ## 路由矩阵
 

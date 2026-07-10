@@ -7,8 +7,8 @@
   --border:#1e2a3e;--border2:#263348;--radius:8px;--radius-lg:12px;--radius-sm:4px;
   --shadow-sm:0 1px 3px rgba(0,0,0,.12);--shadow:0 2px 8px rgba(0,0,0,.3);--shadow-md:0 4px 12px rgba(0,0,0,.15);--shadow-lg:0 8px 32px rgba(0,0,0,.5);
   --success:#2e7d32;--focus-ring:#1a73e8;
-  --transition-fast:0.12s ease;--transition-normal:0.25s ease;
-  --radius-md:8px;
+  --transition-fast:0.12s ease;--transition-normal:0.25s ease;--transition-slide:0.3s ease;--transition-progress:0.5s ease;
+  --radius-xs:6px;--radius-md:8px;
   font-size:14px;
 }
 
