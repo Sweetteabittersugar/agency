@@ -1,0 +1,19 @@
+# Keep text files stable across Windows, WSL, and Linux checkouts.
+* text=auto eol=lf
+
+# Windows launcher scripts are consumed by Windows shells.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary/package formats must never be line-ending normalized.
+*.db binary
+*.dll binary
+*.docx binary
+*.exe binary
+*.ico binary
+*.jar binary
+*.pyd binary
+*.png binary
+*.sqlite3 binary
+*.zip binary
