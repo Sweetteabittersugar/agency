@@ -1,10 +1,8 @@
 {
   "name": "agency-kit",
-  "version": "0.1.0",
-  "description": "中文原生 Claude Code 配置平台 — Agent 调度、成本追踪、创作工作流，日常生产验证",
-  "publishConfig": {
-    "access": "public"
-  },
+  "version": "0.5.0",
+  "private": true,
+  "description": "Local-first web workspace for verifiable agent workflows",
   "keywords": [
     "claude-code",
     "agents",
@@ -65,7 +63,6 @@
     "install.ps1"
   ],
   "scripts": {
-    "test": "python -m pytest tests/ -v",
-    "postinstall": "node scripts/install-apply.js"
+    "test": "python -m pytest tests/ -v"
   }
 }

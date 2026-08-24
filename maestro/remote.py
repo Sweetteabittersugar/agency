@@ -13,12 +13,12 @@ from maestro.app_config import (
     BIND_ADDR,
 )  # 默认仅本机，远端需设 AGENCY_HOST=0.0.0.0 + AGENCY_TOKEN
 
-# 内存中的 token（None=未初始化，\"\"=已显式关闭，其他=密码）
+# 内存中的 token（None=未初始化，\"\"=未配置，其他=密码）
 _token = None
 
 
 def _load_env_token():
-    """从 .env 加载 token，首次启动自动生成"""
+    """从环境或本地 .env 加载显式配置的 token。"""
     global _token
     if _token is not None:
         return
@@ -37,19 +37,6 @@ def _load_env_token():
     # 环境变量覆盖
     if _token is None:
         _token = os.environ.get("AGENCY_TOKEN", "")
-    # 首次启动自动生成 token（远端访问强制要求）
-    if not _token and _token is not None:
-        # 显式设为空 — 但如果远端访问，强制生成
-        if BIND_ADDR not in ("127.0.0.1", "::1", "localhost"):
-            _token = generate_token()
-            _save_env_token(_token)
-            log.warning(f"远端访问模式 (AGENCY_HOST={BIND_ADDR})，已强制生成认证令牌")
-    elif not _token:
-        _token = generate_token()
-        _save_env_token(_token)
-        log.info("Auto-generated remote token (see .env or startup log)")
-
-    # 统一：None → ""
     if _token is None:
         _token = ""
 
@@ -126,6 +113,15 @@ def check_auth(headers):
         return False, "令牌无效"
 
     return True, ""
+
+
+def require_remote_auth(host: str | None = None) -> None:
+    """Fail startup closed when a non-loopback listener has no token."""
+    bind = host or BIND_ADDR
+    if bind not in ("127.0.0.1", "::1", "localhost") and not get_token():
+        raise RuntimeError(
+            "non-loopback listening requires AGENCY_TOKEN or AGENCY_TOKEN in a local .env"
+        )
 
 
 def get_local_ip():

@@ -506,7 +506,7 @@ def handle_profiles_list(handler, parsed):
     if not profiles_path.exists():
         handler.send_json(
             {
-                "version": "0.1.0",
+                "version": "0.5.0",
                 "description": "Profile 分级未配置",
                 "profiles": {},
                 "available": ["minimal", "standard", "full"],
@@ -538,7 +538,9 @@ def handle_check_update(handler, parsed):
             "current": current,
             "latest": latest or current,
             "has_update": has_update,
-            "upgrade_cmd": "pip install --upgrade agency-kit" if has_update else None,
+            "upgrade_cmd": (
+                f"git fetch --tags && git switch --detach v{latest}" if has_update else None
+            ),
         }
     )
     return True

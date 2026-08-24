@@ -102,9 +102,16 @@ def handle_test_run(handler, body):
         handler.send_json({"error": "缺少必填字段 url。请提供要测试的页面地址"}, 400)
         return True
 
+    from maestro.project_access import ProjectAccessError, project_binding
+
+    try:
+        project_root = project_binding(body.get("proj_dir"))
+    except ProjectAccessError as exc:
+        handler.send_json({"error": str(exc), "code": exc.code}, 403)
+        return True
+
     _ensure_dirs()
     steps = body.get("steps", None)
-    project_root = body.get("proj_dir", "") or str(Path(__file__).resolve().parent.parent.parent)
 
     prompt, run_id, result_path, screenshot_path = _build_playwright_prompt(url, steps)
     _runs[run_id] = {

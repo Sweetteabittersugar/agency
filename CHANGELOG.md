@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.5.0] - 2026-08-25
+
+### Added
+
+- Durable local run ledger, execution DAG checkpoints, runner fencing, and explicit resume IDs.
+- Fail-closed reconciliation for interrupted side effects.
+- Repeatable project-root allowlists with canonical path, symlink, and junction checks.
+- Source-only CLI, release verifier, security policy, contribution templates, and Python 3.10–3.13 CI.
+
+### Changed
+
+- The default listener remains `127.0.0.1`; non-loopback startup now requires explicit authentication.
+- Update checks use GitHub Releases instead of package registries.
+- Documentation now states provider, browser storage, Docker, and current-user permission boundaries.
+
+### Removed
+
+- npm publishing metadata and automatic postinstall behavior.
+- Private workspace context and unpublished control-plane coupling from the release tree.
+
 ## [0.4.0] - 2026-06-10
 
 ### Features

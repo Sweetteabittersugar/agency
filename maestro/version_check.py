@@ -1,4 +1,4 @@
-"""启动时版本检查 — 后台静默检查 PyPI 新版本，缓存 24 小时。"""
+"""Best-effort GitHub Releases update check with a 24-hour local cache."""
 
 import json
 import os
@@ -6,9 +6,11 @@ import time
 import urllib.request
 from pathlib import Path
 
-CACHE_FILE = Path(__file__).resolve().parent / ".version_cache.json"
+from maestro.app_config import STATE_DIR
+
+CACHE_FILE = STATE_DIR / "version-cache.json"
 CACHE_TTL = 86400  # 24 小时
-PYPI_URL = "https://pypi.org/pypi/agency-kit/json"
+RELEASES_URL = "https://api.github.com/repos/Sweetteabittersugar/agency/releases/latest"
 CHECK_DISABLED = os.environ.get("AGENCY_NO_UPDATE_CHECK", "") == "1"
 
 
@@ -26,6 +28,7 @@ def _read_cache() -> dict | None:
 
 def _write_cache(current: str, latest: str) -> None:
     try:
+        CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
         CACHE_FILE.write_text(json.dumps({"ts": time.time(), "current": current, "latest": latest}))
     except Exception:
         pass
@@ -47,16 +50,23 @@ def _get_installed_version() -> str:
 
 def _get_latest_version() -> str | None:
     try:
-        req = urllib.request.Request(PYPI_URL, headers={"User-Agent": "agency-kit"})
+        req = urllib.request.Request(
+            RELEASES_URL,
+            headers={
+                "Accept": "application/vnd.github+json",
+                "User-Agent": "agency-kit-update-check",
+            },
+        )
         with urllib.request.urlopen(req, timeout=5) as resp:
             data = json.loads(resp.read())
-            return data.get("info", {}).get("version")
+            tag = str(data.get("tag_name") or "")
+            return tag.removeprefix("v") or None
     except Exception:
         return None
 
 
 def _format_message(current: str, latest: str) -> str:
-    cmd = "pip install --upgrade agency-kit"
+    cmd = f"git fetch --tags && git switch --detach v{latest}"
     return f"\n  ⚠️  新版可用: {current} → {latest}  升级: {cmd}\n"
 
 

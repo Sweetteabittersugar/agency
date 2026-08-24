@@ -46,6 +46,14 @@ def handle_chat(handler, body):
         handler.send_json({"error": "请求为空。请在消息框中输入任务描述后发送"}, 400)
         return True
 
+    from maestro.project_access import ProjectAccessError, project_binding
+
+    try:
+        project_root = Path(project_binding(proj_dir))
+    except ProjectAccessError as exc:
+        handler.send_json({"error": str(exc), "code": exc.code}, 403)
+        return True
+
     if not api_key:
         handler.send_json(
             {
@@ -181,7 +189,7 @@ def handle_chat(handler, body):
         if is_new_session:
             import uuid
             session_id = str(uuid.uuid4())
-            actual_task = inject_memory(actual_task, PROJECT_ROOT)
+            actual_task = inject_memory(actual_task, project_root)
 
         handler.wfile.write(
             f"data: {json.dumps({'progress': True, 'stage': 'executing', 'message': (agent_name or 'auto') + f' 正在执行({engine})...'})}\n\n".encode()
@@ -206,9 +214,9 @@ def handle_chat(handler, body):
             _eng_name = "Claude"
 
         if engine == "codex":
-            cs = _EngineSession(session_id, str(PROJECT_ROOT), iso_env)
+            cs = _EngineSession(session_id, str(project_root), iso_env)
         else:
-            cs = _cc_get(session_id, str(PROJECT_ROOT), iso_env)
+            cs = _cc_get(session_id, str(project_root), iso_env)
 
         if cs is None:
             handler.wfile.write(
@@ -299,7 +307,7 @@ def handle_chat(handler, body):
             pass
 
         record_chat_cost(
-            project_root=PROJECT_ROOT,
+            project_root=project_root,
             model=detected_model,
             in_tokens=in_tokens,
             out_tokens=out_tokens,

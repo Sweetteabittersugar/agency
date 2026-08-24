@@ -9,6 +9,7 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 .tox/
+.venv/
 dist/
 build/
 *.egg-info/
@@ -78,6 +79,7 @@ maestro/preferences.json
 .claude-isolated/
 server.log
 *.log
+.agency/
 
 # Memory — 含用户画像等隐私
 .claude/project.md

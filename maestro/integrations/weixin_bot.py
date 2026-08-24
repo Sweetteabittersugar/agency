@@ -13,7 +13,7 @@ from typing import Optional, Callable
 ILINK_BASE = "https://ilinkai.weixin.qq.com"
 ILINK_APP_ID = "bot"
 ILINK_APP_CLIENT_VERSION = "65547"  # 0x0001000B
-BOT_AGENT = "Agency/0.4.0"
+BOT_AGENT = "Agency/0.5.0"
 LONG_POLL_TIMEOUT = 35
 API_TIMEOUT = 15
 
@@ -39,7 +39,7 @@ def _build_headers(token: str = None) -> dict:
 
 
 def _build_base_info() -> dict:
-    return {"channel_version": "0.4.0", "bot_agent": BOT_AGENT}
+    return {"channel_version": "0.5.0", "bot_agent": BOT_AGENT}
 
 
 def _api_post(endpoint: str, body: dict, token: str = None, timeout: int = API_TIMEOUT) -> dict:

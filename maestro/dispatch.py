@@ -17,11 +17,14 @@ Zero external dependencies — pure Python stdlib.
 import argparse
 import importlib.util
 import json
+import logging
 import os
 import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+
+log = logging.getLogger(__name__)
 
 PROJECT_ROOT = os.environ.get(
     "CLAUDE_PROJECT_DIR", os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

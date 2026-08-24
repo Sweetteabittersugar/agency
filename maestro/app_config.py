@@ -81,6 +81,9 @@ SKILLS_DIR: Path = PROJECT_ROOT / ".claude" / "skills"
 SESSIONS_DIR: Path = PROJECT_ROOT / "maestro" / "sessions"
 CREDENTIALS_DIR: Path = PROJECT_ROOT / "credentials"
 WORKTREE_DIR: Path = PROJECT_ROOT / "maestro" / "worktrees"
+STATE_DIR: Path = Path(os.environ.get("AGENCY_STATE_DIR", Path.home() / ".agency")).expanduser()
+RUN_LEDGER_PATH: Path = STATE_DIR / "runs.sqlite3"
+RUN_ARTIFACTS_DIR: Path = STATE_DIR / "run-artifacts"
 
 
 def build_isolated_env(api_key: str | None, api_provider: str = "deepseek") -> dict[str, str]:

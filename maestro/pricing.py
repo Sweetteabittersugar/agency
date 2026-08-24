@@ -72,7 +72,7 @@ class ModelPrice:
 #   kimi.com/resources/kimi-k2-6-pricing
 #
 # 缓存折扣对比（跨厂商）：
-#   DeepSeek V4 Pro:   cache_read=$0.0145,  97% off (!)
+#   DeepSeek V4 Pro:   cache_read=$0.003625, matching the runtime price table
 #   Claude Opus 4.8:   cache_read=$0.50,    90% off
 #   GPT-5:             cache_read=$0.125,   90% off
 #   Gemini 2.5 Pro:    cache_read=$0.125,   90% off

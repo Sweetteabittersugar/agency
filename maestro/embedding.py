@@ -76,27 +76,27 @@ class EmbeddingRouter:
         self.agent_texts = [a.get("name", "") + " " + a.get("description", "") for a in self.agents]
 
         # 第一步：分词 + 构建文档列表
-        doc_tokens: list[list[str]] = []
+        document_terms: list[list[str]] = []
         for text in self.agent_texts:
-            tokens = _tokenize(text)
-            doc_tokens.append(tokens)
+            terms = _tokenize(text)
+            document_terms.append(terms)
 
         # 第二步：构建词表
         vocab_set: set[str] = set()
-        for tokens in doc_tokens:
-            vocab_set.update(tokens)
+        for terms in document_terms:
+            vocab_set.update(terms)
         self.vocab = {token: idx for idx, token in enumerate(sorted(vocab_set))}
 
         # 第三步：计算 IDF
-        N = len(doc_tokens)
+        N = len(document_terms)
         for token, idx in self.vocab.items():
-            df = sum(1 for tokens in doc_tokens if token in tokens)
+            df = sum(1 for terms in document_terms if token in terms)
             self.idf[token] = math.log((N + 1) / (df + 1)) + 1.0
 
         # 第四步：构建 TF-IDF 向量
         self.tfidf_matrix = []
-        for tokens in doc_tokens:
-            tf = Counter(tokens)
+        for terms in document_terms:
+            tf = Counter(terms)
             max_tf = max(tf.values()) if tf else 1
             vec: dict[int, float] = {}
             for token, count in tf.items():
@@ -114,8 +114,8 @@ class EmbeddingRouter:
 
     def _vectorize(self, text: str) -> dict[int, float]:
         """将查询文本转为 TF-IDF 向量。"""
-        tokens = _tokenize(text)
-        tf = Counter(tokens)
+        terms = _tokenize(text)
+        tf = Counter(terms)
         max_tf = max(tf.values()) if tf else 1
         vec: dict[int, float] = {}
         for token, count in tf.items():
