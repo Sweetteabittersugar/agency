@@ -3,6 +3,7 @@
 import sqlite3
 import threading
 import logging
+import time
 
 log = logging.getLogger(__name__)
 _cost_db_lock = threading.Lock()
@@ -63,10 +64,10 @@ def _run_migrations(db_path: str):
 
         # 按序应用未执行的迁移
         import time as _time
-        for ver in sorted(_Migrations.keys()):
+        for ver in sorted(_MIGRATIONS.keys()):
             if ver <= current:
                 continue
-            for sql in _Migrations[ver]:
+            for sql in _MIGRATIONS[ver]:
                 try:
                     conn.execute(sql)
                 except sqlite3.OperationalError:

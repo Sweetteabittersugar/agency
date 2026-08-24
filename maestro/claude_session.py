@@ -4,23 +4,20 @@ import subprocess
 import json
 import time
 import logging
+import shutil
 import threading
 from pathlib import Path
 
 log = logging.getLogger(__name__)
 
-CLAUDE_BIN = None
-for _p in [
-    r"C:\Users\lenovo\AppData\Roaming\npm\claude.CMD",
-    r"C:\Users\lenovo\AppData\Roaming\npm\claude",
-]:
-    if Path(_p).exists():
-        CLAUDE_BIN = _p
-        break
+CLAUDE_BIN = shutil.which("claude")
 if not CLAUDE_BIN:
-    import shutil
-
-    CLAUDE_BIN = shutil.which("claude") or "claude"
+    npm_bin = Path.home() / "AppData" / "Roaming" / "npm"
+    for candidate in (npm_bin / "claude.cmd", npm_bin / "claude"):
+        if candidate.exists():
+            CLAUDE_BIN = str(candidate)
+            break
+CLAUDE_BIN = CLAUDE_BIN or "claude"
 
 _sessions: dict[str, "ClaudeSession"] = {}
 _lock = threading.Lock()

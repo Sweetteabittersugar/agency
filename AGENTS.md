@@ -1,6 +1,6 @@
 # AGENTS.md — Agency
 
-> 本文件适用于 `D:\ai\projects\agency`。这是独立 Git 仓库。
+> 本文件适用于 Agency 源码仓库。
 
 ## 项目定位
 
@@ -12,12 +12,13 @@ Agency 是 Python 工具包与 Web UI 组合项目，提供 Agent、skill、hook
 - `maestro/`：调度、服务与本地运行状态；移动前必须审计引用。
 - `webui/`：浏览器界面。
 - `tests/`、`docs/`、`scripts/`：测试、文档与维护工具。
-- `memory/`、`tasks/`：项目运行与工作流数据，不按普通源码目录清理。
+- 本地 runtime state 存放在用户目录的 `.agency/` 中，不提交到源码仓库。
 
 ## 本地入口
 
 ```powershell
-cd D:\ai\projects\agency
+cd /path/to/agency
+python -m pip install -e ".[dev]"
 python -m pytest
 ```
 

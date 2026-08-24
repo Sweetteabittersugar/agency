@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from flask import Flask, g, request, send_from_directory
+from flask import Flask, g, jsonify, request, send_from_directory
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 
@@ -27,6 +27,13 @@ socketio = SocketIO(app, async_mode='threading', cors_allowed_origins=["http://l
 @app.before_request
 def assign_request_id():
     g.request_id = uuid.uuid4().hex[:8]
+    from maestro.app_config import BIND_ADDR
+    from maestro.remote import check_auth
+
+    if BIND_ADDR not in ("127.0.0.1", "::1", "localhost"):
+        ok, message = check_auth(request.headers)
+        if not ok:
+            return jsonify({"error": message, "code": "AUTH_REQUIRED"}), 401
 
 @app.after_request
 def add_request_id_header(response):
@@ -75,8 +82,13 @@ def handle_terminal_resize(data):
 @socketio.on('terminal_start', namespace='/ws/terminal')
 def handle_terminal_start(data):
     from maestro.terminal import get_or_create_terminal
+    from maestro.project_access import ProjectAccessError, authorize_project_path
     sid = data.get('sid', '')
-    cwd = data.get('cwd', str(PROJECT_ROOT))
+    try:
+        cwd = str(authorize_project_path(data.get('cwd'), require_directory=True))
+    except ProjectAccessError as exc:
+        emit('terminal_error', {'sid': sid, 'code': exc.code, 'error': str(exc)})
+        return
     ts = get_or_create_terminal(sid, cwd)
     emit('terminal_ready', {'sid': sid})
     def _read_loop():
@@ -124,14 +136,18 @@ def handle_chat_send(data):
         _emit('error', {'error': str(e)[:200]})
 
 
-def main():
-    """启动 Flask 应用（v0.4.0+ 唯一入口，web.py 已废弃）"""
+def run_server(*, host: str = BIND_ADDR, port: int = PORT):
+    """Start the web application after validating the listener boundary."""
     import sys
     import io
 
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-    print("\U0001f680 Agency v0.4.0 — Flask 模式")
-    print(f"   地址: http://{BIND_ADDR}:{PORT}")
+    from maestro.remote import require_remote_auth
+    from maestro.shared import AGENCY_VERSION
+
+    require_remote_auth(host)
+    print(f"\U0001f680 Agency v{AGENCY_VERSION} — Flask mode")
+    print(f"   Address: http://{host}:{port}")
 
     if check_docker_available():
         print("🐳 Docker 已就绪")
@@ -159,7 +175,12 @@ def main():
     from maestro.cron_scheduler import start_scheduler
     start_scheduler(_cron_chat_callback)
 
-    socketio.run(app, host=BIND_ADDR, port=PORT, debug=False, allow_unsafe_werkzeug=True)
+    socketio.run(app, host=host, port=port, debug=False, allow_unsafe_werkzeug=True)
+
+
+def main():
+    """Compatibility entry point; prefer ``agency start``."""
+    run_server()
 
 
 if __name__ == "__main__":

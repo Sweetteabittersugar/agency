@@ -37,7 +37,7 @@ except ImportError:
     log.warning("maestro.profiles 未找到，Profile 系统不可用")
 
 # ── 版本 ──
-AGENCY_VERSION = "0.1.0"
+AGENCY_VERSION = "0.5.0"
 _version_file = PROJECT_ROOT / "VERSION"
 if _version_file.exists():
     AGENCY_VERSION = _version_file.read_text().strip()

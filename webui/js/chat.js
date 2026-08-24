@@ -263,6 +263,121 @@ window.onPanelEngineChange=function(pid,engine){
   showToast('引擎: '+(engine==='codex'?'Codex CLI':'Claude Code'),false,'info');
 };
 function handleOrchSend(p){let task=p.dom.input.value.trim();if(!task)return;if(!p._msgQueue)p._msgQueue=[];if(p.isStreaming||p._pendingRequest){p._msgQueue.push(p.id);updateQueueIndicator(p);return}p._pendingRequest=true;updateQueueIndicator(p);setStreaming(p,!0);p.dom.input.value='';p.dom.input.style.height='auto';p.dom.route.innerHTML='<span>🧠 智能调度</span>';if(p.dom.empty)p.dom.empty.style.display='none';addMsg(p,'user',task);p.currentConvo.messages.push({role:'user',content:task});p.currentAssistantMsg=addMsg(p,'assistant','<span class="cursor"></span>');p.abortController=new AbortController();let planReceived=!1;let pipelineStages=null;stageStatus={};fetch('/api/orchestrate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task:task,proj_dir:projDir||undefined,api_key:apiKey||undefined,api_provider:apiProvider||undefined,profile:agencyProfile||'standard',output_dir:localStorage.getItem('agency_output_dir')||undefined}),signal:p.abortController.signal}).then(function(resp){let reader=resp.body.getReader();p._reader=reader;let decoder=new TextDecoder(),buf='',txt='',planData=null;function read(){reader.read().then(function(result){if(result.done){p._reader=null;finish();return}buf+=decoder.decode(result.value,{stream:!0});buf=buf.replace(/\r\n/g,'\n');let lines=buf.split('\n');buf=lines.pop()||'';for(let i=0;i<lines.length;i++){let line=lines[i],eventType='';if(line.indexOf('event: ')===0){eventType=line.slice(7);continue}if(line.indexOf('data: ')!==0)continue;try{let d=JSON.parse(line.slice(6));if(eventType==='plan'){planData=d;return}if(eventType==='stage'){handleStageEvent(p,d);return}if(eventType==='phase'){if(d.msg){p.dom.route.innerHTML='<span>'+escHtml(d.msg)+'</span>'}return}if(eventType==='done'){if(d.summary)txt+=d.summary;return}if(eventType==='error'){if(d.msg)p.currentAssistantMsg.innerHTML='<span style="color:var(--danger)">❌ '+escHtml(d.msg)+'</span>';return}if(d.content){txt+=d.content;p.currentAssistantMsg.innerHTML=renderMD(txt)+'<span class="cursor"></span>';p.dom.messages.scrollTop=p.dom.messages.scrollHeight}else if(d.summary){txt+=d.summary}}catch(_){}}read()})}function finish(){let c=p.currentAssistantMsg.querySelector('.cursor');if(c)c.remove();p.currentConvo.messages.push({role:'assistant',content:txt||'调度完成'});saveConvoToServer(p);setStreaming(p,!1);hidePipeline(p);if(planData&&planData.phases){executePlan(planData)}if(planData&&planData.dag_info){renderDAGTree(planData.dag_info,p.currentAssistantMsg)};loadCostOverview();processQueue(p.id)}read()}).catch(function(e){if(e.name==='AbortError'){let c=p.currentAssistantMsg.querySelector('.cursor');if(c)c.remove();p.currentAssistantMsg.innerHTML+=' <span style="color:var(--warn)">⏹ 已停止</span>'}else{if(p.currentAssistantMsg)p.currentAssistantMsg.innerHTML='<span style="color:var(--danger)">❌ '+escHtml(e.message)+'</span>'}setStreaming(p,!1);p._reader=null;hidePipeline(p);processQueue(p.id)})}
+/* v0.5 durable orchestration: run_id is sent only by the explicit resume action. */
+function resumeOrchestratedRun(pid){
+  let p=panels.find(function(item){return item.id===pid});
+  if(!p||!p._lastRunId||!p._lastRunTask)return;
+  p._resumeRequested=true;
+  p.dom.input.value=p._lastRunTask;
+  p.dom.sendBtn.disabled=false;
+  handleOrchSend(p);
+}
+
+handleOrchSend=function(p){
+  let task=p.dom.input.value.trim();
+  if(!task)return;
+  if(!p._msgQueue)p._msgQueue=[];
+  if(p.isStreaming||p._pendingRequest){p._msgQueue.push(p.id);updateQueueIndicator(p);return}
+  let resumeRequested=p._resumeRequested===true&&Boolean(p._lastRunId);
+  p._resumeRequested=false;
+  p._runPaused=false;
+  p._pendingRequest=true;
+  updateQueueIndicator(p);
+  setStreaming(p,true);
+  p.dom.input.value='';
+  p.dom.input.style.height='auto';
+  p.dom.route.innerHTML='<span>🧠 智能调度</span>';
+  if(p.dom.empty)p.dom.empty.style.display='none';
+  if(!resumeRequested){
+    addMsg(p,'user',task);
+    p.currentConvo.messages.push({role:'user',content:task});
+  }
+  p.currentAssistantMsg=addMsg(p,'assistant','<span class="cursor"></span>');
+  p.abortController=new AbortController();
+  stageStatus={};
+  let requestBody={
+    task:task,
+    proj_dir:projDir||undefined,
+    api_key:apiKey||undefined,
+    api_provider:apiProvider||undefined,
+    profile:agencyProfile||'standard',
+    pipeline:true,
+    output_dir:localStorage.getItem('agency_output_dir')||undefined
+  };
+  if(resumeRequested)requestBody.run_id=p._lastRunId;
+
+  fetch('/api/orchestrate',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(requestBody),
+    signal:p.abortController.signal
+  }).then(function(resp){
+    if(!resp.ok){
+      return resp.json().then(function(data){throw new Error(data.code+': '+data.error)});
+    }
+    let reader=resp.body.getReader();
+    p._reader=reader;
+    let decoder=new TextDecoder(),buf='',txt='',planData=null,currentEvent='';
+    function read(){
+      reader.read().then(function(result){
+        if(result.done){p._reader=null;finish();return}
+        buf+=decoder.decode(result.value,{stream:true});
+        buf=buf.replace(/\r\n/g,'\n');
+        let lines=buf.split('\n');buf=lines.pop()||'';
+        for(let i=0;i<lines.length;i++){
+          let line=lines[i];
+          if(line.indexOf('event: ')===0){currentEvent=line.slice(7);continue}
+          if(line.indexOf('data: ')!==0)continue;
+          try{
+            let d=JSON.parse(line.slice(6));
+            if(d.run_id){p._lastRunId=d.run_id;p._lastRunTask=task}
+            if(currentEvent==='plan'){planData=d}
+            else if(currentEvent==='stage')handleStageEvent(p,d);
+            else if(currentEvent==='phase'&&d.msg)p.dom.route.innerHTML='<span>'+escHtml(d.msg)+'</span>';
+            else if(currentEvent==='done'&&d.summary)txt+=d.summary;
+            else if(currentEvent==='pause'){
+              txt+=(d.msg||'运行已暂停');
+              p._runPaused=true;
+            }else if(currentEvent==='error'){
+              txt+=d.msg||d.error||'调度失败';
+              p._runPaused=true;
+            }else if(d.content){
+              txt+=d.content;
+              p.currentAssistantMsg.innerHTML=renderMD(txt)+'<span class="cursor"></span>';
+              p.dom.messages.scrollTop=p.dom.messages.scrollHeight;
+            }
+          }catch(error){console.warn('Invalid orchestration event',error)}
+          currentEvent='';
+        }
+        read();
+      });
+    }
+    function finish(){
+      let cursor=p.currentAssistantMsg.querySelector('.cursor');if(cursor)cursor.remove();
+      p.currentAssistantMsg.innerHTML=renderMD(txt||'调度完成');
+      if(p._runPaused&&p._lastRunId){
+        p.currentAssistantMsg.innerHTML+='<div class="retry-block"><span>运行 '+escHtml(p._lastRunId)+' 已暂停</span><button onclick="resumeOrchestratedRun('+p.id+')" class="retry-btn">恢复运行</button></div>';
+      }
+      p.currentConvo.messages.push({role:'assistant',content:txt||'调度完成'});
+      saveConvoToServer(p);setStreaming(p,false);hidePipeline(p);
+      if(planData&&planData.phases)executePlan(planData);
+      if(planData&&planData.dag_info)renderDAGTree(planData.dag_info,p.currentAssistantMsg);
+      loadCostOverview();processQueue(p.id);p._runPaused=false;
+    }
+    read();
+  }).catch(function(error){
+    if(error.name==='AbortError'){
+      p.currentAssistantMsg.innerHTML='<span style="color:var(--warn)">⏹ 已停止</span>';
+    }else{
+      p.currentAssistantMsg.innerHTML='<span style="color:var(--danger)">❌ '+escHtml(error.message)+'</span>';
+    }
+    if(p._lastRunId){
+      p.currentAssistantMsg.innerHTML+='<div class="retry-block"><button onclick="resumeOrchestratedRun('+p.id+')" class="retry-btn">恢复运行</button></div>';
+    }
+    setStreaming(p,false);p._reader=null;hidePipeline(p);processQueue(p.id);
+  });
+};
+
 function handleStageEvent(p,d){if(d.pipeline&&!p._pipelineInit){p._pipelineInit=true;p._pipelineStages=d.pipeline;stageStatus={};d.pipeline.forEach(function(s){stageStatus[s.stage]='pending'});renderPipelineBar(p)}if(d.stage){stageStatus[d.stage]=d.status;renderPipelineBar(p);if(d.model_tier){p.dom.route.innerHTML='<span>📋 '+d.stage+'</span><span style="color:var(--accent)">'+d.model_tier+'</span>'}if(d.pass_k){let pk=d.pass_k;let pkSummary='🔍 pass@3: '+(pk.overall?'✅ 通过':'❌ 未通过')+' (';let names=Object.keys(pk.perspectives||{});pkSummary+=names.map(function(n){return (pk.perspectives[n].passed?'✓':'✗')+' '+n}).join(', ');pkSummary+=')';p.dom.route.innerHTML='<span>'+pkSummary+'</span>'}}}
 function renderPipelineBar(p){let bar=p.dom.pipeline;if(!bar)return;let stages=p._pipelineStages||[{stage:'research',label:'研究'},{stage:'plan',label:'方案'},{stage:'dry_run',label:'预演'},{stage:'gate',label:'门控'},{stage:'implement',label:'实施'},{stage:'review',label:'审查'},{stage:'verify',label:'验证'}];let iconMap={pending:'⚪',active:'🔵',passed:'✅',failed:'❌',verifying:'🔍'};bar.style.display='flex';bar.innerHTML=stages.map(function(s,i){let st=stageStatus[s.stage]||'pending';let cls='pipeline-dot '+(st==='active'||st==='verifying'?'active':st==='passed'?'done':st==='failed'?'fail':'');return'<div style="display:flex;align-items:center;gap:3px"><span class="'+cls+'" title="'+escHtml(s.label||s.stage)+': '+st+'"></span><span style="font-size:9px;color:var(--muted)">'+escHtml(s.label||s.stage)+'</span>'+(i<stages.length-1?'<span style="color:var(--border2)">—</span>':'')+'</div>'}).join('')}
 function hidePipeline(p){let bar=p.dom.pipeline;if(bar){setTimeout(function(){bar.style.display='none'},3000);p._pipelineInit=false;p._pipelineStages=null}}
@@ -599,4 +714,3 @@ window.editCustomTemplate = editCustomTemplate;
 window.deleteCustomTemplate = deleteCustomTemplate;
 window.showRoutePicker = showRoutePicker;
 window.showProgress = showProgress;
-

@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agency-kit"
-version = "0.1.0"
-description = "Claude Code 的 Web 操作面板 — 多 Agent 协作、实时监控、手机远程操控"
+version = "0.5.0"
+description = "Local-first web workspace for verifiable agent workflows"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 readme = "README.md"
@@ -41,7 +41,7 @@ dev = [
 ]
 
 [project.scripts]
-agency = "maestro.flask_app:main"
+agency = "maestro.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["maestro*"]
@@ -53,6 +53,11 @@ python_files = ["test_*.py", "*_test.py"]
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+
+[tool.ruff.lint]
+# v0.5 establishes a fail-closed correctness baseline for the legacy tree.
+# Broader style rules will be enabled in bounded follow-up changes.
+select = ["E9", "F63", "F7", "F82"]
 
 [tool.mypy]
 python_version = "3.10"

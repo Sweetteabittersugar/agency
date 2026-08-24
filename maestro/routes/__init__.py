@@ -14,9 +14,10 @@ def register_all(Handler):
     Handler._delete_routes = []
 
     for method, path, handler, _endpoint in ROUTES:
+        legacy_path = path.split("<", 1)[0] if "<" in path else path
         if method == "GET":
-            Handler._get_routes.append((path, handler))
+            Handler._get_routes.append((legacy_path, handler))
         elif method == "POST":
-            Handler._post_routes.append((path, handler))
+            Handler._post_routes.append((legacy_path, handler))
         elif method == "DELETE":
-            Handler._delete_routes.append((path, handler))
+            Handler._delete_routes.append((legacy_path, handler))

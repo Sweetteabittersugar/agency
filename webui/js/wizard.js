@@ -32,7 +32,7 @@ function showSetupStep(step){
           '<div style="font-size:10px;color:var(--muted);margin-top:2px">远程访问<br>随时随地</div>'+
         '</div>'+
       '</div>'+
-      '<p style="font-size:10px;color:var(--muted);text-align:center;margin-bottom:8px">🔒 所有数据仅存本地，永不离开你的设备</p>';
+      '<p style="font-size:10px;color:var(--muted);text-align:center;margin-bottom:8px">🔒 本地保存设置；请求会发送给你选择的模型服务商</p>';
     footer.innerHTML=
       '<button class="btn primary" onclick="enterDemoMode()" style="width:auto;font-size:12px;padding:8px 24px">🚀 跳过，直接体验 Demo</button>'+
       '<button class="btn" onclick="showSetupStep(1)" style="width:auto;font-size:12px;padding:8px 24px">⚙️ 开始配置</button>'+
@@ -151,7 +151,7 @@ function renderProviderQ2(body,footer){
     '</div>'+
     '<input class="proj-input" id="setup-provider" value="" type="hidden">'+
     '<p style="font-size:10px;color:var(--muted);margin-top:2px">'+
-      '🔒 Key 仅存浏览器本地存储和 .env 文件，<b>永不离开你的设备</b>'+
+      '🔒 Key 可保存在浏览器本地存储或 .env；调用模型时会发送给所选服务商'+
     '</p>';
   footer.innerHTML=
     '<button class="btn" onclick="enterDemoMode()" style="font-size:11px">跳过</button>'+

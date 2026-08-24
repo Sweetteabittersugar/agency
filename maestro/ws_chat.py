@@ -38,6 +38,14 @@ def process_chat_task(data, emit_callback):
         emit_callback('error', {'error': '请求为空'})
         return {'ok': False, 'error': '请求为空'}
 
+    from maestro.project_access import ProjectAccessError, project_binding
+
+    try:
+        project_root = project_binding(data.get('proj_dir'))
+    except ProjectAccessError as exc:
+        emit_callback('error', {'error': str(exc), 'code': exc.code})
+        return {'ok': False, 'error': str(exc), 'code': exc.code}
+
     if not api_key:
         emit_callback('error', {'error': '未配置 API Key', 'action': 'open_settings'})
         return {'ok': False, 'error': '未配置 API Key'}
@@ -61,30 +69,32 @@ def process_chat_task(data, emit_callback):
     session_id = data.get('session_id') or data.get('sid') or str(__import__('uuid').uuid4())
     iso_env = build_isolated_env(api_key, api_provider)
 
+    # Strip an explicit @agent prefix before budget checks and execution.
+    actual_task = task
+    if force_agent:
+        parts = task.strip().split(' ', 1)
+        if len(parts) > 1 and parts[0].startswith('@'):
+            actual_task = parts[1]
+
     # Phase 2: 获取或创建 Claude 会话——每个面板独立 session
     # 2026-06: 预算检查——任务执行前验证日预算
-    _budget_ok, _budget_msg = check_budget(actual_task, model or "deepseek-v4-flash", PROJECT_ROOT)
+    _budget_ok, _budget_msg = check_budget(
+        actual_task, model or "deepseek-v4-flash", project_root
+    )
     if not _budget_ok:
         emit_callback('error', {'error': _budget_msg, 'action': 'budget_exceeded'})
         return {'ok': False, 'error': _budget_msg}
 
-    cs = get_or_create(session_id, str(PROJECT_ROOT), iso_env)
+    cs = get_or_create(session_id, project_root, iso_env)
     if cs is None:
         emit_callback('error', {'error': '无法启动 Claude 进程'})
         return {'ok': False, 'error': '无法启动 Claude 进程'}
 
     emit_callback('executing', {'agent': agent_name})
 
-    # Phase 2: 如前端 @agent 前缀指定了 Agent，剥离后发送实际任务
-    actual_task = task
-    if force_agent:
-        m = task.strip().split(' ', 1)
-        if len(m) > 1 and m[0].startswith('@'):
-            actual_task = m[1]
-
     # Phase 2: 新会话注入记忆——首次对话时扫描 memory/ 目录
     if data.get('is_first'):
-        actual_task = inject_memory(actual_task, PROJECT_ROOT)
+        actual_task = inject_memory(actual_task, project_root)
 
     start_time = time.time()
     # 不可移除——send_and_read 是整个对话管道的核心：发送任务 → 接收 Claude 流式响应
@@ -103,7 +113,9 @@ def process_chat_task(data, emit_callback):
 
     # Phase 2: 统计——耗时 / Token / 费用 / 压缩状态
     elapsed = round(time.time() - start_time, 1)
-    in_tokens = done_data.get('in_tokens', _ws_estimate_tokens(task, model))
+    from maestro.models import estimate_tokens
+
+    in_tokens = done_data.get('in_tokens', estimate_tokens(task, model))
     out_tokens = done_data.get('out_tokens', 0)
     cache_read = done_data.get('cache_read', 0)
     cache_write_total = done_data.get('cache_write', 0)
@@ -115,7 +127,7 @@ def process_chat_task(data, emit_callback):
 
     # Phase 2: 费用记录——写入 Web 费用日志
     record_chat_cost(
-        project_root=PROJECT_ROOT,
+        project_root=project_root,
         model=model_used,
         in_tokens=in_tokens,
         out_tokens=out_tokens,

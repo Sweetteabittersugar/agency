@@ -189,7 +189,7 @@ class Handler(BaseHTTPRequestHandler):
 
         for prefix, handler_func in self._get_routes:
             if path == prefix or (
-                prefix.endswith("/") and len(path) > len(prefix) and path.startswith(prefix)
+                prefix.endswith("/") and path.startswith(prefix)
             ):
                 handler_func(self, parsed)
                 return
@@ -296,7 +296,7 @@ class Handler(BaseHTTPRequestHandler):
 
         for prefix, handler_func in self._post_routes:
             if path == prefix or (
-                prefix.endswith("/") and len(path) > len(prefix) and path.startswith(prefix)
+                prefix.endswith("/") and path.startswith(prefix)
             ):
                 handler_func(self, body)
                 return
@@ -313,7 +313,7 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         for prefix, handler_func in self._delete_routes:
             if path == prefix or (
-                prefix.endswith("/") and len(path) > len(prefix) and path.startswith(prefix)
+                prefix.endswith("/") and path.startswith(prefix)
             ):
                 handler_func(self, parsed)
                 return

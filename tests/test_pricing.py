@@ -124,7 +124,7 @@ class TestGetPrice:
         assert get_price("deepseek-v4-pro", "output") == 0.87
 
     def test_cache_read_price(self):
-        assert get_price("deepseek-v4-pro", "cache_read") == 0.0145
+        assert get_price("deepseek-v4-pro", "cache_read") == 0.003625
 
     def test_default_token_type(self):
         assert get_price("deepseek-v4-pro") == 0.435  # default = input

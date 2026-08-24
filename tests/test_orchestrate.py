@@ -17,17 +17,17 @@ class TestOrchEstimateTokens:
         assert _orch_estimate_tokens("") == 0
 
     def test_chinese_text(self):
-        tokens = _orch_estimate_tokens("你好世界" * 100)
-        assert tokens > 0
+        estimated_units = _orch_estimate_tokens("你好世界" * 100)
+        assert estimated_units > 0
 
     def test_with_model(self):
-        tokens = _orch_estimate_tokens("test " * 200, "claude-opus-4-8")
-        assert tokens > 0
+        estimated_units = _orch_estimate_tokens("test " * 200, "claude-opus-4-8")
+        assert estimated_units > 0
 
     def test_default_model(self):
         """无 model 参数时用 deepseek-v4-flash 默认"""
-        tokens = _orch_estimate_tokens("测试" * 100)
-        assert tokens > 0
+        estimated_units = _orch_estimate_tokens("测试" * 100)
+        assert estimated_units > 0
 
     def test_returns_int(self):
         result = _orch_estimate_tokens("hello world")

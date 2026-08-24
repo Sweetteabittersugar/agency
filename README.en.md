@@ -1,234 +1,137 @@
 # Agency
 
-> Web Dashboard for Claude Code — Multi-Agent · Live Monitor · Remote Control
+[中文](README.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md)
 
-<p align="center">
-  <!-- TODO: 添加实际截图后取消注释 -->
-<!-- <img src="docs/screenshot.png" alt="Agency Screenshot" width="800"> --><br>
-  <em>▲ Type your task → auto-matched Agent → streaming response. Split panels, real-time cost tracking.</em>
-</p>
+[![Version](https://img.shields.io/badge/version-0.5.0-green)](VERSION)
+[![CI](https://github.com/Sweetteabittersugar/agency/actions/workflows/ci.yml/badge.svg)](https://github.com/Sweetteabittersugar/agency/actions/workflows/ci.yml)
+[![Source only](https://img.shields.io/badge/distribution-source--only-blue)](#installation)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.4.0-green)](VERSION)
-[![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://python.org)
-[![Agents](https://img.shields.io/badge/Agents-32-purple)]()
-[![Skills](https://img.shields.io/badge/Skills-34-orange)]()
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+Agency is a local-first web workspace for agent routing, staged execution, cost records, and resumable runs. Version 0.5.0 is distributed as source through GitHub Releases; it is not published to PyPI or npm.
 
-## What's in This Repo
+The product registry currently contains **33 agents and 7 skills**, verified from [agent.yaml](agent.yaml) and [skills/](skills/). Runtime projections and Markdown file counts serve different purposes and may not have the same count.
 
-```
-You're downloading Agency — a Web UI for Claude Code
+## What is new in v0.5.0
 
-  Agency includes:
-  ✅ Browser chat interface (replaces command line)
-  ✅ 32 pre-configured AI Agents (ready to use)
-  ✅ Cost tracking / split panels / WeChat Bot / permission control
-  ✅ One-click install scripts
-
-  Agency does NOT include:
-  ⚡ Node.js + Claude CLI — install script auto-installs both
-  ❌ API Key — sign up at DeepSeek / Anthropic / OpenAI
-  ❌ Python 3.10+ runtime
-```
-
-> **TL;DR: Agency is a web shell for Claude Code. You need Claude Code CLI and an API Key first.**
-
-## Quick Start
-
-```bash
-# 1. Install
-git clone https://github.com/Sweetteabittersugar/agency.git && cd agency
-pip install -e .
-
-# 2. Launch
-agency start
-# → Opens http://localhost:8800 in your browser
-# → Browse Demo mode without any API Key!
-
-# 3. Configure (optional)
-# Click 🔧 → enter your API Key → start working
-```
-
-> **Windows?** Download → extract → double-click `install.bat` → double-click `start.bat`. Done.
-
-## Features
-
-| 🧠 | 📊 | 📱 |
-|:---:|:---:|:---:|
-| **Multi-Agent** | **Live Dashboard** | **Remote Control** |
-| 32 specialized agents auto-matched | Token · Cost · Permissions tracking | Access from phone/tablet |
-| Use @agentname to specify | 3D analysis by date/model/agent | Password protected |
-
-| 🔧 | 🎨 | 🔌 |
-|:---:|:---:|:---:|
-| **Skill Workflows** | **Split Panels** | **11 Providers** |
-| 34 reusable skill templates | 1/2/4 panel layouts | DeepSeek · GPT · Claude · Gemini |
-| Edit source, toggle on/off | Independent sessions per panel | Kimi · Qwen · GLM · MiniMax… |
+- A local SQLite run ledger for append-only events, DAG checkpoints, action intent/result pairs, and runner fences.
+- Resumable orchestration: `POST /api/orchestrate` accepts an optional `run_id`; a task or project mismatch returns `RUN_RESUME_REJECTED`.
+- Side-effect protection: an interrupted write with no recorded result returns `ACTION_RECONCILIATION_REQUIRED` and is never replayed automatically.
+- A real project boundary: repeatable `--project-root PATH` arguments control file, terminal, test, and agent execution access.
+- A stable CLI whose help and version paths do not start the server. The default listener is `127.0.0.1`.
 
 ## Installation
 
-### Prerequisites
-
-| Required | Version | Notes |
-|----------|---------|-------|
-| **Python** | 3.10+ | [python.org](https://www.python.org/downloads/) |
-| **Node.js** | auto-installed | Handled by install script (winget/brew/apt) |
-| **Claude Code CLI** | auto-installed | Handled by install script |
-| **Git** | any version | [git-scm.com](https://git-scm.com/) |
-
-| Recommended | Purpose |
-|-------------|---------|
-| **Docker** | Sandbox isolation (safer execution) |
-| **Node.js 18+** | JS syntax checking (developers) |
-
-| You'll need | Sign up at |
-|-------------|------------|
-| **API Key** | [DeepSeek](https://platform.deepseek.com/) · [Anthropic](https://console.anthropic.com/) · [OpenAI](https://platform.openai.com/) |
-
-<details open>
-<summary><b>pip install (recommended)</b></summary>
+Python 3.10–3.13 is supported. The source workflow below is the only supported distribution method for this release.
 
 ```bash
 git clone https://github.com/Sweetteabittersugar/agency.git
 cd agency
-pip install -e .
-agency start
+git checkout v0.5.0
+python -m venv .venv
 ```
-</details>
 
-<details>
-<summary><b>Windows one-click</b></summary>
+Windows PowerShell:
 
-Download → extract → double-click `install.bat` → double-click `start.bat`
-</details>
-
-<details>
-<summary><b>Manual (Agents only, 30 seconds)</b></summary>
-
-Don't need the Web UI? Just install Agent definitions:
-```bash
-cp agents/L1_executor/coder.md ~/.claude/agents/
-# In Claude Code: @coder write a sorting function
+```powershell
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e .
+agency --version
 ```
-</details>
 
-> **Need Claude CLI?** `npm install -g @anthropic-ai/claude-code`. No Claude Key? DeepSeek works great too.
-
-### Docker Sandbox Isolation (recommended)
-
-With Docker installed, Agents execute in isolated containers, protecting your host environment:
+macOS / Linux:
 
 ```bash
-docker pull claude-code-worker:latest  # optional
+source .venv/bin/activate
+python -m pip install -e .
+agency --version
 ```
 
-When Docker is unavailable, Agency automatically falls back to degraded mode (direct subprocess), without affecting normal usage.
+The version command prints only `0.5.0`.
 
-## 🔄 Updating
+## Starting Agency
 
-### pip install
 ```bash
-pip install --upgrade agency-kit
+agency start --project-root /path/to/your/project
 ```
 
-### Git clone install
+The default URL is `http://127.0.0.1:8800`. Repeat the option to allow more than one directory:
+
 ```bash
-git pull origin main && pip install -e .
+agency start \
+  --project-root /path/to/project-a \
+  --project-root /path/to/project-b
 ```
 
-### Auto check on startup
-Agency checks for new versions on startup (once every 24 hours, no spam).
-When a new version is available, the upgrade command is shown in the terminal.
-To disable: set `AGENCY_NO_UPDATE_CHECK=1`
+With no project root, the UI can start, but project file browsing, agent execution, terminals, and test operations are rejected. Request paths are canonicalized on every access and checked again after resolving symlinks or junctions.
 
-> Config files (`.env`) are preserved across upgrades.
+A non-loopback listener requires explicit authentication:
 
-### Updates won't overwrite your customizations
-
-| Directory | Purpose | On update |
-|-----------|---------|-----------|
-| `.claude/agents/user/` | Your custom Agents | Preserved |
-| `.claude/skills/user/` | Your custom Skills | Preserved |
-| `.env` | API Key config | Preserved |
-| `credentials/` | Login credentials | Preserved |
-| `.claude/agents/L*/` | System Agents | Overwritten |
-| `maestro/` `webui/` | System code | Overwritten |
-
-> Before editing a system Agent, copy it to `user/` directory first.
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────┐
-│                  Agency Web UI                    │
-│        Chat · Dashboard · Settings · Skills      │
-└──────────────────────┬──────────────────────────┘
-                       │ REST + SSE streaming
-┌──────────────────────▼──────────────────────────┐
-│              Maestro Engine                       │
-│  Route (keyword+semantic) → Agent → Sandbox → Out│
-└──────────────────────┬──────────────────────────┘
-                       │ claude -p / stdin pipe
-┌──────────────────────▼──────────────────────────┐
-│            Claude Code + MCP                     │
-│  Agents · Skills · Hooks · Rules                 │
-│  Playwright · Context7 · Brave Search …          │
-└─────────────────────────────────────────────────┘
+```bash
+export AGENCY_TOKEN="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
+agency start --host 0.0.0.0 --project-root /path/to/project
 ```
 
-## Project Structure
+In PowerShell, generate a temporary token with `$env:AGENCY_TOKEN = & python -c "import secrets; print(secrets.token_urlsafe(32))"`. Startup fails closed when a non-loopback address has no configured token.
 
+## Model providers and API keys
+
+Agency sends the API key and request content needed to complete a task to the model provider selected by the user. Review that provider's data-handling terms.
+
+The Web UI can store a key in browser `localStorage`. This is convenient for local use, but an XSS vulnerability could expose it. Environment variables are safer for regular use. Never commit `.env` files, real keys, or credentials.
+
+## Resumable runs
+
+Ordinary new messages do not send an old `run_id`. The UI sends the original task, project, and `run_id` only after the user explicitly clicks **Resume run**.
+
+```json
+{
+  "task": "add tests to the current project",
+  "proj_dir": "/allowed/project",
+  "run_id": "optional-existing-run-id"
+}
 ```
-agency/
-├── maestro/        Orchestration engine (routing/chat/cost/security)
-├── webui/          Frontend (modular JS + CSS dark theme + HTML)
-├── agents/         32 Agent definitions (L3/L2/L1/L0 layers)
-├── .claude/skills/ 34 Skill workflows
-├── rules/          Engineering standards
-├── hooks/          Lifecycle automation
-├── commands/       Shortcut commands
-├── docs/           Documentation
-└── tests/          Tests
+
+Only one runner may own a run at a time. If the process stops after a potentially side-effecting action but before recording its result, Agency requires manual reconciliation. Inspect files, commands, and external state before continuing.
+
+## Security boundary
+
+- The listener defaults to loopback, and remote listening requires authentication.
+- Project roots are an enforced allowlist. Path traversal and symlink/junction escapes are rejected.
+- Docker-enabled features may provide additional isolation. **Without Docker, commands run with the permissions of the operating-system user that started Agency.**
+- This project is not a multi-tenant service and does not claim that every model input or secret always remains on the device.
+- Follow [SECURITY.md](SECURITY.md) for private vulnerability reporting. Never put a real secret in a public issue.
+
+## Known limitations
+
+- v0.5.0 is source-only: no PyPI/npm package, binary installer, or hosted SaaS is provided.
+- Agency cannot automatically determine whether an interrupted external side effect succeeded. `ACTION_RECONCILIATION_REQUIRED` needs a human decision.
+- Browser credential storage remains exposed to browser/XSS risk.
+- The Windows junction test skips with an explicit reason when directory-link creation is unavailable.
+- The single-machine ledger and token authentication are not an enterprise multi-user authorization system.
+
+## Verification
+
+Release CI exposes these stable check names:
+
+- `Quality`
+- `Tests (Python 3.10)`
+- `Tests (Python 3.11)`
+- `Tests (Python 3.12)`
+- `Tests (Python 3.13)`
+
+Run the same core checks locally:
+
+```bash
+python -m pip install -e ".[dev]"
+ruff check .
+python -m compileall -q maestro scripts
+python scripts/verify_release.py
+python -m pytest -q
 ```
 
-## FAQ
-
-<details>
-<summary><b>Do I need a Claude API Key?</b></summary>
-
-No. Agency supports 11 model providers. We recommend **DeepSeek** (affordable, excellent Chinese support). You can also browse the full UI in Demo mode without any key.
-</details>
-
-<details>
-<summary><b>Is my API Key safe?</b></summary>
-
-**Absolutely.** Your key is stored only in browser localStorage (on your machine) and the project `.env` file (gitignored). **It never leaves your device, never uploaded anywhere.**
-</details>
-
-<details>
-<summary><b>How is this different from Claude Code?</b></summary>
-
-Agency is a **Web Dashboard** for Claude Code. Claude Code is a CLI coding tool; Agency adds: Web UI, intelligent Agent routing, real-time cost tracking, remote mobile access, and multi-panel collaboration.
-</details>
-
-<details>
-<summary><b>Can I use it offline?</b></summary>
-
-The Web UI runs entirely locally. However, Agent execution requires API calls to AI model providers (DeepSeek, OpenAI, etc.) — that part needs internet.
-</details>
+`scripts/verify_release.py` checks version consistency, the 33/7 registry counts, source-only package settings, and forbidden public-tree content.
 
 ## Contributing
 
-PRs welcome! See [CONTRIBUTING.md](CONTRIBUTING.md). Please open an Issue before proposing major changes.
+Maintenance is best effort; there is no fixed response SLA. Read [CONTRIBUTING.md](CONTRIBUTING.md) and run Ruff, pytest, and the release verifier before opening a pull request.
 
-Quick start: [GETTING-STARTED.md](docs/GETTING-STARTED.md) | Full guide: [USAGE.md](docs/USAGE.md)
-
-## Credits
-
-- [Claude Code](https://claude.ai/code) — Anthropic's AI coding tool
-- [ECC](https://github.com/affaan-m/ECC) — 207K+ Stars Claude Code enhancement benchmark
-
-## License
-
-MIT © 2026 Sweetteabittersugar
+License: [MIT](LICENSE)

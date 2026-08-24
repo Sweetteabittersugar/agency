@@ -21,14 +21,12 @@ class TestDispatchBasics:
             pytest.skip(f"dispatch 模块不可导入: {e}")
 
     def test_dispatch_has_agents(self):
-        """dispatch 包含 agent 列表"""
-        try:
-            from dispatch import AGENTS
+        """dispatch 可以加载当前 agent 注册表。"""
+        from dispatch import load_registry
 
-            assert isinstance(AGENTS, dict)
-            assert len(AGENTS) > 0
-        except (ImportError, AttributeError) as e:
-            pytest.skip(f"AGENTS 不可用: {e}")
+        agents = load_registry()
+        assert isinstance(agents, dict)
+        assert len(agents) > 0
 
 
 class TestSandboxBasics:
